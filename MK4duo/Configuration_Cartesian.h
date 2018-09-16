@@ -201,11 +201,11 @@
 #define Z_PROBE_OFFSET_FROM_NOZZLE -1     // Z offset: -below [of the nozzle] (always negative!)
 
 // X and Y axis travel speed between probes, in mm/min
-#define XY_PROBE_SPEED 300*60
+#define XY_PROBE_SPEED 250*60
 // Speed for the first approach when double-probing (with PROBE_DOUBLE_TOUCH)
 #define Z_PROBE_SPEED_FAST 120
 // Speed for the "accurate" probe of each point
-#define Z_PROBE_SPEED_SLOW 50
+#define Z_PROBE_SPEED_SLOW 60
 // Z Probe repetitions, median for best result
 #define Z_PROBE_REPETITIONS 1
 
@@ -375,8 +375,8 @@
 #define Z_SAFE_HOMING
 //#define Z_SAFE_HOMING_X_POINT ((X_MIN_POS + X_MAX_POS) / 2)
 //#define Z_SAFE_HOMING_Y_POINT ((Y_MIN_POS + Y_MAX_POS) / 2)
-#define Z_SAFE_HOMING_X_POINT 50
-#define Z_SAFE_HOMING_Y_POINT 0
+#define Z_SAFE_HOMING_X_POINT 40
+#define Z_SAFE_HOMING_Y_POINT 10
 
 /*****************************************************************************************/
 
@@ -569,9 +569,9 @@
  ********************************** Axis feedrate ****************************************
  *****************************************************************************************/
 //                                       X,   Y, Z,  E0...(per extruder). (mm/sec)
-#define DEFAULT_MAX_FEEDRATE          {300, 300, 30, 200, 200, 200, 200}
+#define DEFAULT_MAX_FEEDRATE          {300, 300, 12, 200, 200, 200, 200}
 // Feedrates for manual moves along        X,     Y,     Z,  E from panel
-#define MANUAL_FEEDRATE               {50*60, 50*60, 4*60, 10*60}
+#define MANUAL_FEEDRATE               {50*60, 50*60, 6*60, 10*60}
 // Minimum feedrate
 #define DEFAULT_MINIMUMFEEDRATE       0.0
 #define DEFAULT_MINTRAVELFEEDRATE     0.0

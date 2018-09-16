@@ -181,7 +181,7 @@
 // Define delay after power on in seconds
 #define DELAY_AFTER_POWER_ON 1
 // Define time for automatic power off if not needed in second
-#define POWER_TIMEOUT 30
+#define POWER_TIMEOUT 600
 /*************************************************************************************/
 
 
