@@ -185,11 +185,11 @@
 // When first starting the main fan, run it at full speed for the
 // given number of milliseconds.  This gets the fan spinning reliably
 // before setting a PWM value.
-//#define FAN_KICKSTART_TIME 200
+#define FAN_KICKSTART_TIME 500
 
 // This defines the minimal speed for the main fan
 // set minimal speed for reliable running (1-255)
-#define FAN_MIN_PWM 1
+#define FAN_MIN_PWM 4
 
 // To reverse the logic of fan pins
 //#define INVERTED_FAN_PINS
@@ -200,7 +200,7 @@
 // Or put 7 for controller fan
 // -1 disables auto mode.
 // Default fan 1 is auto fan for Hotend 0
-#define AUTO_FAN { -1, 0, -1, -1, -1, -1 }
+#define AUTO_FAN { -1, -1, -1, -1, -1, -1 }
 // Parameters for Hotend Fan
 #define HOTEND_AUTO_FAN_TEMPERATURE  50
 #define HOTEND_AUTO_FAN_SPEED       255 // 255 = full speed
@@ -1092,17 +1092,17 @@
  * Uncomment EEPROM FLASH for use writing EEPROM on Flash Memory (Only for DUE)                                         *
  *                                                                                                                      *
  ************************************************************************************************************************/
-//#define EEPROM_SETTINGS
+#define EEPROM_SETTINGS
 
 // Uncomment this to enable EEPROM Serial responses.
-//#define EEPROM_CHITCHAT
+#define EEPROM_CHITCHAT
 
 // Type EEPROM Hardware
 //  Caution!!! The cards that mount the eeprom by default
 //  have already enabled the correct define, do not touch this.
 //#define EEPROM_I2C
 //#define EEPROM_SPI
-//#define EEPROM_SD
+#define EEPROM_SD
 //#define EEPROM_FLASH
 
 // Disabled M503 report
@@ -1113,15 +1113,15 @@
 /*****************************************************************************************
  *************************************** SDCARD *******************************************
  ****************************************************************************************/
-//#define SDSUPPORT
+#define SDSUPPORT
 
 //#define SDSLOW              // Use slower SD transfer mode (not normally needed - uncomment if you're getting volume init error)
 //#define SDEXTRASLOW         // Use even slower SD transfer mode (not normally needed - uncomment if you're getting volume init error)
-//#define SD_CHECK_AND_RETRY  // Use CRC checks and retries on the SD communication
+#define SD_CHECK_AND_RETRY  // Use CRC checks and retries on the SD communication
 //#define SD_EXTENDED_DIR     // Show extended directory including file length. Don't use this with Pronterface
 
 // Decomment this if you have external SD without DETECT_PIN
-//#define SD_DISABLED_DETECT
+#define SD_DISABLED_DETECT
 // Some RAMPS and other boards don't detect when an SD card is inserted. You can work
 // around this by connecting a push button or single throw switch to the pin defined
 // as SD_DETECT_PIN in your board's pins definitions.
@@ -2050,12 +2050,12 @@
 // THE BLOCK BUFFER SIZE NEEDS TO BE A POWER OF 2 (i.g. 8, 16, 32) because shifts
 // and ors are used to do the ring-buffering.
 // For Arduino DUE setting BLOCK BUFFER SIZE to 32
-#define BLOCK_BUFFER_SIZE 16
+#define BLOCK_BUFFER_SIZE 32
 
 // The ASCII buffer for receiving from the serial:
 #define MAX_CMD_SIZE 96
 // For Arduino DUE setting to 8
-#define BUFSIZE 4
+#define BUFSIZE 8
 
 /** START Function only for 8 bit proccesor */
 // Transmission to Host Buffer Size
@@ -2065,13 +2065,13 @@
 // For debug-echo: 128 bytes for the optimal speed.
 // Other output doesn't need to be that speedy.
 // 0, 2, 4, 8, 16, 32, 64, 128, 256
-#define TX_BUFFER_SIZE 0
+#define TX_BUFFER_SIZE 128
 
 // Host Receive Buffer Size
 // Without XON/XOFF flow control (see SERIAL XON XOFF below) 32 bytes should be enough.
 // To use flow control, set this buffer size to at least 1024 bytes.
 // 0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048
-#define RX_BUFFER_SIZE 128
+#define RX_BUFFER_SIZE 2048
 
 // Enable to have the controller send XON/XOFF control characters to
 // the host to signal the RX buffer is becoming full.

@@ -67,13 +67,13 @@
  * startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
  * build by the user have been successfully uploaded into firmware.
  */
-#define STRING_CONFIG_H_AUTHOR "(none, default config)"   // Who made the changes.
+#define STRING_CONFIG_H_AUTHOR "(Burner, 15.9.2018)"   // Who made the changes.
 
 /**
  * Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
  * You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
  */
-#define MACHINE_UUID "00000000-0000-0000-0000-000000000000"
+#define MACHINE_UUID "aedacceff24-1a3b-4114-de0e-1aba5ff215ef"
 
 /**
  * Kill Method
@@ -128,7 +128,7 @@
  * See: https://github.com/MagoKimbra/MK4duo/blob/master/Documentation/Hardware.md *
  *                                                                                       *
  *****************************************************************************************/
-#define MOTHERBOARD BOARD_RAMPS_13_HFB
+#define MOTHERBOARD BOARD_ULTRATRONICS
 /*****************************************************************************************/
 
 
@@ -173,13 +173,13 @@
  * 2 X-Box 360 203 Watts (the blue wire connected to PS_ON and the red wire to VCC)  *
  *                                                                                   *
  *************************************************************************************/
-#define POWER_SUPPLY 0
+#define POWER_SUPPLY 1
 
 // Define this to have the electronics keep the power supply off on startup.
 // If you don't know what this is leave it.
 #define PS_DEFAULT_OFF false
 // Define delay after power on in seconds
-#define DELAY_AFTER_POWER_ON 5
+#define DELAY_AFTER_POWER_ON 1
 // Define time for automatic power off if not needed in second
 #define POWER_TIMEOUT 30
 /*************************************************************************************/
@@ -190,11 +190,11 @@
  ***********************************************************************/
 // This defines the number of extruder real or virtual
 // 0,1,2,3,4,5,6
-#define EXTRUDERS 1
+#define EXTRUDERS 4
 
 // This defines the number of Driver extruder you have and use
 // 0,1,2,3,4,5,6
-#define DRIVER_EXTRUDERS 1
+#define DRIVER_EXTRUDERS 4
 /***********************************************************************/
 
 #endif /* _CONFIGURATION_BASIC_H_ */

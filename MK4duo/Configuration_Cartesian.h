@@ -69,7 +69,7 @@
  * Displayed in the LCD "Ready" message.                                                 *
  *                                                                                       *
  *****************************************************************************************/
-#define CUSTOM_MACHINE_NAME "Prusa I3"
+#define CUSTOM_MACHINE_NAME "F-Print Giga"
 /*****************************************************************************************/
 
 
@@ -80,19 +80,19 @@
  * Put true for enable or put false for disable the endstop pullup resistors             *
  *                                                                                       *
  *****************************************************************************************/
-#define ENDSTOPPULLUP_XMIN    false
-#define ENDSTOPPULLUP_YMIN    false
-#define ENDSTOPPULLUP_ZMIN    false
-#define ENDSTOPPULLUP_XMAX    false
-#define ENDSTOPPULLUP_YMAX    false
-#define ENDSTOPPULLUP_ZMAX    false
-#define ENDSTOPPULLUP_X2MIN   false
-#define ENDSTOPPULLUP_Y2MIN   false
-#define ENDSTOPPULLUP_Z2MIN   false
-#define ENDSTOPPULLUP_X2MAX   false
-#define ENDSTOPPULLUP_Y2MAX   false
-#define ENDSTOPPULLUP_Z2MAX   false
-#define ENDSTOPPULLUP_ZPROBE  false
+#define ENDSTOPPULLUP_XMIN    true
+#define ENDSTOPPULLUP_YMIN    true
+#define ENDSTOPPULLUP_ZMIN    true
+#define ENDSTOPPULLUP_XMAX    true
+#define ENDSTOPPULLUP_YMAX    true
+#define ENDSTOPPULLUP_ZMAX    true
+#define ENDSTOPPULLUP_X2MIN   true
+#define ENDSTOPPULLUP_Y2MIN   true
+#define ENDSTOPPULLUP_Z2MIN   true
+#define ENDSTOPPULLUP_X2MAX   true
+#define ENDSTOPPULLUP_Y2MAX   true
+#define ENDSTOPPULLUP_Z2MAX   true
+#define ENDSTOPPULLUP_ZPROBE  true
 /*****************************************************************************************/
 
 
@@ -104,9 +104,9 @@
  * uses "false" here (most common setup).                                                *
  *                                                                                       *
  *****************************************************************************************/
-#define X_MIN_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
-#define Y_MIN_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
-#define Z_MIN_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
+#define X_MIN_ENDSTOP_LOGIC   true   // set to true to invert the logic of the endstop.
+#define Y_MIN_ENDSTOP_LOGIC   true   // set to true to invert the logic of the endstop.
+#define Z_MIN_ENDSTOP_LOGIC   true   // set to true to invert the logic of the endstop.
 #define X_MAX_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
 #define Y_MAX_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
 #define Z_MAX_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
@@ -170,14 +170,14 @@
 // For example an inductive probe, or a setup that uses the nozzle to probe.
 // An inductive probe must be deactivated to go below
 // its trigger-point if hardware endstops are active.
-//#define Z_PROBE_FIX_MOUNTED
+#define Z_PROBE_FIX_MOUNTED
 
 // The BLTouch probe uses a Hall effect sensor and emulates a servo.
 // The default connector is SERVO 0.
 //#define BLTOUCH
 //#define BLTOUCH_DELAY 375 // (ms) Enable and increase if needed
 
-// Enable if you have a Z probe mounted on a sled like those designed by Charles Bell.
+// Enable if you have a Z probe mounted on a sled like those designed by Charles Bell. https://www.youtube.com/watch?v=iPLJ0FUKZiM
 //#define Z_PROBE_SLED
 // The extra distance the X axis must travel to pick up the sled.
 // 0 should be fine but you can push it further if you'd like.
@@ -196,16 +196,16 @@
 //    |           |
 //    O-- FRONT --+
 //  (0,0)
-#define X_PROBE_OFFSET_FROM_NOZZLE  0     // X offset: -left  [of the nozzle] +right
+#define X_PROBE_OFFSET_FROM_NOZZLE  -22     // X offset: -left  [of the nozzle] +right
 #define Y_PROBE_OFFSET_FROM_NOZZLE  0     // Y offset: -front [of the nozzle] +behind
 #define Z_PROBE_OFFSET_FROM_NOZZLE -1     // Z offset: -below [of the nozzle] (always negative!)
 
 // X and Y axis travel speed between probes, in mm/min
-#define XY_PROBE_SPEED 10000
+#define XY_PROBE_SPEED 300*60
 // Speed for the first approach when double-probing (with PROBE_DOUBLE_TOUCH)
 #define Z_PROBE_SPEED_FAST 120
 // Speed for the "accurate" probe of each point
-#define Z_PROBE_SPEED_SLOW 60
+#define Z_PROBE_SPEED_SLOW 50
 // Z Probe repetitions, median for best result
 #define Z_PROBE_REPETITIONS 1
 
@@ -213,8 +213,8 @@
 //#define Z_MIN_PROBE_REPEATABILITY_TEST
 
 // Probe Raise options provide clearance for the probe to deploy, stow, and travel.
-#define Z_PROBE_DEPLOY_HEIGHT 15  // Z position for the probe to deploy/stow
-#define Z_PROBE_BETWEEN_HEIGHT 5  // Z position for travel between points
+#define Z_PROBE_DEPLOY_HEIGHT 3  // Z position for the probe to deploy/stow
+#define Z_PROBE_BETWEEN_HEIGHT 1  // Z position for travel between points
 #define Z_PROBE_AFTER_PROBING  0  // Z position after probing is done
 
 // For M851 give a range for adjusting the Probe Z Offset
@@ -263,7 +263,7 @@
  * Be sure you have this distance over your Z MAX POS in case.                           *
  *                                                                                       *
  *****************************************************************************************/
-#define MIN_Z_HEIGHT_FOR_HOMING 0
+#define MIN_Z_HEIGHT_FOR_HOMING 2
 /*****************************************************************************************/
 
 
@@ -339,13 +339,13 @@
  *****************************************************************************************
  *                                                                                       *
  * Travel limits after homing (units are in mm)                                          *
- *                                                                                       *
+ * FIXME                                                                                       *
  *****************************************************************************************/
-#define X_MAX_POS 200
+#define X_MAX_POS 360
 #define X_MIN_POS 0
-#define Y_MAX_POS 200
+#define Y_MAX_POS 525
 #define Y_MIN_POS 0
-#define Z_MAX_POS 200
+#define Z_MAX_POS 600
 #define Z_MIN_POS 0
 #define E_MIN_POS 0
 /*****************************************************************************************/
@@ -372,9 +372,12 @@
  * Uncomment Z_SAFE_HOMING to enable                                                     *
  *                                                                                       *
  *****************************************************************************************/
-//#define Z_SAFE_HOMING
-#define Z_SAFE_HOMING_X_POINT ((X_MIN_POS + X_MAX_POS) / 2)
-#define Z_SAFE_HOMING_Y_POINT ((Y_MIN_POS + Y_MAX_POS) / 2)
+#define Z_SAFE_HOMING
+//#define Z_SAFE_HOMING_X_POINT ((X_MIN_POS + X_MAX_POS) / 2)
+//#define Z_SAFE_HOMING_Y_POINT ((Y_MIN_POS + Y_MAX_POS) / 2)
+#define Z_SAFE_HOMING_X_POINT 50
+#define Z_SAFE_HOMING_Y_POINT 0
+
 /*****************************************************************************************/
 
 
@@ -418,21 +421,21 @@
 //#define MESH_BED_LEVELING
 //#define AUTO_BED_LEVELING_UBL
 //#define AUTO_BED_LEVELING_LINEAR
-//#define AUTO_BED_LEVELING_BILINEAR
+#define AUTO_BED_LEVELING_BILINEAR
 //#define AUTO_BED_LEVELING_3POINT
 
 // enable a graphics overly while editing the mesh from auto-level
 //#define MESH_EDIT_GFX_OVERLAY
 
 // Mesh inset margin on print area
-#define MESH_INSET 10
+#define MESH_INSET 20
 
 // Enable the G26 Mesh Validation Pattern tool.
 //#define G26_MESH_VALIDATION
-#define MESH_TEST_NOZZLE_SIZE    0.4  // (mm) Diameter of primary nozzle.
-#define MESH_TEST_LAYER_HEIGHT   0.2  // (mm) Default layer height for the G26 Mesh Validation Tool.
-#define MESH_TEST_HOTEND_TEMP  200.0  // (c)  Default nozzle temperature for the G26 Mesh Validation Tool.
-#define MESH_TEST_BED_TEMP      60.0  // (c)  Default bed temperature for the G26 Mesh Validation Tool.
+#define MESH_TEST_NOZZLE_SIZE    0.8  // (mm) Diameter of primary nozzle.
+#define MESH_TEST_LAYER_HEIGHT   0.5  // (mm) Default layer height for the G26 Mesh Validation Tool.
+#define MESH_TEST_HOTEND_TEMP  220.0  // (c)  Default nozzle temperature for the G26 Mesh Validation Tool.
+#define MESH_TEST_BED_TEMP      50.0  // (c)  Default bed temperature for the G26 Mesh Validation Tool.
 
 /** START MESH BED LEVELING **/
 // Default mesh area is an area with an inset margin on the print area.
@@ -468,16 +471,16 @@
 
 /** START MESH BED LEVELING or AUTO BED LEVELING LINEAR or AUTO BED LEVELING BILINEAR or UNIFIED BED LEVELING **/
 // Set the number of grid points per dimension
-#define GRID_MAX_POINTS_X 3
-#define GRID_MAX_POINTS_Y 3
+#define GRID_MAX_POINTS_X 5
+#define GRID_MAX_POINTS_Y 5
 /** END MESH BED LEVELING or AUTO BED LEVELING LINEAR or AUTO BED LEVELING BILINEAR or UNIFIED BED LEVELING **/
 
 /** START AUTO BED LEVELING LINEAR or AUTO BED LEVELING BILINEAR **/
 // Set the boundaries for probing (where the probe can reach).
-#define LEFT_PROBE_BED_POSITION 20
-#define RIGHT_PROBE_BED_POSITION 180
+#define LEFT_PROBE_BED_POSITION 40
+#define RIGHT_PROBE_BED_POSITION 300
 #define FRONT_PROBE_BED_POSITION 20
-#define BACK_PROBE_BED_POSITION 180
+#define BACK_PROBE_BED_POSITION 450
 
 // The Z probe minimum outer margin (to validate G29 parameters).
 #define MIN_PROBE_EDGE 10
@@ -519,7 +522,7 @@
  * ONLY FOR LEVELING BILINEAR OR MESH BED LEVELING                                       *
  *                                                                                       *
  *****************************************************************************************/
-//#define ENABLE_LEVELING_FADE_HEIGHT
+#define ENABLE_LEVELING_FADE_HEIGHT
 /*****************************************************************************************/
 
 
@@ -558,7 +561,7 @@
  *                                                                                       *
  *****************************************************************************************/
 // Default steps per unit               X,  Y,    Z,  E0...(per extruder)
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {80, 80, 3200, 625, 625, 625, 625}
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {200, 200, 3200, 517, 517, 517, 517}
 /*****************************************************************************************/
 
 
@@ -566,7 +569,7 @@
  ********************************** Axis feedrate ****************************************
  *****************************************************************************************/
 //                                       X,   Y, Z,  E0...(per extruder). (mm/sec)
-#define DEFAULT_MAX_FEEDRATE          {300, 300, 2, 100, 100, 100, 100}
+#define DEFAULT_MAX_FEEDRATE          {300, 300, 30, 200, 200, 200, 200}
 // Feedrates for manual moves along        X,     Y,     Z,  E from panel
 #define MANUAL_FEEDRATE               {50*60, 50*60, 4*60, 10*60}
 // Minimum feedrate
@@ -583,7 +586,7 @@
  ******************************** Axis acceleration **************************************
  *****************************************************************************************/
 //  Maximum start speed for accelerated moves.    X,    Y,  Z,   E0...(per extruder)
-#define DEFAULT_MAX_ACCELERATION              {3000, 3000, 50, 1000, 1000, 1000, 1000}
+#define DEFAULT_MAX_ACCELERATION              {3000, 3000, 50, 2000, 2000, 2000, 2000}
 //  Maximum acceleration in mm/s^2 for retracts   E0... (per extruder)
 #define DEFAULT_RETRACT_ACCELERATION          {10000, 10000, 10000, 10000}
 //  X, Y, Z and E* maximum acceleration in mm/s^2 for printing moves
@@ -607,7 +610,7 @@
  *****************************************************************************************/
 #define DEFAULT_XJERK 10.0
 #define DEFAULT_YJERK 10.0
-#define DEFAULT_ZJERK  0.4
+#define DEFAULT_ZJERK  0.1
 // E0... (mm/sec) per extruder
 #define DEFAULT_EJERK                   {5.0, 5.0, 5.0, 5.0}
 /*****************************************************************************************/
@@ -617,17 +620,17 @@
  ************************************ Homing feedrate ************************************
  *****************************************************************************************/
 // Homing speeds (mm/m)
-#define HOMING_FEEDRATE_X (50*60)
-#define HOMING_FEEDRATE_Y (50*60)
-#define HOMING_FEEDRATE_Z (2*60)
+#define HOMING_FEEDRATE_X (150*60)
+#define HOMING_FEEDRATE_Y (150*60)
+#define HOMING_FEEDRATE_Z (10*60)
 
 // Homing hits each endstop, retracts by these distances, then does a slower bump.
 #define X_HOME_BUMP_MM 5
 #define Y_HOME_BUMP_MM 5
-#define Z_HOME_BUMP_MM 2
+#define Z_HOME_BUMP_MM 1
 
 // Re-Bump Speed Divisor (Divides the Homing Feedrate)
-#define HOMING_BUMP_DIVISOR {5, 5, 2}
+#define HOMING_BUMP_DIVISOR {5, 5, 10}
 /*****************************************************************************************/
 
 

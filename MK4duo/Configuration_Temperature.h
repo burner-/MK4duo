@@ -84,10 +84,10 @@
  *                                                                                                   *
  *****************************************************************************************************/
 #define TEMP_SENSOR_0 1
-#define TEMP_SENSOR_1 0
-#define TEMP_SENSOR_2 0
-#define TEMP_SENSOR_3 0
-#define TEMP_SENSOR_BED 0
+#define TEMP_SENSOR_1 1
+#define TEMP_SENSOR_2 1
+#define TEMP_SENSOR_3 1
+#define TEMP_SENSOR_BED 1
 #define TEMP_SENSOR_CHAMBER 0
 #define TEMP_SENSOR_COOLER 0
 
@@ -134,7 +134,7 @@
 #define HEATER_3_MAXTEMP 275 // (degC)
 #define BED_MAXTEMP      150 // (degC)
 #define CHAMBER_MAXTEMP  100 // (degC)
-#define COOLER_MAXTEMP   35  // (degC) 
+#define COOLER_MAXTEMP   150  // (degC) 
 
 // The minimal temperature defines the temperature below which the heater will not be enabled It is used
 // or, in case of cooler, it will switched off.
@@ -414,8 +414,8 @@
  * If you get false positives for "Heating failed" increase WATCH TEMP PERIOD and/or decrease WATCH TEMP INCREASE
  * WATCH TEMP INCREASE should not be below 2.
  */
-#define WATCH_TEMP_PERIOD  20               // Seconds
-#define WATCH_TEMP_INCREASE 2               // Degrees Celsius
+#define WATCH_TEMP_PERIOD  30               // Seconds
+#define WATCH_TEMP_INCREASE 1               // Degrees Celsius
 /********************************************************************************/
 
 
@@ -435,8 +435,9 @@
 
 // Prevent a single extrusion longer than EXTRUDE MAXLENGTH.
 // Note: For Bowden Extruders make this large enough to allow load/unload.
-//#define PREVENT_LENGTHY_EXTRUDE
-#define EXTRUDE_MAXLENGTH (X_MAX_LENGTH + Y_MAX_LENGTH)
+#define PREVENT_LENGTHY_EXTRUDE
+#define EXTRUDE_MAXLENGTH 1000
+//#define EXTRUDE_MAXLENGTH (X_MAX_LENGTH + Y_MAX_LENGTH)
 /***********************************************************************/
 
 #endif /* _CONFIGURATION_TEMPERATURE_H_ */
