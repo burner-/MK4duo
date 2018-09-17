@@ -34,6 +34,7 @@
  * Temperature settings can be found in Configuration_Temperature.h
  * Feature-settings can be found in Configuration_Feature.h
  * Pins-settings can be found in "Configuration_Pins.h"
+ * For arduino DUE you should always use -1 for performance reasons.
  */
 
 #ifndef _CONFIGURATION_BASIC_H_
@@ -49,7 +50,7 @@
  *
  * Valid values are 0-3 for Serial, Serial1, Serial2, Serial3 and -1 for SerialUSB
  */
-#define SERIAL_PORT 0
+#define SERIAL_PORT -1
 
 /**
  * This setting determines the communication speed of the printer.
@@ -95,7 +96,7 @@
  * enter the serial receive buffer, so they cannot be blocked.
  * Currently handles M108, M112, M410
  */
-//#define EMERGENCY_PARSER
+#define EMERGENCY_PARSER
 
 /**
  * Spend 28 bytes of SRAM to optimize the GCode parser

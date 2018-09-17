@@ -201,11 +201,11 @@
 #define Z_PROBE_OFFSET_FROM_NOZZLE -1     // Z offset: -below [of the nozzle] (always negative!)
 
 // X and Y axis travel speed between probes, in mm/min
-#define XY_PROBE_SPEED 250*60
+#define XY_PROBE_SPEED 200*60
 // Speed for the first approach when double-probing (with PROBE_DOUBLE_TOUCH)
 #define Z_PROBE_SPEED_FAST 120
 // Speed for the "accurate" probe of each point
-#define Z_PROBE_SPEED_SLOW 60
+#define Z_PROBE_SPEED_SLOW 70
 // Z Probe repetitions, median for best result
 #define Z_PROBE_REPETITIONS 1
 
@@ -569,7 +569,7 @@
  ********************************** Axis feedrate ****************************************
  *****************************************************************************************/
 //                                       X,   Y, Z,  E0...(per extruder). (mm/sec)
-#define DEFAULT_MAX_FEEDRATE          {300, 300, 12, 200, 200, 200, 200}
+#define DEFAULT_MAX_FEEDRATE          {250, 250, 12, 33, 33, 33, 33}
 // Feedrates for manual moves along        X,     Y,     Z,  E from panel
 #define MANUAL_FEEDRATE               {50*60, 50*60, 6*60, 10*60}
 // Minimum feedrate
@@ -586,13 +586,13 @@
  ******************************** Axis acceleration **************************************
  *****************************************************************************************/
 //  Maximum start speed for accelerated moves.    X,    Y,  Z,   E0...(per extruder)
-#define DEFAULT_MAX_ACCELERATION              {3000, 3000, 50, 2000, 2000, 2000, 2000}
+#define DEFAULT_MAX_ACCELERATION              {2000, 2000, 50, 2000, 2000, 2000, 2000}
 //  Maximum acceleration in mm/s^2 for retracts   E0... (per extruder)
 #define DEFAULT_RETRACT_ACCELERATION          {10000, 10000, 10000, 10000}
 //  X, Y, Z and E* maximum acceleration in mm/s^2 for printing moves
-#define DEFAULT_ACCELERATION          3000
+#define DEFAULT_ACCELERATION          2000
 //  X, Y, Z acceleration in mm/s^2 for travel (non printing) moves
-#define DEFAULT_TRAVEL_ACCELERATION   3000
+#define DEFAULT_TRAVEL_ACCELERATION   2000
 /*****************************************************************************************/
 
 
@@ -610,7 +610,7 @@
  *****************************************************************************************/
 #define DEFAULT_XJERK 10.0
 #define DEFAULT_YJERK 10.0
-#define DEFAULT_ZJERK  0.1
+#define DEFAULT_ZJERK  0.2
 // E0... (mm/sec) per extruder
 #define DEFAULT_EJERK                   {5.0, 5.0, 5.0, 5.0}
 /*****************************************************************************************/

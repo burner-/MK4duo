@@ -189,7 +189,7 @@
 
 // This defines the minimal speed for the main fan
 // set minimal speed for reliable running (1-255)
-#define FAN_MIN_PWM 4
+#define FAN_MIN_PWM 10
 
 // To reverse the logic of fan pins
 //#define INVERTED_FAN_PINS
@@ -1895,7 +1895,7 @@
  * https://github.com/synthetos/TinyG/wiki/Jerk-Controlled-Motion-Explained *
  *                                                                          *
  ****************************************************************************/
-//#define BEZIER_JERK_CONTROL
+#define BEZIER_JERK_CONTROL
 /****************************************************************************/
 
 
@@ -1984,7 +1984,7 @@
 #define X2_MICROSTEPS 16
 #define Y_MICROSTEPS  16
 #define Y2_MICROSTEPS 16
-#define Z_MICROSTEPS  16
+#define Z_MICROSTEPS  16 // FIXME
 #define Z2_MICROSTEPS 16
 #define E0_MICROSTEPS 16
 #define E1_MICROSTEPS 16
