@@ -239,9 +239,9 @@
 #define LPQ_MAX_LEN 50
 
 //           HotEnd{HE0,HE1,HE2,HE3}
-#define DEFAULT_Kp {15, 15, 15, 16}     // Kp for H0, H1, H2, H3
+#define DEFAULT_Kp {14, 14, 14, 17}     // Kp for H0, H1, H2, H3
 #define DEFAULT_Ki {01, 01, 01, 02}     // Ki for H0, H1, H2, H3
-#define DEFAULT_Kd {40, 40, 40, 43}     // Kd for H0, H1, H2, H3
+#define DEFAULT_Kd {35, 35, 35, 45}     // Kd for H0, H1, H2, H3
 #define DEFAULT_Kc {100, 100, 100, 100} // heating power = Kc * (e_speed)
 /***********************************************************************/
 
@@ -263,7 +263,7 @@
 // If this is enabled, find your own PID constants below.
 #define PIDTEMPBED false
 
-#define BED_HYSTERESIS        2 // Only disable heating if T>target+BED_HYSTERESIS and enable heating if T<target-BED_HYSTERESIS
+#define BED_HYSTERESIS        1 // Only disable heating if T>target+BED_HYSTERESIS and enable heating if T<target-BED_HYSTERESIS
 #define BED_CHECK_INTERVAL 5000 // ms between checks in bang-bang control
 
 // This sets the max power delivered to the bed.
