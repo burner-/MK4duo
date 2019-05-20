@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,13 +19,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * temperature.h - temperature controller
  */
-
-#ifndef _TEMPERATURE_H_
-#define _TEMPERATURE_H_
 
 class Temperature {
 
@@ -53,11 +51,7 @@ class Temperature {
 
   private: /** Private Parameters */
 
-    static uint8_t pid_pointer;
-
-    static millis_t next_check_ms[HEATER_COUNT];
-
-    #if ENABLED(FILAMENT_SENSOR)
+    #if ENABLED(FILAMENT_WIDTH_SENSOR)
       static int8_t   meas_shift_index;     // Index of a delayed sample in buffer
       static uint16_t current_raw_filwidth; // Measured filament diameter - one extruder only
     #endif
@@ -68,12 +62,10 @@ class Temperature {
 
   public: /** Public Function */
 
-    void init();
-
     /**
-     * Static (class) methods
+     * Initialize the temperature manager
      */
-    static void wait_heater(Heater *act, bool no_wait_for_cooling=true);
+    static void init();
 
     /**
      * Called from the Temperature ISR
@@ -86,11 +78,6 @@ class Temperature {
     static void spin();
 
     /**
-     * Perform auto-tuning for hotend, bed, chamber or cooler in response to M303
-     */
-    static void PID_autotune(Heater *act, const float temp, const uint8_t ncycles, const uint8_t method, const bool storeValues=false);
-
-    /**
      * Switch off all heaters, set all target temperatures to 0
      */
     static void disable_all_heaters();
@@ -100,11 +87,43 @@ class Temperature {
      */
     static bool heaters_isActive();
 
-    #if ENABLED(SUPPORT_MAX6675) || ENABLED(SUPPORT_MAX31855)
+    /**
+     * Calc min & max temp of all hotends
+     */
+    #if HOTENDS > 0
+      static int16_t hotend_mintemp_all();
+      static int16_t hotend_maxtemp_all();
+    #endif
+
+    /**
+     * Calc min & max temp of all beds
+     */
+    #if BEDS > 0
+      static int16_t bed_mintemp_all();
+      static int16_t bed_maxtemp_all();
+    #endif
+
+    /**
+     * Calc min & max temp of all chambers
+     */
+    #if CHAMBERS > 0
+      static int16_t chamber_mintemp_all();
+      static int16_t chamber_maxtemp_all();
+    #endif
+
+    /**
+     * Calc min & max temp of all coolers
+     */
+    #if COOLERS > 0
+      static int16_t cooler_mintemp_all();
+      static int16_t cooler_maxtemp_all();
+    #endif
+
+    #if HAS_MAX6675 || HAS_MAX31855
       static void getTemperature_SPI();
     #endif
 
-    #if HAS_FILAMENT_SENSOR
+    #if ENABLED(FILAMENT_WIDTH_SENSOR)
       static int8_t widthFil_to_size_ratio(); // Convert Filament Width (mm) to an extrusion ratio
     #endif    
 
@@ -123,13 +142,13 @@ class Temperature {
         #if HOTENDS <= 1
           UNUSED(h);
         #endif
-        return tooCold(heaters[HOTEND_INDEX].current_temperature);
+        return tooCold(hotends[HOTEND_INDEX].current_temperature);
       }
       FORCE_INLINE static bool targetTooColdToExtrude(const uint8_t h) {
         #if HOTENDS == 1
           UNUSED(h);
         #endif
-        return tooCold(heaters[HOTEND_INDEX].target_temperature);
+        return tooCold(hotends[HOTEND_INDEX].target_temperature);
       }
     #else
       FORCE_INLINE static bool tooColdToExtrude(const uint8_t h) { UNUSED(h); return false; }
@@ -139,30 +158,15 @@ class Temperature {
     FORCE_INLINE static bool hotEnoughToExtrude(const uint8_t h) { return !tooColdToExtrude(h); }
     FORCE_INLINE static bool targetHotEnoughToExtrude(const uint8_t h) { return !targetTooColdToExtrude(h); }
 
-  private:
+  private: /** Private Function */
 
-    #if HAS_FILAMENT_SENSOR
+    #if ENABLED(FILAMENT_WIDTH_SENSOR)
       static float analog2widthFil(); // Convert raw Filament Width to millimeters
     #endif
 
     #if HAS_MCU_TEMPERATURE
       static float analog2tempMCU(const int raw);
     #endif
-
-    static void _temp_error(const uint8_t h, const char * const serial_msg, const char * const lcd_msg);
-    static void min_temp_error(const uint8_t h);
-    static void max_temp_error(const uint8_t h);
-
-    #if HAS_THERMALLY_PROTECTED_HEATER
-
-      typedef enum TRState { TRInactive, TRFirstHeating, TRStable, TRRunaway } TRstate;
-
-      static void thermal_runaway_protection(TRState* state, millis_t* timer, const uint8_t h, int period_seconds, int hysteresis_degc);
-
-      static TRState thermal_runaway_state_machine[HEATER_COUNT];
-      static millis_t thermal_runaway_timer[HEATER_COUNT];
-
-    #endif // HAS_THERMALLY_PROTECTED_HEATER
 
     #if HEATER_COUNT > 0
       static void print_heater_state(Heater *act, const bool print_ID, const bool showRaw);
@@ -171,5 +175,3 @@ class Temperature {
 };
 
 extern Temperature thermalManager;
-
-#endif /* _TEMPERATURE_H_ */

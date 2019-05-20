@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,12 @@
     #error "DEPENDENCY ERROR: EEPROM_FLASH is not implemented for AVR processor."
   #endif
 
-#endif // ENABLED(__AVR__)
+#else
+
+  #if ENABLED(EEPROM_SETTINGS) && DISABLED(EEPROM_I2C) && DISABLED(EEPROM_SPI) && DISABLED(EEPROM_SD) && DISABLED(EEPROM_FLASH)
+    #error "DEPENDENCY ERROR: EEPROM_SETTINGS requires EEPROM_I2C or EEPROM_SPI or EEPROM_SD or EEPROM_FLASH."
+  #endif
+
+#endif
 
 #endif /* _EEPROM_SANITYCHECK_H_ */

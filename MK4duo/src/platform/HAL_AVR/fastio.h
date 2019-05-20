@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * Description: Fast IO functions for Arduino compatible
@@ -27,9 +28,6 @@
  * This code contributed by Triffid_Hunter and modified by Kliment
  * why double up on these macros? see http://gcc.gnu.org/onlinedocs/cpp/Stringification.html
  */
-
-#ifndef _HAL_FASTIO_H
-#define _HAL_FASTIO_H
 
 #include <avr/io.h>
 
@@ -4153,8 +4151,11 @@ enum ClockSource2 : char {
 
 #endif
 
+#undef SCK
+#undef MISO
+#undef MOSI
+#undef SS
+
 #ifndef DIO0_PIN
   #error "pins for this chip not defined in arduino.h! If you write an appropriate pin definition and have this firmware work on your chip, please submit a pull request"
 #endif
-
-#endif  // _HAL_FASTIO_H

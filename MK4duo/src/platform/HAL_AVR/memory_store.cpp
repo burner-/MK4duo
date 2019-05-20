@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,14 +20,15 @@
  *
  */
 
+#ifdef __AVR__
+
 #include "../../../MK4duo.h"
 
-#if ENABLED(__AVR__) && ENABLED(EEPROM_SETTINGS)
+#if HAS_EEPROM
 
 MemoryStore memorystore;
 
-bool MemoryStore::access_start(const bool read)  { UNUSED(read); return false; }
-bool MemoryStore::access_finish(const bool read) { UNUSED(read); return false; }
+bool MemoryStore::access_write() { return false; }
 
 bool MemoryStore::write_data(int &pos, const uint8_t *value, size_t size, uint16_t *crc) {
 
@@ -52,10 +53,10 @@ bool MemoryStore::write_data(int &pos, const uint8_t *value, size_t size, uint16
   return false;
 }
 
-bool MemoryStore::read_data(int &pos, uint8_t *value, size_t size, uint16_t *crc) {
+bool MemoryStore::read_data(int &pos, uint8_t *value, size_t size, uint16_t *crc, const bool writing/*=true*/) {
   do {
-    uint8_t c = eeprom_read_byte((unsigned char*)pos);
-    *value = c;
+    uint8_t c = eeprom_read_byte((uint8_t*)pos);
+    if (writing) *value = c;
     crc16(crc, &c, 1);
     pos++;
     value++;
@@ -65,4 +66,6 @@ bool MemoryStore::read_data(int &pos, uint8_t *value, size_t size, uint16_t *crc
 
 size_t MemoryStore::capacity() { return EEPROM_SIZE + 1; }
 
-#endif // ENABLED(__AVR__) && EEPROM_SETTINGS
+#endif HAS_EEPROM
+
+#endif // __AVR__

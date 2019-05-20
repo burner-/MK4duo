@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,161 +19,195 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
+
+#if HEATER_COUNT > 0
 
 /**
  * heater.h - heater object
  */
 
-#ifndef _HEATER_H_
-#define _HEATER_H_
-
 #include "sensor/sensor.h"
+#include "pid/pid.h"
 
-#if HEATER_COUNT > 0
-
-  enum FlagHeaters : char {
-    heater_flag_use_pid,
-    heater_flag_tuning,
-    heater_flag_hardware_inverted,
-    heater_flag_active,
-    heater_flag_idle,
-    heater_flag_fault
+union flagheater_t {
+  uint8_t all;
+  struct {
+    bool  Active            : 1;
+    bool  UsePid            : 1;
+    bool  Pidtuned          : 1;
+    bool  HWInvert          : 1;
+    bool  HWpwm             : 1;
+    bool  Thermalprotection : 1;
+    bool  Idle              : 1;
+    bool  Fault             : 1;
   };
+  flagheater_t() { all = 0x00; }
+};
 
-  enum heater_t : uint8_t { IS_HOTEND = 0, IS_BED = 1, IS_CHAMBER = 2, IS_COOLER = 3 };
+enum HeatertypeEnum : uint8_t { IS_HOTEND, IS_BED, IS_CHAMBER, IS_COOLER };
+enum TRState        : uint8_t { TRInactive, TRFirstHeating, TRStable, TRRunaway };
 
-  constexpr uint16_t  temp_check_interval[HEATER_TYPE]  = { 0, BED_CHECK_INTERVAL, CHAMBER_CHECK_INTERVAL, COOLER_CHECK_INTERVAL };
-  constexpr uint8_t   temp_hysteresis[HEATER_TYPE]      = { 0, BED_HYSTERESIS, CHAMBER_HYSTERESIS, COOLER_HYSTERESIS };
+// Struct Heater data
+typedef struct {
 
-  class Heater {
+  pin_t           pin;
 
-    public: /** Public Parameters */
+  flagheater_t    flag;
 
-      heater_t  type;
-      pin_t     pin;
-      uint8_t   ID,
-                soft_pwm,
-                pwm_pos,
-                pidDriveMin,
-                pidDriveMax,
-                pidMax;
-      int16_t   target_temperature,
-                idle_temperature,
-                mintemp,
-                maxtemp;
-      float     current_temperature,
-                Kp,
-                Ki,
-                Kd,
-                Kc,
-                tempIState,
-                tempIStateLimitMin,
-                tempIStateLimitMax,
-                last_temperature,
-                temperature_1s;
-      millis_t  next_check_ms,
-                idle_timeout_ms;
-      uint8_t   HeaterFlag;
+  uint8_t         ID;
 
-      #if WATCH_THE_HEATER
-        uint16_t  watch_target_temp;
-        millis_t  watch_next_ms;
-      #endif
+  int16_t         mintemp,
+                  maxtemp;
 
-      TemperatureSensor sensor;
+  uint16_t        freq;
 
-    private: /** Private Parameters */
+} heater_data_t;
 
-    public: /** Public Function */
+class Heater {
 
-      void init();
+  public: /** Constructor */
 
-      void setTarget(int16_t celsius);
-      void updatePID();
-      void get_pid_output();
-      void print_sensor_parameters();
-      void print_heater_parameters();
-      void print_PID_parameters();
-      #if ENABLED(SUPPORT_AD8495) || ENABLED(SUPPORT_AD595)
-        void print_AD595_parameters();
-      #endif
-      void start_idle_timer(const millis_t timeout_ms);
-      void reset_idle_timer();
+    Heater(HeatertypeEnum type_p, uint16_t temp_check_interval_p, uint8_t temp_hysteresis_p, uint8_t watch_period_p, uint8_t watch_increase_p) :
+      type(type_p),
+      temp_check_interval(temp_check_interval_p),
+      temp_hysteresis(temp_hysteresis_p),
+      watch_period(watch_period_p),
+      watch_increase(watch_increase_p)
+    {}
 
-      #if HARDWARE_PWM
-        void SetHardwarePwm();
-      #endif
+  public: /** Public Parameters */
 
-      FORCE_INLINE void updateCurrentTemperature() { this->current_temperature = this->sensor.getTemperature(); }
-      FORCE_INLINE bool tempisrange() { return (WITHIN(this->current_temperature, this->mintemp, this->maxtemp)); }
-      FORCE_INLINE bool isHeating()   { return this->target_temperature > this->current_temperature; }
-      FORCE_INLINE bool isCooling()   { return this->target_temperature <= this->current_temperature; }
+    heater_data_t data;
+    pid_data_t    pid;
+    sensor_data_t sensor;
 
-      FORCE_INLINE bool wait_for_heating() {
-        return this->isActive() && ABS(this->current_temperature - this->target_temperature) > TEMP_HYSTERESIS;
-      }
+    uint16_t      watch_target_temp;
 
-      #if WATCH_THE_HEATER
-        void start_watching();
-      #endif
+    uint8_t       pwm_value,
+                  consecutive_low_temp;
 
-      FORCE_INLINE void setActive(const bool onoff) {
-        if (!isFault() && sensor.type != 0 && onoff)
-          SET_BIT(HeaterFlag, heater_flag_active, true);
-        else
-          SET_BIT(HeaterFlag, heater_flag_active, false);
-      }
-      FORCE_INLINE bool isActive() { return TEST(HeaterFlag, heater_flag_active); }
+    int16_t       target_temperature,
+                  idle_temperature;
 
-      FORCE_INLINE void setUsePid(const bool onoff) {
-        SET_BIT(HeaterFlag, heater_flag_use_pid, onoff);
-      }
-      FORCE_INLINE bool isUsePid() { return TEST(HeaterFlag, heater_flag_use_pid); }
+    float         current_temperature;
 
-      FORCE_INLINE void setTuning(const bool onoff) {
-        SET_BIT(HeaterFlag, heater_flag_tuning, onoff);
-      }
-      FORCE_INLINE bool isTuning() { return TEST(HeaterFlag, heater_flag_tuning); }
+    const HeatertypeEnum type;
 
-      FORCE_INLINE void setHWInverted(const bool onoff) {
-        SET_BIT(HeaterFlag, heater_flag_hardware_inverted, onoff);
-      }
-      FORCE_INLINE bool isHWInverted() { return TEST(HeaterFlag, heater_flag_hardware_inverted); }
+  private: /** Private Parameters */
 
-      FORCE_INLINE void setIdle(const bool onoff, const int16_t idle_temp=0) {
-        SET_BIT(HeaterFlag, heater_flag_idle, onoff);
-        idle_temperature = idle_temp;
-      }
-      FORCE_INLINE bool isIdle() { return TEST(HeaterFlag, heater_flag_idle); }
+    const uint16_t  temp_check_interval;
+    const uint8_t   temp_hysteresis,
+                    watch_period,
+                    watch_increase;
 
-      FORCE_INLINE void setFault() {
-        soft_pwm = 0;
-        setActive(false);
-        SET_BIT(HeaterFlag, heater_flag_fault, true);
-      }
-      FORCE_INLINE bool isFault() { return TEST(HeaterFlag, heater_flag_fault); }
+    TRState       thermal_runaway_state;
 
-      FORCE_INLINE void SwitchOff() {
-        target_temperature = 0;
-        soft_pwm = 0;
-        setActive(false);
-      }
+    millis_s      watch_next_ms;
 
-      FORCE_INLINE bool resetFlag() { HeaterFlag = 0; }
+    uint16_t      idle_timeout_time;
 
-      FORCE_INLINE void ResetFault() {
-        if (isFault()) {
-          SET_BIT(HeaterFlag, heater_flag_fault, false);
-          SwitchOff();
-        }
-      }
+    bool          Pidtuning;
 
-    private: /** Private Function */
+  public: /** Public Function */
 
-  };
+    void init();
 
-  extern Heater heaters[HEATER_COUNT];
+    void setTarget(const int16_t celsius);
+    void wait_for_target(bool no_wait_for_cooling=true);
+    void get_output();
+    void set_output_pwm();
+    void check_and_power();
+    void PID_autotune(const float target_temp, const uint8_t ncycles, const uint8_t method, const bool storeValues=false);
+    void print_M301();
+    void print_M305();
+    void print_M306();
+    #if HAS_AD8495 || HAS_AD595
+      void print_M595();
+    #endif
+    void start_idle_timer(const millis_l timeout_time);
+    void reset_idle_timer();
+
+    void thermal_runaway_protection();
+    void start_watching();
+
+    FORCE_INLINE void update_current_temperature() { this->current_temperature = this->sensor.getTemperature(); }
+    FORCE_INLINE bool tempisrange() { return (WITHIN(this->current_temperature, this->data.mintemp, this->data.maxtemp)); }
+    FORCE_INLINE bool isHeating()   { return this->target_temperature > this->current_temperature; }
+    FORCE_INLINE bool isCooling()   { return this->target_temperature <= this->current_temperature; }
+
+    FORCE_INLINE bool wait_for_heating() {
+      return this->isActive() && ABS(this->current_temperature - this->target_temperature) > temp_hysteresis;
+    }
+
+    // Flag bit 0 Set Active
+    FORCE_INLINE void setActive(const bool onoff) {
+      if (!data.flag.Fault && sensor.type != 0 && onoff)
+        data.flag.Active = true;
+      else
+        data.flag.Active = false;
+    }
+    FORCE_INLINE bool isActive() { return data.flag.Active; }
+
+    // Flag bit 1 Set use Pid
+    FORCE_INLINE void setUsePid(const bool onoff) { data.flag.UsePid = onoff; }
+    FORCE_INLINE bool isUsePid() { return data.flag.UsePid; }
+
+    // Flag bit 2 Set Set Pid Tuned
+    FORCE_INLINE void setPidTuned(const bool onoff) { data.flag.Pidtuned = onoff; }
+    FORCE_INLINE bool isPidTuned() { return data.flag.Pidtuned; }
+
+    // Flag bit 3 Set Hardware inverted
+    FORCE_INLINE void setHWinvert(const bool onoff) { data.flag.HWInvert = onoff; }
+    FORCE_INLINE bool isHWinvert() { return data.flag.HWInvert; }
+
+    // Flag bit 4 Set PWM Hardware
+    FORCE_INLINE void setHWpwm(const bool onoff) { data.flag.HWpwm = onoff; }
+    FORCE_INLINE bool isHWpwm() { return data.flag.HWpwm; }
+
+    // Flag bit 5 Set Thermal Protection
+    FORCE_INLINE void setThermalProtection(const bool onoff) { data.flag.Thermalprotection = onoff; }
+    FORCE_INLINE bool isThermalProtection() { return data.flag.Thermalprotection; }
+
+    // Flag bit 6 Set Idle
+    FORCE_INLINE void setIdle(const bool onoff, const int16_t idle_temp=0) {
+      data.flag.Idle = onoff;
+      idle_temperature = idle_temp;
+      if (onoff) thermal_runaway_state = TRInactive;
+    }
+    FORCE_INLINE bool isIdle() { return data.flag.Idle; }
+
+    // Flag bit 7 Set Fault
+    FORCE_INLINE void setFault() {
+      pwm_value = 0;
+      setActive(false);
+      data.flag.Fault = true;
+    }
+    FORCE_INLINE void ResetFault() {
+      data.flag.Fault = false; 
+      SwitchOff();
+    }
+    FORCE_INLINE bool isFault() { return data.flag.Fault; }
+
+    FORCE_INLINE void resetFlag() { data.flag.all = false; }
+
+    FORCE_INLINE void SwitchOff() {
+      target_temperature = 0;
+      pwm_value = 0;
+      setActive(false);
+    }
+
+  private: /** Private Function */
+
+    void _temp_error(PGM_P const serial_msg, PGM_P const lcd_msg);
+    void min_temp_error();
+    void max_temp_error();
+
+};
+
+extern Heater hotends[HOTENDS];
+extern Heater beds[BEDS];
+extern Heater chambers[CHAMBERS];
+extern Heater coolers[COOLERS];
 
 #endif // HEATER_COUNT > 0
-
-#endif /* _HEATER_H_ */

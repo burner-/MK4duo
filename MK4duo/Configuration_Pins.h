@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * Configuration_Pins.h
@@ -26,9 +27,6 @@
  * This configuration file contains all Pins.
  *
  */
-
-#ifndef _CONFIGURATION_PINS_H_
-#define _CONFIGURATION_PINS_H_
 
 //=================================== BASIC ==================================
 
@@ -67,11 +65,19 @@
 #define Z_CS_PIN            ORIG_Z_CS_PIN
 
 // Z2 axis pins
-#if ENABLED(Z_TWO_STEPPER_DRIVERS)
+#if (ENABLED(Z_TWO_STEPPER_DRIVERS) || ENABLED(Z_THREE_STEPPER_DRIVERS))
   #define Z2_STEP_PIN       ORIG_E1_STEP_PIN
   #define Z2_DIR_PIN        ORIG_E1_DIR_PIN
   #define Z2_ENABLE_PIN     ORIG_E1_ENABLE_PIN
   #define Z2_CS_PIN         ORIG_E1_CS_PIN
+#endif
+
+// Z3 axis pins
+#if ENABLED(Z_THREE_STEPPER_DRIVERS)
+  #define Z3_STEP_PIN       ORIG_E2_STEP_PIN
+  #define Z3_DIR_PIN        ORIG_E2_DIR_PIN
+  #define Z3_ENABLE_PIN     ORIG_E2_ENABLE_PIN
+  #define Z3_CS_PIN         ORIG_E2_CS_PIN
 #endif
 
 // E axis pins
@@ -133,30 +139,65 @@
 #define X2_MIN_PIN          NoPin
 #define Y2_MIN_PIN          NoPin
 #define Z2_MIN_PIN          NoPin
+#define Z3_MIN_PIN          NoPin
 #define X2_MAX_PIN          NoPin
 #define Y2_MAX_PIN          NoPin
 #define Z2_MAX_PIN          NoPin
+#define Z3_MAX_PIN          NoPin
 #define Z_PROBE_PIN         ORIG_Z_PROBE_PIN
 
-// HEATER pins
-#define HEATER_0_PIN        ORIG_HEATER_0_PIN
-#define HEATER_1_PIN        ORIG_HEATER_1_PIN
-#define HEATER_2_PIN        ORIG_HEATER_2_PIN
-#define HEATER_3_PIN        ORIG_HEATER_3_PIN
-#define HEATER_BED_PIN      ORIG_HEATER_BED_PIN
-//#define HEATER_CHAMBER_PIN  ORIG_HEATER_CHAMBER_PIN
-//#define HEATER_COOLER_PIN   ORIG_COOLER_PIN
-#define HEATER_CHAMBER_PIN  NoPin
-#define HEATER_COOLER_PIN   NoPin
+// HEATERS pins
+#define HEATER_HE0_PIN      ORIG_HEATER_HE0_PIN
+#define HEATER_HE1_PIN      ORIG_HEATER_HE1_PIN
+#define HEATER_HE2_PIN      ORIG_HEATER_HE2_PIN
+#define HEATER_HE3_PIN      ORIG_HEATER_HE3_PIN
+#define HEATER_HE4_PIN      ORIG_HEATER_HE4_PIN
+#define HEATER_HE5_PIN      ORIG_HEATER_HE5_PIN
+#define HEATER_BED0_PIN     ORIG_HEATER_BED0_PIN
+#define HEATER_BED1_PIN     ORIG_HEATER_BED1_PIN
+#define HEATER_BED2_PIN     ORIG_HEATER_BED2_PIN
+#define HEATER_BED3_PIN     ORIG_HEATER_BED3_PIN
+#define HEATER_CHAMBER0_PIN ORIG_HEATER_CHAMBER0_PIN
+#define HEATER_CHAMBER1_PIN ORIG_HEATER_CHAMBER1_PIN
+#define HEATER_CHAMBER2_PIN ORIG_HEATER_CHAMBER2_PIN
+#define HEATER_CHAMBER3_PIN ORIG_HEATER_CHAMBER3_PIN
+#define HEATER_COOLER_PIN   ORIG_HEATER_COOLER_PIN
 
 
 // TEMP pins
-#define TEMP_0_PIN          ORIG_TEMP_0_PIN
-#define TEMP_1_PIN          ORIG_TEMP_1_PIN
-#define TEMP_2_PIN          ORIG_TEMP_2_PIN
-#define TEMP_3_PIN          ORIG_TEMP_3_PIN
-#define TEMP_BED_PIN        ORIG_TEMP_BED_PIN
-#define TEMP_CHAMBER_PIN    ORIG_TEMP_CHAMBER_PIN
+#if TEMP_SENSOR_HE0 > -1
+  #define TEMP_HE0_PIN      ORIG_TEMP_HE0_PIN
+#elif TEMP_SENSOR_HE0 == -3
+  #define TEMP_HE0_PIN      MAX6675_SS_PIN
+#elif TEMP_SENSOR_HE0 == -4
+  #define TEMP_HE0_PIN      MAX31855_SS0_PIN
+#endif
+#if TEMP_SENSOR_HE1 > -1
+  #define TEMP_HE1_PIN      ORIG_TEMP_HE1_PIN
+#elif TEMP_SENSOR_HE1 == -4
+  #define TEMP_HE1_PIN      MAX31855_SS1_PIN
+#endif
+#if TEMP_SENSOR_HE2 > -1
+  #define TEMP_HE2_PIN      ORIG_TEMP_HE2_PIN
+#elif TEMP_SENSOR_HE2 == -4
+  #define TEMP_HE2_PIN      MAX31855_SS2_PIN
+#endif
+#if TEMP_SENSOR_HE3 > -1
+  #define TEMP_HE3_PIN      ORIG_TEMP_HE3_PIN
+#elif TEMP_SENSOR_HE3 == -4
+  #define TEMP_HE3_PIN      MAX31855_SS3_PIN
+#endif
+#define TEMP_HE4_PIN        ORIG_TEMP_HE3_PIN
+#define TEMP_HE5_PIN        ORIG_TEMP_HE3_PIN
+
+#define TEMP_BED0_PIN       ORIG_TEMP_BED0_PIN
+#define TEMP_BED1_PIN       ORIG_TEMP_BED1_PIN
+#define TEMP_BED2_PIN       ORIG_TEMP_BED2_PIN
+#define TEMP_BED3_PIN       ORIG_TEMP_BED3_PIN
+#define TEMP_CHAMBER0_PIN   ORIG_TEMP_CHAMBER0_PIN
+#define TEMP_CHAMBER1_PIN   ORIG_TEMP_CHAMBER1_PIN
+#define TEMP_CHAMBER2_PIN   ORIG_TEMP_CHAMBER2_PIN
+#define TEMP_CHAMBER3_PIN   ORIG_TEMP_CHAMBER3_PIN
 #define TEMP_COOLER_PIN     ORIG_TEMP_COOLER_PIN
 
 // FAN pins
@@ -195,13 +236,8 @@
   #define EX2_CHOICE_PIN  NoPin
 #endif
 
-#if ENABLED(EXTRUDER_ENCODER_CONTROL)
-  #define E0_ENC_PIN NoPin
-  #define E1_ENC_PIN NoPin
-  #define E2_ENC_PIN NoPin
-  #define E3_ENC_PIN NoPin
-  #define E4_ENC_PIN NoPin
-  #define E5_ENC_PIN NoPin
+#if ENABLED(PRUSA_MMU2)
+  #define MMU2_RST_PIN    NoPin
 #endif
 
 #if ENABLED(LASER)
@@ -218,16 +254,16 @@
 #endif
 
 #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-  #define FIL_RUNOUT0_PIN     NoPin
-  #define FIL_RUNOUT1_PIN     NoPin
-  #define FIL_RUNOUT2_PIN     NoPin
-  #define FIL_RUNOUT3_PIN     NoPin
-  #define FIL_RUNOUT4_PIN     NoPin
-  #define FIL_RUNOUT5_PIN     NoPin
+  #define FIL_RUNOUT_0_PIN    NoPin
+  #define FIL_RUNOUT_1_PIN    NoPin
+  #define FIL_RUNOUT_2_PIN    NoPin
+  #define FIL_RUNOUT_3_PIN    NoPin
+  #define FIL_RUNOUT_4_PIN    NoPin
+  #define FIL_RUNOUT_5_PIN    NoPin
   #define FIL_RUNOUT_DAV_PIN  NoPin
 #endif
 
-#if ENABLED(FILAMENT_SENSOR)
+#if ENABLED(FILAMENT_WIDTH_SENSOR)
   #define FILWIDTH_PIN NoPin
 #endif
 
@@ -239,19 +275,16 @@
   #define POWER_CONSUMPTION_PIN NoPin
 #endif
 
-#if ENABLED(PHOTOGRAPH)
-  #define PHOTOGRAPH_PIN NoPin
-#endif
-
-#if ENABLED(CHDK)
-  #define CHDK_PIN NoPin
+#if ENABLED(PHOTO_GCODE)
+  #define PHOTOGRAPH_PIN  NoPin
+  #define CHDK_PIN        NoPin
 #endif
 
 #if ENABLED(CASE_LIGHT)
   #define CASE_LIGHT_PIN NoPin
 #endif
 
-#if ENABLED(DOOR_OPEN)
+#if ENABLED(DOOR_OPEN_FEATURE)
   #define DOOR_OPEN_PIN NoPin
 #endif
 
@@ -278,12 +311,10 @@
   #define DHT_DATA_PIN NoPin
 #endif
 
-#if HAVE_DRV(TMC2130) && ENABLED(SOFT_SPI_TMC2130)
-  #define SOFT_MOSI_PIN 51
-  #define SOFT_MISO_PIN 50
-  #define SOFT_SCK_PIN  52
+#if HAS_TMCX1X0 && ENABLED(TMC_USE_SW_SPI)
+  #define TMC_SW_MOSI 51
+  #define TMC_SW_MISO 50
+  #define TMC_SW_SCK  52
 #endif
 
 //============================================================================
-
-#endif /* _CONFIGURATION_PINS_H_ */

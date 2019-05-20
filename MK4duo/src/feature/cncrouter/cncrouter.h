@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * cncrouter.h - CNC Router control for MK4duo  Version 1
@@ -39,9 +40,6 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef _CNCROUTER_H_
-#define _CNCROUTER_H_
-
 #if ENABLED(CNCROUTER)
 
   class Cncrouter {
@@ -59,7 +57,6 @@
 
       #if ENABLED(CNCROUTER_SLOWSTART) && ENABLED(FAST_PWM_CNCROUTER)
         static uint32_t rpm_target;
-        static millis_t next_speed_step; 
       #endif
 
       #if ENABLED(FAST_PWM_CNCROUTER)
@@ -98,5 +95,3 @@
   extern Cncrouter cnc;
 
 #endif // CNCROUTER
-
-#endif /* _CNCROUTER_H_ */

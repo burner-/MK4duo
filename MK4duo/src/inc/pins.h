@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#ifndef _PINS_H_
-#define _PINS_H_
+#pragma once
 
 #define AS_QUOTED_STRING(S) #S
 #define INCLUDE_BY_MB(M)    AS_QUOTED_STRING(../boards/M.h)
@@ -96,23 +94,92 @@
   #define ORIG_E5_STEP_PIN    NoPin
 #endif
 
-#if DISABLED(ORIG_HEATER_1_PIN)
-  #define ORIG_HEATER_1_PIN   NoPin
+#if DISABLED(ORIG_HEATER_HE1_PIN)
+  #define ORIG_HEATER_HE1_PIN   NoPin
 #endif
-#if DISABLED(ORIG_TEMP_1_PIN)
-  #define ORIG_TEMP_1_PIN     NoPin
+#if DISABLED(ORIG_TEMP_HE1_PIN)
+  #define ORIG_TEMP_HE1_PIN     NoPin
 #endif
-#if DISABLED(ORIG_HEATER_2_PIN)
-  #define ORIG_HEATER_2_PIN   NoPin
+#if DISABLED(ORIG_HEATER_HE2_PIN)
+  #define ORIG_HEATER_HE2_PIN   NoPin
 #endif
-#if DISABLED(ORIG_TEMP_2_PIN)
-  #define ORIG_TEMP_2_PIN     NoPin
+#if DISABLED(ORIG_TEMP_HE2_PIN)
+  #define ORIG_TEMP_HE2_PIN     NoPin
 #endif
-#if DISABLED(ORIG_HEATER_3_PIN)
-  #define ORIG_HEATER_3_PIN   NoPin
+#if DISABLED(ORIG_HEATER_HE3_PIN)
+  #define ORIG_HEATER_HE3_PIN   NoPin
 #endif
-#if DISABLED(ORIG_TEMP_3_PIN)
-  #define ORIG_TEMP_3_PIN     NoPin
+#if DISABLED(ORIG_TEMP_HE3_PIN)
+  #define ORIG_TEMP_HE3_PIN     NoPin
+#endif
+#if DISABLED(ORIG_HEATER_HE4_PIN)
+  #define ORIG_HEATER_HE4_PIN   NoPin
+#endif
+#if DISABLED(ORIG_TEMP_HE4_PIN)
+  #define ORIG_TEMP_HE4_PIN     NoPin
+#endif
+#if DISABLED(ORIG_HEATER_HE5_PIN)
+  #define ORIG_HEATER_HE5_PIN   NoPin
+#endif
+#if DISABLED(ORIG_TEMP_HE5_PIN)
+  #define ORIG_TEMP_HE5_PIN     NoPin
+#endif
+
+#if DISABLED(ORIG_HEATER_BED0_PIN)
+  #define ORIG_HEATER_BED0_PIN  NoPin
+#endif
+#if DISABLED(ORIG_TEMP_BED0_PIN)
+  #define ORIG_TEMP_BED0_PIN    NoPin
+#endif
+#if DISABLED(ORIG_HEATER_BED1_PIN)
+  #define ORIG_HEATER_BED1_PIN  NoPin
+#endif
+#if DISABLED(ORIG_TEMP_BED1_PIN)
+  #define ORIG_TEMP_BED1_PIN    NoPin
+#endif
+#if DISABLED(ORIG_HEATER_BED2_PIN)
+  #define ORIG_HEATER_BED2_PIN  NoPin
+#endif
+#if DISABLED(ORIG_TEMP_BED2_PIN)
+  #define ORIG_TEMP_BED2_PIN    NoPin
+#endif
+#if DISABLED(ORIG_HEATER_BED3_PIN)
+  #define ORIG_HEATER_BED3_PIN  NoPin
+#endif
+#if DISABLED(ORIG_TEMP_BED3_PIN)
+  #define ORIG_TEMP_BED3_PIN    NoPin
+#endif
+
+#if DISABLED(ORIG_HEATER_CHAMBER0_PIN)
+  #define ORIG_HEATER_CHAMBER0_PIN  NoPin
+#endif
+#if DISABLED(ORIG_TEMP_CHAMBER0_PIN)
+  #define ORIG_TEMP_CHAMBER0_PIN    NoPin
+#endif
+#if DISABLED(ORIG_HEATER_CHAMBER1_PIN)
+  #define ORIG_HEATER_CHAMBER1_PIN  NoPin
+#endif
+#if DISABLED(ORIG_TEMP_CHAMBER1_PIN)
+  #define ORIG_TEMP_CHAMBER1_PIN    NoPin
+#endif
+#if DISABLED(ORIG_HEATER_CHAMBER2_PIN)
+  #define ORIG_HEATER_CHAMBER2_PIN  NoPin
+#endif
+#if DISABLED(ORIG_TEMP_CHAMBER2_PIN)
+  #define ORIG_TEMP_CHAMBER2_PIN    NoPin
+#endif
+#if DISABLED(ORIG_HEATER_CHAMBER3_PIN)
+  #define ORIG_HEATER_CHAMBER3_PIN  NoPin
+#endif
+#if DISABLED(ORIG_TEMP_CHAMBER3_PIN)
+  #define ORIG_TEMP_CHAMBER3_PIN    NoPin
+#endif
+
+#if DISABLED(ORIG_HEATER_COOLER_PIN)
+  #define ORIG_HEATER_COOLER_PIN    NoPin
+#endif
+#if DISABLED(ORIG_TEMP_COOLER_PIN)
+  #define ORIG_TEMP_COOLER_PIN      NoPin
 #endif
 
 #if PIN_EXISTS(X_STOP)
@@ -224,9 +291,6 @@
 #if DISABLED(ORIG_FAN5_PIN)
   #define ORIG_FAN5_PIN NoPin
 #endif
-#if DISABLED(ORIG_FAN6_PIN)
-  #define ORIG_FAN6_PIN NoPin
-#endif
 
 #if DISABLED(ORIG_BEEPER_PIN)
   #define ORIG_BEEPER_PIN NoPin
@@ -271,22 +335,22 @@
 
 // List of pins which to ignore when asked to change by gcode, 0 and 1 are RX and TX, do not mess with those!
 #if HOTENDS > 0
-  #define _H0_PINS HEATER_0_PIN, analogInputToDigitalPin(TEMP_0_PIN),
+  #define _H0_PINS HEATER_HE0_PIN, analogInputToDigitalPin(TEMP_HE0_PIN),
 #else
   #define _H0_PINS
 #endif
 #if HOTENDS > 1
-  #define _H1_PINS HEATER_1_PIN, analogInputToDigitalPin(TEMP_1_PIN),
+  #define _H1_PINS HEATER_HE1_PIN, analogInputToDigitalPin(TEMP_HE1_PIN),
 #else
   #define _H1_PINS
 #endif
 #if HOTENDS > 2
-  #define _H2_PINS HEATER_2_PIN, analogInputToDigitalPin(TEMP_2_PIN),
+  #define _H2_PINS HEATER_HE2_PIN, analogInputToDigitalPin(TEMP_HE2_PIN),
 #else
   #define _H2_PINS
 #endif
 #if HOTENDS > 3
-  #define _H3_PINS HEATER_3_PIN, analogInputToDigitalPin(TEMP_3_PIN),
+  #define _H3_PINS HEATER_HE3_PIN, analogInputToDigitalPin(TEMP_HE3_PIN),
 #else
   #define _H3_PINS
 #endif
@@ -322,35 +386,9 @@
   #define _E5_PINS
 #endif
 
-#if DISABLED(TEMP_COOLER_PIN)
-  #define TEMP_COOLER_PIN NoPin
-#endif
-
-#if DISABLED(COOLER_PIN)
-  #define COOLER_PIN NoPin
-#endif
-
-#if DISABLED(LASER_PWR_PIN)
-  #define LASER_PWR_PIN NoPin
-#endif
-
-#if DISABLED(LASER_PWM_PIN)
-  #define LASER_PWM_PIN NoPin
-#endif
-
-#if DISABLED(FLOWMETER_PIN)
-  #define FLOWMETER_PIN NoPin
-#endif
-
-#if DISABLED(CNCROUTER_PIN)
-  #define CNCROUTER_PIN NoPin
-#endif
-
 #define SENSITIVE_PINS { 0, 1, \
                         X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, \
                         Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, \
                         Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, \
                         _E0_PINS _E1_PINS _E2_PINS _E3_PINS _E4_PINS _E5_PINS \
                        }
-
-#endif /* _PINS_H_ */

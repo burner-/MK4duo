@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,9 +28,5 @@
 
 #ifndef _RESTART_SANITYCHECK_H_
 #define _RESTART_SANITYCHECK_H_
-
-#if ENABLED(SD_RESTART_FILE) && MIN_Z_HEIGHT_FOR_HOMING > 0
-  #error "DEPENDENCY ERROR: You have to set MIN_Z_HEIGHT_FOR_HOMING to 0 if you enable SD_RESTART_FILE."
-#endif
 
 #endif /* _RESTART_SANITYCHECK_H_ */

@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,30 @@
 #ifndef _CONFIGURATION_MOTOR_DRIVER_H_
 #define _CONFIGURATION_MOTOR_DRIVER_H_
 
+
+/**********************************************************************************
+ ************************** Trinamic TMC26x motor drivers *************************
+ **********************************************************************************
+ *                                                                                *
+ * The TMC26XStepper library is required for this stepper driver.                 *
+ * https://github.com/trinamic/TMC26XStepper                                      *
+ *                                                                                *
+ **********************************************************************************/
+#define X_SENSE_RESISTOR  91
+#define X2_SENSE_RESISTOR 91
+#define Y_SENSE_RESISTOR  91
+#define Y2_SENSE_RESISTOR 91
+#define Z_SENSE_RESISTOR  91
+#define Z2_SENSE_RESISTOR 91
+#define Z3_SENSE_RESISTOR 91
+#define E0_SENSE_RESISTOR 91
+#define E1_SENSE_RESISTOR 91
+#define E2_SENSE_RESISTOR 91
+#define E3_SENSE_RESISTOR 91
+#define E4_SENSE_RESISTOR 91
+#define E5_SENSE_RESISTOR 91
+
+
 /**********************************************************************************
  ********************* Trinamic TMC2130 - TMC2208 motor drivers *******************
  **********************************************************************************
@@ -30,8 +54,8 @@
  * Enable this for SilentStepStick Trinamic TMC2130 SPI-configurable stepper      *
  * drivers.                                                                       *
  *                                                                                *
- * You'll also need the TMC2130 Stepper Arduino library                           *
- * (https://github.com/teemuatlut/TMC2130Stepper).                                *
+ * You'll also need the TMC2130 and TMC2208 Stepper Arduino library               *
+ * (https://github.com/teemuatlut/TMCStepper).                                    *
  *                                                                                *
  * To use TMC2130 stepper drivers in SPI mode connect your SPI2130 pins to        *
  * the hardware SPI interface on your board and define the required CS pins       *
@@ -44,45 +68,29 @@
  * to #_SERIAL_TX_PIN with a 1K resistor.                                         *
  * The drivers can also be used with hardware serial.                             *
  *                                                                                *
- * You'll also need the TMC2208 Stepper Arduino library                           *
- * (https://github.com/teemuatlut/TMC2208Stepper).                                *
- *                                                                                *
  **********************************************************************************/
-#define R_SENSE           0.11  // R_sense resistor for SilentStepStick2130
-#define HOLD_MULTIPLIER    0.5  // Scales down the holding current from run current
+#define R_SENSE           0.11  // R_sense resistor
 #define INTERPOLATE       true  // Interpolate X/Y/Z_MICROSTEPS to 256
 
-#define X_SENSE_RESISTOR  91
-#define X2_SENSE_RESISTOR 91
-#define Y_SENSE_RESISTOR  91
-#define Y2_SENSE_RESISTOR 91
-#define Z_SENSE_RESISTOR  91
-#define Z2_SENSE_RESISTOR 91
-#define E0_SENSE_RESISTOR 91
-#define E1_SENSE_RESISTOR 91
-#define E2_SENSE_RESISTOR 91
-#define E3_SENSE_RESISTOR 91
-#define E4_SENSE_RESISTOR 91
-#define E5_SENSE_RESISTOR 91
-
 // Select this if use software SPI. Choose pins in Configuration_pins.h
-//#define SOFT_SPI_TMC2130
+//#define TMC_USE_SW_SPI
 
-// Use stallGuard2 to sense an obstacle and trigger an endstop.
-// You need to place a wire from the driver's DIAG1 pin to the X/Y endstop pin.
-// X, Y and Z homing will always be done in spreadCycle mode.
-// X/Y/Z HOMING SENSITIVITY is used for tuning the trigger sensitivity.
+// Use StallGuard2 to sense an obstacle and trigger an endstop.
+// Connect the stepper driver's DIAG1 pin to the X/Y/Z endstop pin.
+// X, Y, and Z homing will always be done in spreadCycle mode.
+//
+// X/Y/Z_STALL_SENSITIVITY is used for tuning the trigger sensitivity.
 // Higher values make the system LESS sensitive.
 // Lower value make the system MORE sensitive.
 // Too low values can lead to false positives, while too high values will collide the axis without triggering.
-// It is advised to set X/Y/Z HOME BUMP MM to 0.
+// It is advised to set X/Y/Z_HOME_BUMP_MM to 0.
 // M914 X/Y/Z to live tune the setting
+// TMC2130 or TMC5130 only
 //#define SENSORLESS_HOMING
-#define X_HOMING_SENSITIVITY  8
-#define Y_HOMING_SENSITIVITY  8
-#define Z_HOMING_SENSITIVITY  8
+#define X_STALL_SENSITIVITY 8
+#define Y_STALL_SENSITIVITY 8
+#define Z_STALL_SENSITIVITY 8
 
-// Enable M922 debugging command for TMC stepper drivers.
 // M922 S0/1 will enable continous reporting.
 //#define TMC_DEBUG
 
@@ -96,36 +104,60 @@
 #define CALIBRATION_CURRENT 250
 #define CALIBRATION_EXTRA_HEIGHT 10
 
+// Software enable
+// Use for drivers that do not use a dedicated enable pin, but rather handle the same
+// function through a communication line such as SPI or UART.
+//#define TMC_SOFTWARE_DRIVER_ENABLE
+
 // Use Trinamic's ultra quiet stepping mode.
 // When disabled, MK4duo will use spreadCycle stepping mode.
-#define STEALTHCHOP
+#define X_STEALTHCHOP   false
+#define Y_STEALTHCHOP   false
+#define Z_STEALTHCHOP   false
+#define E0_STEALTHCHOP  false
+#define E1_STEALTHCHOP  false
+#define E2_STEALTHCHOP  false
+#define E3_STEALTHCHOP  false
+#define E4_STEALTHCHOP  false
+#define E5_STEALTHCHOP  false
+
+// Optimize spreadCycle chopper parameters by using predefined parameter sets
+// or with the help of an example included in the library.
+// Provided parameter sets are
+#define CHOPPER_DEFAULT_12V  { 3, -1, 1 }
+#define CHOPPER_DEFAULT_19V  { 4,  1, 1 }
+#define CHOPPER_DEFAULT_24V  { 4,  2, 1 }
+#define CHOPPER_DEFAULT_36V  { 5,  2, 4 }
+#define CHOPPER_PRUSAMK3_24V { 4,  1, 4 } // Imported parameters from the official Prusa firmware for MK3 (24V)
+#define CHOPPER_MK4DUO_436   { 5,  2, 3 } // Old defaults from MK4duo v4.3.6
+//
+// Define you own with
+// { <off_time[1..15]>, <hysteresis_end[-3..12]>, hysteresis_start[1..8] }
+#define CHOPPER_TIMING CHOPPER_DEFAULT_12V
 
 // Monitor Trinamic TMC2130 and TMC2208 drivers for error conditions,
 // like overtemperature and short to ground. TMC2208 requires hardware serial.
-// In the case of overtemperature Marlin can decrease the driver current until error condition clears.
+// In the case of overtemperature MK4duo can decrease the driver current until error condition clears.
 // Other detected conditions can be used to stop the current print.
 // Relevant g-codes:
 // M906 - Set or get motor current in milliamps using axis codes X, Y, Z, E. Report values if no axis codes given.
 // M911 - Report stepper driver overtemperature pre-warn condition.
 // M912 - Clear stepper driver overtemperature pre-warn condition flag.
-// M922 S0/1 - Report driver parameters (Requires TMC_DEBUG)
+// M922 - Report driver parameters. (Requires TMC_DEBUG)
 //#define MONITOR_DRIVER_STATUS
+//#define MONITOR_DRIVER_STATUS_INTERVAL_MS 500u
 //#define CURRENT_STEP_DOWN     50  // [mA]
 //#define REPORT_CURRENT_CHANGE
 //#define STOP_ON_ERROR
 
 // The driver will switch to spreadCycle when stepper speed is over HYBRID_THRESHOLD.
 // This mode allows for faster movements at the expense of higher noise levels.
-// STEALTHCHOP needs to be enabled.
+// STEALTHCHOP for axis needs to be enabled.
 // M913 X/Y/Z/E to live tune the setting [mm/s]
 //#define HYBRID_THRESHOLD
-
 #define X_HYBRID_THRESHOLD     100
-#define X2_HYBRID_THRESHOLD    100
 #define Y_HYBRID_THRESHOLD     100
-#define Y2_HYBRID_THRESHOLD    100
 #define Z_HYBRID_THRESHOLD       2
-#define Z2_HYBRID_THRESHOLD      2
 #define E0_HYBRID_THRESHOLD     30
 #define E1_HYBRID_THRESHOLD     30
 #define E2_HYBRID_THRESHOLD     30
@@ -140,8 +172,8 @@
  *
  * Example:
  * #define TMC_ADV() { \
- *   stepperX.diag0_temp_prewarn(1); \
- *   stepperY.interpolate(0); \
+ *   stepperX->diag0_temp_prewarn(1); \
+ *   stepperY->interpolate(0); \
  * }
  */
 #define  TMC_ADV() {  }
@@ -155,6 +187,7 @@
 //#define Y2_HARDWARE_SERIAL Serial1
 //#define Z_HARDWARE_SERIAL  Serial1
 //#define Z2_HARDWARE_SERIAL Serial1
+//#define Z3_HARDWARE_SERIAL Serial1
 //#define E0_HARDWARE_SERIAL Serial1
 //#define E1_HARDWARE_SERIAL Serial1
 //#define E2_HARDWARE_SERIAL Serial1
@@ -176,6 +209,8 @@
 #define Z_SERIAL_RX_PIN   NoPin
 #define Z2_SERIAL_TX_PIN  NoPin
 #define Z2_SERIAL_RX_PIN  NoPin
+#define Z3_SERIAL_TX_PIN  NoPin
+#define Z3_SERIAL_RX_PIN  NoPin
 
 #define E0_SERIAL_TX_PIN  NoPin
 #define E0_SERIAL_RX_PIN  NoPin
@@ -223,6 +258,10 @@
 #define Z2_K_VAL          50
 #define Z2_OVERCURRENT  2000
 #define Z2_STALLCURRENT 1500
+
+#define Z3_K_VAL          50
+#define Z3_OVERCURRENT  2000
+#define Z3_STALLCURRENT 1500
 
 #define E0_K_VAL          50
 #define E0_OVERCURRENT  2000

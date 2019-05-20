@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * Configuration_Basic.h
@@ -37,9 +38,6 @@
  * For arduino DUE you should always use -1 for performance reasons.
  */
 
-#ifndef _CONFIGURATION_BASIC_H_
-#define _CONFIGURATION_BASIC_H_
-
 /***********************************************************************
  ********************** Serial comunication type ***********************
  ***********************************************************************/
@@ -48,12 +46,13 @@
  * This allows the connection of wireless adapters (for instance) to non-default port pins.
  * Serial port 0 is always used by the Arduino bootloader regardless of this setting.
  *
- * Valid values are 0-3 for Serial, Serial1, Serial2, Serial3 and -1 for SerialUSB
+ * Valid values are -1 to 3 for Serial, Serial1, Serial2, Serial3 and -1 for SerialUSB
  */
 #define SERIAL_PORT -1
+#define SERIAL_PORT_1 0
 
 /**
- * This setting determines the communication speed of the printer.
+ * This setting determines the communication speed of the printer on primary port.
  *
  * 250000 works in most cases, but you might try a lower speed if
  * you commonly experience drop-outs during host printing.
@@ -61,7 +60,27 @@
  *
  * 2400, 9600, 19200, 38400, 57600, 115200, 250000, 500000, 1000000
  */
-#define BAUDRATE 250000
+#define BAUDRATE_1 250000
+
+/**
+ * Select a secondary serial port on the board to use for communication with the host.
+ * This allows the connection of wireless adapters (for instance) to non-default port pins.
+ *
+ * Valid values are -1 to 3 for Serial, Serial1, Serial2, Serial3 and -1 for SerialUSB
+ * -2 not used
+ */
+#define SERIAL_PORT_2 -2
+
+/**
+ * This setting determines the communication speed of the printer on secondary port.
+ *
+ * 250000 works in most cases, but you might try a lower speed if
+ * you commonly experience drop-outs during host printing.
+ * You may try up to 1000000 to speed up SD file transfer.
+ *
+ * 2400, 9600, 19200, 38400, 57600, 115200, 250000, 500000, 1000000
+ */
+#define BAUDRATE_2 250000
 
 /**
  * User-specified version info of this build to display in [Pronterface, etc] terminal window during
@@ -181,7 +200,7 @@
 #define PS_DEFAULT_OFF false
 // Define delay after power on in seconds
 #define DELAY_AFTER_POWER_ON 1
-// Define time for automatic power off if not needed in second
+// Define time for automatic power off if not needed in second (max 60 seconds)
 #define POWER_TIMEOUT 600
 /*************************************************************************************/
 
@@ -197,5 +216,3 @@
 // 0,1,2,3,4,5,6
 #define DRIVER_EXTRUDERS 4
 /***********************************************************************/
-
-#endif /* _CONFIGURATION_BASIC_H_ */

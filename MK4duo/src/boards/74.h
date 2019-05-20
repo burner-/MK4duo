@@ -5,7 +5,7 @@
 
 //###CHIP
 #if DISABLED(__AVR_ATmega1280__) && DISABLED(__AVR_ATmega2560__)
-  #error Oops!  Make sure you have 'Arduino Mega' selected from the 'Tools -> Boards' menu.
+  #error "Oops! Select 'Arduino Mega' in 'Tools > Board.'"
 #endif
 //@@@
 
@@ -113,21 +113,37 @@
 #define Z_STOP_PIN                 NoPin
 
 //###HEATER
-#define ORIG_HEATER_0_PIN           2
-#define ORIG_HEATER_1_PIN           3
-#define ORIG_HEATER_2_PIN          NoPin
-#define ORIG_HEATER_3_PIN          NoPin
-#define ORIG_HEATER_BED_PIN         4
-#define ORIG_HEATER_CHAMBER_PIN    NoPin
-#define ORIG_COOLER_PIN            NoPin
+#define ORIG_HEATER_HE0_PIN         2
+#define ORIG_HEATER_HE1_PIN         3
+#define ORIG_HEATER_HE2_PIN        NoPin
+#define ORIG_HEATER_HE3_PIN        NoPin
+#define ORIG_HEATER_HE4_PIN        NoPin
+#define ORIG_HEATER_HE5_PIN        NoPin
+#define ORIG_HEATER_BED0_PIN        4
+#define ORIG_HEATER_BED1_PIN       NoPin
+#define ORIG_HEATER_BED2_PIN       NoPin
+#define ORIG_HEATER_BED3_PIN       NoPin
+#define ORIG_HEATER_CHAMBER0_PIN   NoPin
+#define ORIG_HEATER_CHAMBER1_PIN   NoPin
+#define ORIG_HEATER_CHAMBER2_PIN   NoPin
+#define ORIG_HEATER_CHAMBER3_PIN   NoPin
+#define ORIG_HEATER_COOLER_PIN     NoPin
 
 //###TEMPERATURE
-#define ORIG_TEMP_0_PIN             8
-#define ORIG_TEMP_1_PIN             9
-#define ORIG_TEMP_2_PIN            NoPin
-#define ORIG_TEMP_3_PIN            NoPin
-#define ORIG_TEMP_BED_PIN          10
-#define ORIG_TEMP_CHAMBER_PIN      NoPin
+#define ORIG_TEMP_HE0_PIN           8
+#define ORIG_TEMP_HE1_PIN           9
+#define ORIG_TEMP_HE2_PIN          NoPin
+#define ORIG_TEMP_HE3_PIN          NoPin
+#define ORIG_TEMP_HE4_PIN          NoPin
+#define ORIG_TEMP_HE5_PIN          NoPin
+#define ORIG_TEMP_BED0_PIN         10
+#define ORIG_TEMP_BED1_PIN         NoPin
+#define ORIG_TEMP_BED2_PIN         NoPin
+#define ORIG_TEMP_BED3_PIN         NoPin
+#define ORIG_TEMP_CHAMBER0_PIN     NoPin
+#define ORIG_TEMP_CHAMBER1_PIN     NoPin
+#define ORIG_TEMP_CHAMBER2_PIN     NoPin
+#define ORIG_TEMP_CHAMBER3_PIN     NoPin
 #define ORIG_TEMP_COOLER_PIN       NoPin
 
 //###FAN
@@ -135,6 +151,8 @@
 #define ORIG_FAN1_PIN              NoPin
 #define ORIG_FAN2_PIN              NoPin
 #define ORIG_FAN3_PIN              NoPin
+#define ORIG_FAN4_PIN              NoPin
+#define ORIG_FAN5_PIN              NoPin
 
 //###SERVO
 #define SERVO0_PIN                 NoPin
@@ -162,44 +180,58 @@
 //###IF_BLOCKS
 #if ENABLED(ULTIMAKERCONTROLLER) || ENABLED(REPRAP_DISCOUNT_SMART_CONTROLLER) || ENABLED(G3D_PANEL) || ENABLED(MKS_MINI_12864)
   #define SDSUPPORT   // Force SD Card support on for these displays
-#elif ENABLED(ULTRA_LCD) && ENABLED(DOGLCD) // No panel, just graphical LCD?
+#elif HAS_SPI_LCD && HAS_GRAPHICAL_LCD // No panel, just graphical LCD?
   #define LCD_WIDTH_OVERRIDE 20 // Default is 22. For this Geeetech use 20
 #endif
-#if ENABLED(ULTRA_LCD)
+#if HAS_SPI_LCD
 
   #define ORIG_BEEPER_PIN  18
 
-  #if ENABLED(NEWPANEL)       
+  #if ENABLED(CR10_STOCKDISPLAY) 
 
-    #define LCD_PINS_RS    20
+    #define LCD_PINS_RS      5
+    #define LCD_PINS_ENABLE  6
+    #define LCD_PINS_D4     21
+    #define LCD_PINS_D5     -1
+    #define LCD_PINS_D6     -1
+    #define LCD_PINS_D7     -1
+
+    // Encoder
+    #define BTN_EN1         17
+    #define BTN_EN2         16
+    #define BTN_ENC         19
+
+  #elif ENABLED(NEWPANEL)       
+
+    #define LCD_PINS_RS     20
     #define LCD_PINS_ENABLE 17
-    #define LCD_PINS_D4    16
-    #define LCD_PINS_D5    21
-    #define LCD_PINS_D6     5
-    #define LCD_PINS_D7     6
+    #define LCD_PINS_D4     16
+    #define LCD_PINS_D5     21
+    #define LCD_PINS_D6      5
+    #define LCD_PINS_D7      6
 
     // Buttons are directly attached
-    #define BTN_EN1        42
-    #define BTN_EN2        40
-    #define BTN_ENC        19
+    #define BTN_EN1         42
+    #define BTN_EN2         40
+    #define BTN_ENC         19
     
-    #define SD_DETECT_PIN  38
+    #define SD_DETECT_PIN   38
 
   #else // !NEWPANEL
 
-    #define SHIFT_CLK      38
-    #define SHIFT_LD       42
-    #define SHIFT_OUT      40
-    #define SHIFT_EN       17
+    #define SHIFT_CLK       38
+    #define SHIFT_LD        42
+    #define SHIFT_OUT       40
+    #define SHIFT_EN        17
 
-    #define LCD_PINS_RS    16
-    #define LCD_PINS_ENABLE 5
-    #define LCD_PINS_D4     6
-    #define LCD_PINS_D5    21
-    #define LCD_PINS_D6    20
-    #define LCD_PINS_D7    19
+    #define LCD_PINS_RS     16
+    #define LCD_PINS_ENABLE  5
+    #define LCD_PINS_D4      6
+    #define LCD_PINS_D5     21
+    #define LCD_PINS_D6     20
+    #define LCD_PINS_D7     19
 
-    #define SD_DETECT_PIN  NoPin
+    #define SD_DETECT_PIN   NoPin
 
   #endif // !NEWPANEL
 

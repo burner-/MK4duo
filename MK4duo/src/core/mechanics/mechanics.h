@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,58 +19,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * mechanics.h
  *
- * Copyright (C) 2016 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  */
-
-#ifndef _MECHANICS_H_
-#define _MECHANICS_H_
-
-/**
- * Axis indices as enumerated constants
- *
- *  - X_AXIS, Y_AXIS, and Z_AXIS should be used for axes in Cartesian space
- *  - A_AXIS, B_AXIS, and C_AXIS should be used for Steppers, corresponding to XYZ on Cartesians
- *  - X_HEAD, Y_HEAD, and Z_HEAD should be used for Steppers on Core kinematics
- */
-enum AxisEnum : unsigned char{
-  X_AXIS  = 0,
-  A_AXIS  = 0,
-  Y_AXIS  = 1,
-  B_AXIS  = 1,
-  Z_AXIS  = 2,
-  C_AXIS  = 2,
-  E_AXIS  = 3,
-  X_HEAD  = 4,
-  Y_HEAD  = 5,
-  Z_HEAD  = 6,
-  E0_AXIS = 3,
-  E1_AXIS = 4,
-  E2_AXIS = 5,
-  E3_AXIS = 6,
-  E4_AXIS = 7,
-  E5_AXIS = 8,
-  ALL_AXES  = 0xFE,
-  NO_AXIS   = 0xFF
-};
-
-/**
- * DUAL X CARRIAGE
- */
-#if ENABLED(DUAL_X_CARRIAGE)
-  enum DualXMode {
-    DXC_FULL_CONTROL_MODE,
-    DXC_AUTO_PARK_MODE,
-    DXC_DUPLICATION_MODE
-  };
-#endif
-
-#if ENABLED(CNC_WORKSPACE_PLANES)
-  enum WorkspacePlane { PLANE_XY, PLANE_ZX, PLANE_YZ };
-#endif
 
 #define LOGICAL_X_POSITION(POS) mechanics.native_to_logical(POS, X_AXIS)
 #define LOGICAL_Y_POSITION(POS) mechanics.native_to_logical(POS, Y_AXIS)
@@ -79,15 +34,81 @@ enum AxisEnum : unsigned char{
 #define NATIVE_Y_POSITION(POS)  mechanics.logical_to_native(POS, Y_AXIS)
 #define NATIVE_Z_POSITION(POS)  mechanics.logical_to_native(POS, Z_AXIS)
 
-#if PLANNER_LEVELING || ENABLED(Z_WOBBLE_FEATURE)
-  #define ARG_X float rx
-  #define ARG_Y float ry
-  #define ARG_Z float rz
-#else
-  #define ARG_X const float &rx
-  #define ARG_Y const float &ry
-  #define ARG_Z const float &rz
-#endif
+union flaghome_t {
+  uint8_t all;
+  struct {
+    bool  XHomed  : 1;
+    bool  YHomed  : 1;
+    bool  ZHomed  : 1;
+    bool  bit3    : 1;
+    bool  bit4    : 1;
+    bool  bit5    : 1;
+    bool  bit6    : 1;
+    bool  bit7    : 1;
+  };
+  flaghome_t() { all = 0x00; }
+};
+
+union flagdir_t {
+  int8_t dir;
+  struct {
+    int8_t X : 2;
+    int8_t Y : 2;
+    int8_t Z : 2;
+    int8_t E : 2;
+ };
+  flagdir_t(const int8_t dirx=0, const int8_t diry=0, const int8_t dirz=0) { X = dirx; Y = diry; Z = dirz; E = -1; }
+};
+
+union sensorless_t {
+  uint8_t all;
+  struct {
+    bool x    : 1;
+    bool y    : 1;
+    bool z    : 1;
+    bool x2   : 1;
+    bool y2   : 1;
+    bool z2   : 1;
+    bool z3   : 1;
+    bool bit7 : 1;
+  };
+  sensorless_t() { all = 0x00; }
+};
+
+// Struct Mechanics data
+typedef struct {
+
+  float     axis_steps_per_mm[XYZE_N],
+            max_feedrate_mm_s[XYZE_N],
+            acceleration,
+            travel_acceleration,
+            retract_acceleration[EXTRUDERS],
+            min_feedrate_mm_s,
+            min_travel_feedrate_mm_s;
+
+  uint32_t  max_acceleration_mm_per_s2[XYZE_N],
+            min_segment_time_us;
+
+  #if ENABLED(JUNCTION_DEVIATION)
+    float     junction_deviation_mm;
+    #if ENABLED(LIN_ADVANCE)
+      float max_e_jerk[EXTRUDERS];
+    #endif
+  #endif
+
+  #if HAS_CLASSIC_JERK
+    #if ENABLED(JUNCTION_DEVIATION) && ENABLED(LIN_ADVANCE)
+      float max_jerk[XYZ];
+    #else
+      float max_jerk[XYZE_N];
+    #endif
+  #endif
+
+  #if ENABLED(WORKSPACE_OFFSETS)
+    float   home_offset[XYZ];
+  #endif
+
+} generic_data_t;
 
 class Mechanics {
 
@@ -98,57 +119,45 @@ class Mechanics {
   public: /** Public Parameters */
 
     /**
-     * Feedrate, min, max, travel
+     * Settings data
      */
-    static float    feedrate_mm_s,
-                    min_feedrate_mm_s,
-                    max_feedrate_mm_s[XYZE_N],
-                    min_travel_feedrate_mm_s;
+    static generic_data_t   data;
+
+    /**
+     * Home flag
+     */
+    static flaghome_t       home_flag;
+
+    /**
+     * Home direction
+     */
+    static const flagdir_t  home_dir;
+
+    /**
+     * Homing feed rates
+     */
+    static const float homing_feedrate_mm_s[XYZ];
+
+    /**
+     * Home bump in mm
+     */
+    static const float home_bump_mm[XYZ];
+
+    /**
+     * Feedrate
+     */
+    static float    feedrate_mm_s;
     static int16_t  feedrate_percentage;
 
     /**
-     * Homing feed rates are often configured with mm/m
-     * but the planner and stepper like mm/s units.
+     * Step
      */
-    static const float  homing_feedrate_mm_s[XYZ] ,
-                        home_bump_mm[XYZ];
-
-    /**
-     * Step per unit
-     */
-    static float  axis_steps_per_mm[XYZE_N],
-                  steps_to_mm[XYZE_N];
+    static float    steps_to_mm[XYZE_N];
 
     /**
      * Acceleration
      */
-    static float    acceleration,
-                    travel_acceleration,
-                    retract_acceleration[EXTRUDERS];
-    static uint32_t max_acceleration_steps_per_s2[XYZE_N],
-                    max_acceleration_mm_per_s2[XYZE_N];
-
-    /**
-     * Junction Deviation or Jerk
-     */
-    #if ENABLED(JUNCTION_DEVIATION)
-      static float junction_deviation_mm;
-      #if ENABLED(LIN_ADVANCE)
-        static float max_e_jerk[EXTRUDERS];
-      #endif
-    #else
-      static float max_jerk[XYZE_N];
-    #endif
-
-    /**
-     * Home dir
-     */
-    static const int8_t home_dir[XYZ];
-
-    /**
-     * Min segment time
-     */
-    static millis_t  min_segment_time_us;
+    static uint32_t max_acceleration_steps_per_s2[XYZE_N];
 
     /**
      * Cartesian Current Position
@@ -186,10 +195,6 @@ class Mechanics {
       // The distance that XYZ has been offset by G92. Reset by G28.
       static float position_shift[XYZ];
 
-      // This offset is added to the configured home position.
-      // Set by M206, M428, or menu item. Saved to EEPROM.
-      static float home_offset[XYZ];
-
       // The above two are combined to save on computes
       static float workspace_offset[XYZ];
     #endif
@@ -199,14 +204,38 @@ class Mechanics {
        * Workspace planes only apply to G2/G3 moves
        * (and "canned cycles" - not a current feature)
        */
-      static WorkspacePlane workspace_plane = PLANE_XY;
+      static WorkspacePlaneEnum workspace_plane = PLANE_XY;
     #endif
 
-    #if ENABLED(BABYSTEPPING)
-      static int babystepsTodo[XYZ];
-    #endif
+  private: /** Private Parameters */
+
+    static float saved_feedrate_mm_s;
+    static int16_t saved_feedrate_percentage;
 
   public: /** Public Function */
+
+    /**
+     * Get homedir for axis
+     */
+    static int8_t get_homedir(const AxisEnum axis);
+
+    FORCE_INLINE static void setAxisHomed(const AxisEnum axis, const bool onoff) {
+      switch (axis) {
+        case X_AXIS: home_flag.XHomed = onoff; break;
+        case Y_AXIS: home_flag.YHomed = onoff; break;
+        case Z_AXIS: home_flag.ZHomed = onoff; break;
+      }
+    }
+    FORCE_INLINE static bool isAxisHomed(const AxisEnum axis) {
+      switch (axis) {
+        case X_AXIS: return home_flag.XHomed; break;
+        case Y_AXIS: return home_flag.YHomed; break;
+        case Z_AXIS: return home_flag.ZHomed; break;
+      }
+    }
+
+    FORCE_INLINE static void unsetHomedAll() { home_flag.all = false; }
+    FORCE_INLINE static bool isHomedAll() { return home_flag.XHomed && home_flag.YHomed && home_flag.ZHomed; }
 
     /**
      * Set the current_position for an axis based on
@@ -228,19 +257,17 @@ class Mechanics {
     FORCE_INLINE static void set_destination_to_current() { COPY_ARRAY(destination, current_position); }
 
     /**
-     * line_to_current_position
      * Move the planner to the current position from wherever it last moved
      * (or from wherever it has been told it is located).
      */
-    static void line_to_current_position();
+    static void line_to_current_position(const float &fr_mm_s=feedrate_mm_s);
 
     /**
-     * line_to_destination
      * Move the planner to the position stored in the destination array, which is
      * used by G0/G1/G2/G3/G5 and many other functions to set a destination.
      */
-    static void line_to_destination(float fr_mm_s);
-    FORCE_INLINE static void line_to_destination() { line_to_destination(feedrate_mm_s); }
+    static void buffer_line_to_destination(const float fr_mm_s);
+    FORCE_INLINE static void buffer_line_to_destination() { buffer_line_to_destination(feedrate_mm_s); }
 
     /**
      * Prepare a single move and get ready for the next one
@@ -249,6 +276,13 @@ class Mechanics {
      * do smaller moves for DELTA, SCARA, mesh moves, etc.
      */
     static void prepare_move_to_destination();
+
+    /**
+     * Prepare to do endstop or probe moves with custom feedrates.
+     *  - Save / restore current feedrate and multiplier
+     */
+    static void setup_for_endstop_or_probe_move();
+    static void clean_up_after_endstop_or_probe_move();
 
     /**
      * Compute a Bézier curve using the De Casteljau's algorithm (see
@@ -287,6 +321,7 @@ class Mechanics {
        * Since this changes the current_position, code should
        * call sync_plan_position soon after this.
        */
+      static void update_workspace_offset(const AxisEnum axis);
       static void set_home_offset(const AxisEnum axis, const float v);
 
       static float native_to_logical(const float pos, const AxisEnum axis);
@@ -296,26 +331,16 @@ class Mechanics {
       FORCE_INLINE static float logical_to_native(const float pos, const AxisEnum axis) { UNUSED(axis); return pos; }
     #endif
 
-    #if ENABLED(JUNCTION_DEVIATION)
+    #if ENABLED(JUNCTION_DEVIATION) && ENABLED(LIN_ADVANCE)
       FORCE_INLINE static void recalculate_max_e_jerk() {
-        #if ENABLED(LIN_ADVANCE)
-          LOOP_EXTRUDER() {
-            max_e_jerk[e] = SQRT(SQRT(0.5) *
-              junction_deviation_mm *
-              max_acceleration_mm_per_s2[E_AXIS + e] *
-              RECIPROCAL(1.0 - SQRT(0.5))
-            );
-          }
-        #endif
+        LOOP_EXTRUDER() {
+          data.max_e_jerk[e] = SQRT(SQRT(0.5) *
+            data.junction_deviation_mm *
+            data.max_acceleration_mm_per_s2[E_AXIS + e] *
+            RECIPROCAL(1.0 - SQRT(0.5))
+          );
+        }
       }
-    #endif
-
-    #if ENABLED(DEBUG_FEATURE)
-      static void log_machine_info();
-    #endif
-
-    #if ENABLED(BABYSTEPPING)
-      static void babystep_axis(const AxisEnum axis, const int16_t distance);
     #endif
 
   protected: /** Protected Function */
@@ -324,7 +349,8 @@ class Mechanics {
      * Set sensorless homing if the axis has it.
      */
     #if ENABLED(SENSORLESS_HOMING)
-      static void sensorless_homing_per_axis(const AxisEnum axis, const bool enable=true);
+      static sensorless_t start_sensorless_homing_per_axis(const AxisEnum axis);
+      static void stop_sensorless_homing_per_axis(const AxisEnum axis, sensorless_t enable_stealth);
     #endif
 
     static void report_xyze(const float pos[], const uint8_t n=4, const uint8_t precision=3);
@@ -336,9 +362,12 @@ class Mechanics {
 
 };
 
-#include "cartesian_mechanics.h"
-#include "core_mechanics.h"
-#include "delta_mechanics.h"
-#include "scara_mechanics.h"
-
-#endif /* _MECHANICS_H_ */
+#if MECH(CARTESIAN)
+  #include "cartesian_mechanics.h"
+#elif IS_CORE
+  #include "core_mechanics.h"
+#elif MECH(DELTA)
+  #include "delta_mechanics.h"
+#elif IS_SCARA
+  #include "scara_mechanics.h"
+#endif

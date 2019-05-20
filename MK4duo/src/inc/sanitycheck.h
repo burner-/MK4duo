@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * sanitycheck.h
@@ -26,23 +27,17 @@
  * Test configuration values for errors at compile-time.
  */
 
-/**
- * Require gcc 4.7 or newer (first included with Arduino 1.8.2) for C++11 features.
- */
-
-#ifndef _SANITYCHECK_H_
-#define _SANITYCHECK_H_
-
+// Require gcc 4.7 or newer (first included with Arduino 1.8.2) for C++11 features.
 #if __cplusplus < 201103L
   #error "DEPENDENCY ERROR: MK4duo requires C++11 support (gcc >= 4.7, Arduino IDE >= 1.8.2). Please upgrade your toolchain."
 #endif
 
 // Start check
-#if DISABLED(SERIAL_PORT)
-  #error "DEPENDENCY ERROR: Missing setting SERIAL_PORT."
+#if DISABLED(SERIAL_PORT_1)
+  #error "DEPENDENCY ERROR: Missing setting SERIAL_PORT_1."
 #endif
-#if DISABLED(BAUDRATE)
-  #error "DEPENDENCY ERROR: Missing setting BAUDRATE."
+#if DISABLED(BAUDRATE_1)
+  #error "DEPENDENCY ERROR: Missing setting BAUDRATE_1."
 #endif
 #if DISABLED(MACHINE_UUID)
   #error "DEPENDENCY ERROR: Missing setting MACHINE_UUID."
@@ -58,8 +53,8 @@
 
 // Alligator board
 #if MB(ALLIGATOR_R2) || MB(ALLIGATOR_R3)
-  #if DISABLED(UI_VOLTAGE_LEVEL)
-    #error "DEPENDENCY ERROR: Missing setting UI_VOLTAGE_LEVEL."
+  #if DISABLED(LCD_ALLIGATOR_VOLTAGE_LEVEL)
+    #error "DEPENDENCY ERROR: Missing setting LCD_ALLIGATOR_VOLTAGE_LEVEL."
   #endif
 #endif
 
@@ -104,7 +99,7 @@
 #include "../core/tools/sanitycheck.h"
 
 #include "../lcd/sanitycheck.h"
-#include "../sd/sanitycheck.h"
+#include "../sdcard/sanitycheck.h"
 
 #include "../feature/advanced_pause/sanitycheck.h"
 #include "../feature/bedlevel/sanitycheck.h"
@@ -112,7 +107,6 @@
 #include "../feature/cncrouter/sanitycheck.h"
 #include "../feature/filament/sanitycheck.h"
 #include "../feature/filamentrunout/sanitycheck.h"
-#include "../feature/flowmeter/sanitycheck.h"
 #include "../feature/fwretract/sanitycheck.h"
 #include "../feature/laser/sanitycheck.h"
 #include "../feature/mixing/sanitycheck.h"
@@ -124,8 +118,8 @@
 
 // CONTROLLI ANCORA DA RICOLLOCARE...
 
-#if ENABLED(DOOR_OPEN) && !PIN_EXISTS(DOOR_OPEN)
-  #error "DEPENDENCY ERROR: You have to set DOOR_OPEN_PIN to a valid pin if you enable DOOR_OPEN."
+#if ENABLED(DOOR_OPEN_FEATURE) && !PIN_EXISTS(DOOR_OPEN)
+  #error "DEPENDENCY ERROR: You have to set DOOR_OPEN_PIN to a valid pin if you enable DOOR_OPEN_FEATURE."
 #endif
 
 // CHDK
@@ -164,5 +158,3 @@
 #if DISABLED(SDSUPPORT) && ENABLED(SERIAL_STATS_DROPPED_RX)
   #error "DEPENDENCY ERROR: You must enable SDSUPPORT for SERIAL_STATS_DROPPED_RX."
 #endif
-
-#endif /* _SANITYCHECK_H_ */

@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@
 // Public functions
 // --------------------------------------------------------------------------
 
-#if ENABLED(SOFTWARE_SPI)
+#if ENABLED(SOFTWARE_SPI) || ENABLED(FORCE_SOFT_SPI)
 
   #include <SoftSPI.h>
 
@@ -94,6 +94,7 @@
       SET_OUTPUT(MOSI_PIN);
       SET_OUTPUT(SCK_PIN);
     #endif
+    spiInit(1);
   }
 
   /**
@@ -101,26 +102,19 @@
    * Set SCK rate to F_CPU/pow(2, 1 + spiRate) for spiRate [0,6]
    */
   void HAL::spiInit(uint8_t spiRate) {
-    uint8_t r = 0;
-    for (uint8_t b = 2; spiRate > b && r < 6; b <<= 1, r++);
-
-    SET_OUTPUT(SS_PIN);
-    WRITE(SS_PIN, HIGH);
-    SET_OUTPUT(SCK_PIN);
-    SET_OUTPUT(MOSI_PIN);
-    SET_INPUT(MISO_PIN);
-    #ifdef PRR
-      PRR &= ~(1 << PRSPI);
-    #elif ENABLED PRR0
-      PRR0 &= ~(1 << PRSPI);
-    #endif
     // See avr processor documentation
-    SPCR = _BV(SPE) | _BV(MSTR) | (r >> 1);
-    SPSR = (r & 1 || r == 6 ? 0 : 1) << SPI2X;
+    #ifdef PRR
+      CBI(PRR, PRSPI);
+    #elif ENABLED PRR0
+      CBI(PRR0, PRSPI);
+    #endif
+
+    SPCR = _BV(SPE) | _BV(MSTR) | (spiRate >> 1);
+    SPSR = spiRate & 1 || spiRate == 6 ? 0 : _BV(SPI2X);
   }
 
    /** SPI send a byte */
-  void HAL::spiSend(byte b) {
+  void HAL::spiSend(uint8_t b) {
     SPDR = b;
     while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
   }
@@ -154,8 +148,8 @@
   }
 
   /** SPI receive a byte */
-  uint8_t HAL::spiReceive(uint8_t send/*=0xFF*/) {
-    SPDR = send;
+  uint8_t HAL::spiReceive(void) {
+    SPDR = 0xFF;
     while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
     return SPDR;
   }

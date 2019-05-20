@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * Configuration_Feature.h
@@ -27,6 +28,8 @@
  *
  * DRIVER FEATURES:
  * - Driver types
+ * PWM FEATURES:
+ * - SOFT PWM Speed
  * FAN FEATURES:
  * - Fan configuration
  * EXTRUDER FEATURES:
@@ -40,6 +43,7 @@
  * - Multiextruder MKR6
  * - Multiextruder MKR12
  * - Multiextruder MKSE6 (multiextruder with Servo)
+ * - Multi-Material-Unit v2
  * - Multiextruder DONDOLO
  * - Extruder idle oozing prevention
  * - Extruder run-out prevention
@@ -63,10 +67,11 @@
  * - X-axis two driver
  * - Y-axis two driver
  * - Z-axis two driver
+ * - Z-axis three driver
+ * - Z Steppers Auto-Alignment
  * - XY Frequency limit
  * - Skeinforge arc fix
  * SENSORS FEATURES:
- * - Extruder Encoder Control
  * - Filament diameter sensor
  * - Filament Runout sensor
  * - Power consumption sensor
@@ -74,14 +79,10 @@
  * - Door open sensor
  * - Power check sensor
  * ADDON FEATURES:
+ * - PCF8574 Expansion IO
  * - EEPROM
  * - SDCARD
- * - LCD Language
- * - LCD Character Set
- * - LCD / Controller Selection
- * - LCD Options
- * - Canon RC-1 Remote
- * - Camera trigger
+ * - Photo G-code
  * - RFID card reader
  * - BLINKM
  * - RGB LED
@@ -103,6 +104,7 @@
  * - Motor's current
  * - I2C DIGIPOT
  * ADVANCED FEATURES:
+ * - Service Timers function
  * - Buffer stuff
  * - Nozzle Clean Feature
  * - Nozzle Park
@@ -112,20 +114,15 @@
  * - Scad Mesh Output
  * - M43 command for pins info and testing
  * - Debug Feature
- * - Extend capabilities report
  * - Watchdog
  * - Start / Stop Gcode
  * - Proportional Font ratio
- * - User menu items
  *
  * Basic-settings can be found in Configuration_Basic.h
  * Mechanisms-settings can be found in Configuration_Xxxxxx.h (where Xxxxxx can be: Cartesian - Delta - Core - Scara)
  * Pins-settings can be found in "Configuration_Pins.h"
  *
  */
-
-#ifndef _CONFIGURATION_FEATURE_H_
-#define _CONFIGURATION_FEATURE_H_
 
 //===========================================================================
 //============================= DRIVER FEATURES =============================
@@ -139,15 +136,25 @@
  *  - A4988                                                                 *
  *  - A5984                                                                 *
  *  - DRV8825                                                               *
- *  - TMC26X                                                                *
+ *  - LV8729                                                                *
  *  - L6470                                                                 *
  *  - TB6560                                                                *
  *  - TB6600                                                                *
  *  - TMC2100                                                               *
  *  - TMC2130                                                               *
+ *  - TMC2130_STANDALONE                                                    *
  *  - TMC2208                                                               *
+ *  - TMC2208_STANDALONE                                                    *
+ *  - TMC26X                                                                *
+ *  - TMC26X_STANDALONE                                                     *
  *  - TMC2660                                                               *
+ *  - TMC2660_STANDALONE                                                    *
+ *  - TMC2160                                                               *
+ *  - TMC2160_STANDALONE                                                    *
  *  - TMC5130                                                               *
+ *  - TMC5130_STANDALONE                                                    *
+ *  - TMC5160                                                               *
+ *  - TMC5160_STANDALONE                                                    *
  *                                                                          *
  * See Configuration_Motor_Driver.h for configuration Motor Driver          *
  *                                                                          *
@@ -158,6 +165,7 @@
 #define X2_DRIVER_TYPE  A4988
 #define Y2_DRIVER_TYPE  A4988
 #define Z2_DRIVER_TYPE  A4988
+#define Z3_DRIVER_TYPE  A4988
 #define E0_DRIVER_TYPE  A4988
 #define E1_DRIVER_TYPE  A4988
 #define E2_DRIVER_TYPE  A4988
@@ -168,19 +176,44 @@
 
 
 //===========================================================================
+//=============================== PWM FEATURES ==============================
+//===========================================================================
+/***********************************************************************
+ *************************** SOFT PWM Speed ****************************
+ ***********************************************************************
+ *                                                                     *
+ * SOFT PWM frequency and values                                       *
+ *    0 -  15Hz 256 values                                             *
+ *    1 -  30Hz 128 values                                             *
+ *    2 -  61Hz  64 values                                             *
+ *    3 - 122Hz  32 values                                             *
+ *    4 - 244Hz  16 values                                             *
+ *                                                                     *
+ ***********************************************************************/
+#define SOFT_PWM_SPEED 0
+/***********************************************************************/
+
+
+//===========================================================================
 //=============================== FAN FEATURES ==============================
 //===========================================================================
 
 /****************************************************************************
  ***************************** Fan configuration ****************************
  ****************************************************************************/
-// FAN PWM speed
-// 0 -  15Hz 256 values
-// 1 -  30Hz 128 values
-// 2 -  61Hz  64 values
-// 3 - 122Hz  32 values
-// 4 - 244Hz  16 values
-#define FAN_PWM_SPEED 0
+// This defines the minimal speed for the fan
+// set minimal speed for reliable running (0-255)
+#define FAN_MIN_PWM 0
+
+// This defines the miximal speed for the fan
+// set maximal speed for reliable running (1-255)
+#define FAN_MAX_PWM 255
+
+// To reverse the logic of fan pins
+//#define INVERTED_FAN_PINS
+
+// FAN PWM Frequency SAM Processor
+#define FAN_PWM_FREQUENCY 250
 
 // When first starting the main fan, run it at full speed for the
 // given number of milliseconds.  This gets the fan spinning reliably
@@ -206,7 +239,7 @@
 #define HOTEND_AUTO_FAN_SPEED       255 // 255 = full speed
 #define HOTEND_AUTO_FAN_MIN_SPEED     0
 // Parameters for Controller Fan
-#define CONTROLLERFAN_SECS           60 // How many seconds, after all motors were disabled, the fan should run
+#define CONTROLLERFAN_SECS           60 // How many seconds, after all motors were disabled, the fan should run (max 60 seconds)
 #define CONTROLLERFAN_SPEED         255 // 255 = full speed
 #define CONTROLLERFAN_MIN_SPEED       0
 
@@ -379,6 +412,36 @@
 
 
 /***********************************************************************
+ ************************* Multi-Material-Unit *************************
+ ***********************************************************************
+ *                                                                     *
+ * Prusa Multi-Material Unit v2                                        *
+ *                                                                     *
+ * Requires NOZZLE_PARK_FEATURE to park print head in case             *
+ * MMU unit fails.                                                     *
+ * Requires EXTRUDERS = 5                                              *
+ *                                                                     *
+ ***********************************************************************/
+//#define PRUSA_MMU2
+
+// Serial port used for communication with MMU2.
+#define MMU2_SERIAL 1
+
+// Enable if the MMU2 has 12V stepper motors (MMU2 Firmware 1.0.2 and up)
+//#define MMU2_MODE_12V
+
+// G-code to execute when MMU2 F.I.N.D.A. probe detects filament runout
+#define MMU2_FILAMENT_RUNOUT_SCRIPT "M600"
+
+// Settings for filament load / unload from the LCD menu.
+// This is for Prusa MK3-style extruders. Customize for your hardware.
+#define MMU2_FILAMENTCHANGE_EJECT_FEED 80.0
+#define MMU2_LOAD_TO_NOZZLE_SEQUENCE  { 7.2, 562 }, { 14.4, 871 }, { 36.0, 1393 }, { 14.4, 871 }, { 50.0, 198 }
+#define MMU2_RAMMING_SEQUENCE { 1.0, 1000 }, { 1.0, 1500 }, { 2.0, 2000 }, { 1.5, 3000 }, { 2.5, 4000 }, { -15.0, 5000 }, { -14.0, 1200 }, { -6.0, 600 }, { 10.0, 700 }, { -10.0, 400 }, { -50.0, 2000 }
+/***********************************************************************/
+
+
+/***********************************************************************
  ********************* Dual Extruder DONDOLO ***************************
  ***********************************************************************
  *                                                                     *
@@ -466,17 +529,14 @@
  * drive gear and heatbreak.                                                             *
  * Larger K values will be needed for flexible filament and greater distances.           *
  * If this algorithm produces a higher speed offset than the                             *
- * extruder can handle (compared to E jerk)                                              *
- * print acceleration will be reduced during the affected moves to keep within the limit.*
+ * extruder can handle (compared to E jerk) print acceleration will be                   *
+ * reduced during the affected moves to keep within the limit.                           *
  *                                                                                       *
  *****************************************************************************************/
 //#define LIN_ADVANCE
 
 // Unit: mm compression per 1mm/s extruder speed
 #define LIN_ADVANCE_K 0.22
-
-// If enabled, this will generate debug information output over Serial.
-//#define LA_DEBUG
 /*****************************************************************************************/
 
 
@@ -684,13 +744,15 @@
 #define BABYSTEP_INVERT_Z false
 // Babysteps are very small. Increase for faster motion.
 #define BABYSTEP_MULTIPLICATOR 1
+// Display total babysteps since last G28
+//#define BABYSTEP_DISPLAY_TOTAL
 // Enable to combine M851 and Babystepping
 //#define BABYSTEP_ZPROBE_OFFSET
 // Double-click on the Status Screen for Z Babystepping.
 //#define DOUBLECLICK_FOR_Z_BABYSTEPPING
 // Maximum interval between clicks, in milliseconds.
 // Note: Extra time may be added to mitigate controller latency.
-#define DOUBLECLICK_MAX_INTERVAL 1250
+#define DOUBLECLICK_MAX_INTERVAL 1250U
 
 // Enable graphical overlay on Z-offset editor
 //#define BABYSTEP_ZPROBE_GFX_OVERLAY
@@ -749,7 +811,7 @@
 //#define DUAL_X_CARRIAGE
 
 #define X1_MIN_POS X_MIN_POS    // set minimum to ensure first x-carriage doesn't hit the parked second X-carriage
-#define X1_MAX_POS X_BED_SIZE   // set maximum to ensure first x-carriage doesn't hit the parked second X-carriage
+#define X1_MAX_POS X_MAX_POS    // set maximum to ensure first x-carriage doesn't hit the parked second X-carriage
 #define X2_MIN_POS 80           // set minimum to ensure second x-carriage doesn't hit the parked first X-carriage
 #define X2_MAX_POS 353          // set maximum to the distance between toolheads when both heads are homed
 #define X2_HOME_DIR 1           // the second X-carriage always homes to the maximum endstop position
@@ -760,13 +822,15 @@
 // Remember: you should set the second extruder x-offset to 0 in your slicer.
 
 // There are a few selectable movement modes for dual x-carriages using M605 S<mode>
-//    Mode 0 (DXC_FULL_CONTROL_MODE): Full control. The slicer has full control over both x-carriages and can achieve optimal travel results
-//                                    as long as it supports dual x-carriages. (M605 S0)
-//    Mode 1 (DXC_AUTO_PARK_MODE)   : Auto-park mode. The firmware will automatically park and unpark the x-carriages on tool changes so
-//                                    that additional slicer support is not required. (M605 S1)
-//    Mode 2 (DXC_DUPLICATION_MODE) : Duplication mode. The firmware will transparently make the second x-carriage and extruder copy all
-//                                    actions of the first x-carriage. This allows the printer to print 2 arbitrary items at
-//                                    once. (2nd extruder x offset and temp offset are set using: M605 S2 [Xnnn] [Rmmm])
+//    Mode 0 (DXC_FULL_CONTROL_MODE)        : Full control. The slicer has full control over both x-carriages and can achieve optimal travel results
+//                                            as long as it supports dual x-carriages. (M605 S0)
+//    Mode 1 (DXC_AUTO_PARK_MODE)           : Auto-park mode. The firmware will automatically park and unpark the x-carriages on tool changes so
+//                                            that additional slicer support is not required. (M605 S1)
+//    Mode 2 (DXC_DUPLICATION_MODE)         : Duplication mode. The firmware will transparently make the second x-carriage and extruder copy all
+//                                            actions of the first x-carriage. This allows the printer to print 2 arbitrary items at
+//                                            once. (2nd extruder x offset and temp offset are set using: M605 S2 [Xnnn] [Rmmm])
+//    Mode 3 (DXC_SCALED_DUPLICATION_MODE)  : Not working yet, but support routines in place
+//
 
 // This is the default power-up mode which can be later using M605.
 #define DEFAULT_DUAL_X_CARRIAGE_MODE DXC_FULL_CONTROL_MODE
@@ -841,6 +905,53 @@
 
 
 /*****************************************************************************************
+ ********************************** Z-axis three driver **********************************
+ *****************************************************************************************
+ *                                                                                       *
+ * This section will allow you to use extra drivers to drive a second or third motor Z   *
+ * Uncomment this define to utilize a separate stepper driver for each Z axis motor.     *
+ * If the motors need to spin in opposite directions set INVERT Z2 VS Z DIR.             *
+ * If the second motor needs its own endstop set Z TWO ENDSTOPS.                         *
+ * Extra endstops will appear in the output of 'M119'.                                   *
+ *                                                                                       *
+ * Only Cartesian & Core                                                                 *
+ *                                                                                       *
+ *****************************************************************************************/
+//#define Z_THREE_STEPPER_DRIVERS
+
+#define INVERT_Z2_VS_Z_DIR false
+#define INVERT_Z3_VS_Z_DIR false
+//#define Z_THREE_ENDSTOPS
+/*****************************************************************************************/
+
+
+/*****************************************************************************************
+ ******************************* Z Steppers Auto-Alignment *******************************
+ *****************************************************************************************
+ *                                                                                       *
+ * Add the G34 command to align multiple Z steppers using a bed probe.                   *
+ * Only Cartesian & Core                                                                 *
+ *                                                                                       *
+ *****************************************************************************************/
+//#define Z_STEPPER_AUTO_ALIGN
+
+// Define probe X and Y positions for Z1, Z2 [, Z3]
+#define Z_STEPPER_ALIGN_X { 10, 150, 290 }
+#define Z_STEPPER_ALIGN_Y { 290, 10, 290 }
+// Set number of iterations to align
+#define Z_STEPPER_ALIGN_ITERATIONS 3
+// Enable to restore leveling setup after operation
+#define RESTORE_LEVELING_AFTER_G34
+// Use the amplification factor to de-/increase correction step.
+// In case the stepper (spindle) position is further out than the test point
+// Use a value > 1. NOTE: This may cause instability
+#define Z_STEPPER_ALIGN_AMP 1.0
+// Stop criterion. If the accuracy is better than this stop iterating early
+#define Z_STEPPER_ALIGN_ACC 0.02
+/*****************************************************************************************/
+
+
+/*****************************************************************************************
  ********************************** XY Frequency limit ***********************************
  *****************************************************************************************
  *                                                                                       *
@@ -867,34 +978,6 @@
 //============================= SENSORS FEATURES ============================
 //===========================================================================
 
-
-/**********************************************************************************
- *************************** Extruder Encoder Control *****************************
- **********************************************************************************
- *                                                                                *
- * Support for Encoder on extruder for control filament movement                  *
- * EXPERIMENTAL Function                                                          *
- *                                                                                *
- * You can compare filament moves with extruder moves to detect if the extruder   *
- * is jamming, the spool is knotted or if you are running out of filament.        *
- * You need a movement tracker, that changes a digital signal every x extrusion   *
- * steps.                                                                         *
- *                                                                                *
- * Please define/ Encoder pin for any extruder in configuration pins.              *
- *                                                                                *
- **********************************************************************************/
-//#define EXTRUDER_ENCODER_CONTROL
-
-// Enc error step is step for error detect
-#define ENC_ERROR_STEPS     500
-// Enc min step It must be the minimum number of steps that the extruder does
-// to get a signal from the encoder
-#define ENC_MIN_STEPS        10
-// For invert read signal
-//#define INVERTED_ENCODER_PINS
-/**********************************************************************************/
-
-
 /**********************************************************************************
  *************************** Filament diameter sensor *****************************
  **********************************************************************************
@@ -906,7 +989,7 @@
  * You also need to set FILWIDTH_PIN in Configuration_pins.h                      *
  *                                                                                *
  **********************************************************************************/
-//#define FILAMENT_SENSOR
+//#define FILAMENT_WIDTH_SENSOR
 
 #define FILAMENT_SENSOR_EXTRUDER_NUM  0   // Index of the extruder that has the filament sensor. :[0,1,2,3,4,5]
 #define MEASUREMENT_DELAY_CM         14   // (cm) The distance from the filament sensor to the melting chamber
@@ -930,26 +1013,56 @@
  * By default the firmware assumes                                                *
  * logic high = filament available                                                *
  * low = filament run out                                                         *
- * Single extruder only at this point (extruder 0)                                *
+ * Set valor for extruder 0 to extruder 5                                         *
  *                                                                                *
  * If you mount DAV system encoder filament runout (By D'angella Vincenzo)        *
  * define FILAMENT RUNOUT DAV SYSTEM                                              *
  * Put DAV_PIN for encoder input in Configuration_Pins.h                          *
+ *                                                                                *
+ * Support for Encoder on extruder for control filament movement                  *
+ *                                                                                *
+ * You can compare filament moves with extruder moves to detect if the extruder   *
+ * is jamming, the spool is knotted or if you are running out of filament.        *
+ * You need a movement tracker, that changes a digital signal every x extrusion   *
+ * steps.                                                                         *
  *                                                                                *
  * You also need to set FIL RUNOUT PIN in Configuration_pins.h                    *
  *                                                                                *
  **********************************************************************************/
 //#define FILAMENT_RUNOUT_SENSOR
 
-// DAV system ancoder filament runout
+// DAV system ancoder filament runout only one system
 //#define FILAMENT_RUNOUT_DAV_SYSTEM
 
+// Enable this option to use an encoder disc that toggles the runout pin
+// as the filament moves. (Be sure to set FILAMENT RUNOUT DISTANCE MM
+// large enough to avoid false positives.)
+//#define EXTRUDER_ENCODER_CONTROL
+
 // Set true or false should assigned
-#define FIL_RUNOUT_LOGIC true
+#define FIL_RUNOUT_0_LOGIC false
+#define FIL_RUNOUT_1_LOGIC false
+#define FIL_RUNOUT_2_LOGIC false
+#define FIL_RUNOUT_3_LOGIC false
+#define FIL_RUNOUT_4_LOGIC false
+#define FIL_RUNOUT_5_LOGIC false
+
 // Put true for use internal pullup for pin if the sensor is defined
-#define PULLUP_FIL_RUNOUT false
-// Time for double check switch in millisecond. Set 0 for disabled
-#define FILAMENT_RUNOUT_DOUBLE_CHECK 0
+#define FIL_RUNOUT_0_PULLUP false
+#define FIL_RUNOUT_1_PULLUP false
+#define FIL_RUNOUT_2_PULLUP false
+#define FIL_RUNOUT_3_PULLUP false
+#define FIL_RUNOUT_4_PULLUP false
+#define FIL_RUNOUT_5_PULLUP false
+
+// After a runout is detected, continue printing this length of filament
+// before executing the runout script. Useful for a sensor at the end of
+// a feed tube. Requires 4 bytes SRAM per sensor, plus 4 bytes overhead.
+// 0 disabled
+#define FILAMENT_RUNOUT_DISTANCE_MM 0
+
+#define FILAMENT_RUNOUT_THRESHOLD 5
+
 // Script execute when filament run out
 #define FILAMENT_RUNOUT_SCRIPT "M600"
 /**********************************************************************************/
@@ -1044,7 +1157,7 @@
  * Setting DOOR OPEN PIN in Configuration_Pins.h                          *
  *                                                                        *
  **************************************************************************/
-//#define DOOR_OPEN
+//#define DOOR_OPEN_FEATURE
 
 // Set true or false should assigned
 #define DOOR_OPEN_LOGIC false
@@ -1074,6 +1187,20 @@
 //============================= ADDON FEATURES ==============================
 //===========================================================================
 
+/*****************************************************************************************
+ ************************************** PCF8574 ******************************************
+ *****************************************************************************************
+ *                                                                                       *
+ * Add PCF8574 expansion IO for add 8 new pins                                           *
+ * The new pins are 120 - 121 - 122 - 123 - 124 - 125 - 126 - 127                        *
+ * Select the address of your board                                                      *
+ *                                                                                       *
+ *****************************************************************************************/
+//#define PCF8574_EXPANSION_IO
+#define PCF8574_ADDRESS 0x39
+/*****************************************************************************************/
+
+ 
 /************************************************************************************************************************
  ***************************************************** EEPROM ***********************************************************
  ************************************************************************************************************************
@@ -1097,6 +1224,12 @@
 // Uncomment this to enable EEPROM Serial responses.
 #define EEPROM_CHITCHAT
 
+// Disabled M503 report
+//#define DISABLE_M503
+
+// Init EEPROM automatically on any errors.
+//#define EEPROM_AUTO_INIT
+
 // Type EEPROM Hardware
 //  Caution!!! The cards that mount the eeprom by default
 //  have already enabled the correct define, do not touch this.
@@ -1104,21 +1237,56 @@
 //#define EEPROM_SPI
 #define EEPROM_SD
 //#define EEPROM_FLASH
-
-// Disabled M503 report
-//#define DISABLE_M503
 /************************************************************************************************************************/
 
 
 /*****************************************************************************************
- *************************************** SDCARD *******************************************
- ****************************************************************************************/
+ *************************************** SDCARD ******************************************
+ *****************************************************************************************
+ *                                                                                       *
+ * The alternative to the SD reader and put a USB Flash reader.                          *
+ * Support for USB thumb drives using an Arduino USB Host Shield or                      *
+ * equivalent MAX3421E breakout board. The USB thumb drive will appear                   *
+ * to MK4duo as an SD card.                                                              *
+ *                                                                                       *
+ * The MAX3421E must be assigned the same pins as the SD card reader, with               *
+ * the following pin mapping:                                                            *
+ *                                                                                       *
+ *    SCLK, MOSI, MISO --> SCLK, MOSI, MISO                                              *
+ *    INT              --> SD_DETECT_PIN                                                 *
+ *    SS               --> SDSS                                                          *
+ *                                                                                       *
+ * define SD support or USB FLASH drive support                                          *
+ *                                                                                       *
+ *****************************************************************************************/
 #define SDSUPPORT
+//#define USB_FLASH_DRIVE_SUPPORT (NOT USED FOR NOW!!!)
 
 //#define SDSLOW              // Use slower SD transfer mode (not normally needed - uncomment if you're getting volume init error or write file errors)
 #define SDEXTRASLOW         // Use even slower SD transfer mode (not normally needed - uncomment if you're getting volume init error)
 #define SD_CHECK_AND_RETRY  // Use CRC checks and retries on the SD communication
 //#define SD_EXTENDED_DIR     // Show extended directory including file length. Don't use this with Pronterface
+
+//
+// SD CARD: SPI SPEED
+//
+// Enable one of the following items for a slower SPI transfer speed.
+// This may be required to resolve "volume init" errors.
+//#define SD_HALF_SPEED
+//#define SD_QUARTER_SPEED
+//#define SD_EIGHTH_SPEED
+//#define SD_SIXTEENTH_SPEED
+
+//
+// SD CARD: ENABLE CRC
+//
+// Use CRC checks and retries on the SD communication.
+//#define SD_CHECK_AND_RETRY
+
+//
+// Show extended directory including file length.
+// Don't use this with Pronterface
+//#define SD_EXTENDED_DIR
 
 // Decomment this if you have external SD without DETECT_PIN
 #define SD_DISABLED_DETECT
@@ -1176,509 +1344,40 @@
 // This function enable the firmware write restart.bin file for restart print when power loss
 //#define SD_RESTART_FILE           // Uncomment to enable
 #define SD_RESTART_FILE_SAVE_TIME 1 // seconds between update
-
-// This enable the firmware to write statistics, that require frequent update on the SD card.
+#define SD_RESTART_FILE_PURGE_LEN   20  // Purge when restart
+#define SD_RESTART_FILE_RETRACT_LEN  1  // Retract when restart
 #define SD_SETTINGS             // Uncomment to enable
 #define SD_CFG_SECONDS 300        // seconds between update
 /*****************************************************************************************/
 
 
-/*****************************************************************************************
- *********************************** LCD Language ****************************************
- *****************************************************************************************
- *                                                                                       *
- * Here you may choose the language used by MK4duo on the LCD menus,                     *
- * the following list of languages are available:                                        *
- *  en, an, bg, ca, cn, cz, de, el, el-gr, es, eu, fi, fr,                               *
- *  gl, hr, it, jp-kana, nl, pl, pt, pt-br, ru, sk,                                      *
- *  tr, uk, zh_CN, zh_TW                                                                 *
- *                                                                                       *
- * 'en':'English',          'an':'Aragonese', 'bg':'Bulgarian',       'ca':'Catalan',    *
- * 'cn':'Chinese',          'cz':'Czech',     'de':'German',          'el':'Greek',      *
- * 'el-gr':'Greek (Greece)' 'es':'Spanish',   'eu':'Basque-Euskera',  'fi':'Finnish',    *
- * 'fr':'French',           'gl':'Galician',  'hr':'Croatian',        'it':'Italian',    *
- * 'jp-kana':'Japanese',    'nl':'Dutch',     'pl':'Polish',          'pt':'Portuguese', *
- * 'ru':'Russian',          'sk':'Slovak',    'tr':'Turkish',         'uk':'Ukrainian',  *
- * 'pt-br':'Portuguese (Brazilian)',                                                     *
- * 'zh_CN':'Chinese (Simplified)'                                                        *
- * 'zh_TW':'Chinese (Traditional)'                                                       *
- *                                                                                       *
- *****************************************************************************************/
-#define LCD_LANGUAGE en
-/*****************************************************************************************/
-
-
-/*****************************************************************************************
- ******************************** LCD Character Set **************************************
- *****************************************************************************************
- *                                                                                       *
- * Note: This option is NOT applicable to Graphical Displays.                            *
- *                                                                                       *
- * All character-based LCDs provide ASCII plus one of these                              *
- * language extensions:                                                                  *
- *                                                                                       *
- *  - JAPANESE ... the most common                                                       *
- *  - WESTERN  ... with more accented characters                                         *
- *  - CYRILLIC ... for the Russian language                                              *
- *                                                                                       *
- *****************************************************************************************/
-#define DISPLAY_CHARSET_HD44780 JAPANESE
-/*****************************************************************************************/
-
-
-/*****************************************************************************************
- ****************************** LCD / Controller Selection *******************************
- ******************************   (Character-based LCDs)   *******************************
- *****************************************************************************************/
-// RepRapDiscount Smart Controller.
-// http://reprap.org/wiki/RepRapDiscount_Smart_Controller
-//
-// Note: Usually sold with a white PCB.
-//
-//#define REPRAP_DISCOUNT_SMART_CONTROLLER
-
-//
-// ULTIMAKER Controller.
-//
-//#define ULTIMAKERCONTROLLER
-
-//
-// Ultipanel as seen on Thingiverse.
-//
-//#define ULTIPANEL
-
-//
-// PanelOne from T3P3 (via RAMPS 1.4 AUX2/AUX3)
-// http://reprap.org/wiki/PanelOne
-//
-//#define PANEL_ONE
-
-//
-// GADGETS3D G3D LCD/SD Controller
-// http://reprap.org/wiki/RAMPS_1.3/1.4_GADGETS3D_Shield_with_Panel
-//
-// Note: Usually sold with a blue PCB.
-//
-//#define G3D_PANEL
-
-//
-// RigidBot Panel V1.0
-// http://www.inventapart.com/
-//
-//#define RIGIDBOT_PANEL
-
-//
-// Makeboard 3D Printer Parts 3D Printer Mini Display 1602 Mini Controller
-// https://www.aliexpress.com/item/Micromake-Makeboard-3D-Printer-Parts-3D-Printer-Mini-Display-1602-Mini-Controller-Compatible-with-Ramps-1/32765887917.html
-//
-//#define MAKEBOARD_MINI_2_LINE_DISPLAY_1602
-
-//
-// ANET and Tronxy 20x4 Controller
-//
-//#define ZONESTAR_LCD            // Requires ADC_KEYPAD_PIN to be assigned to an analog pin.
-                                  // This LCD is known to be susceptible to electrical interference
-                                  // which scrambles the display.  Pressing any button clears it up.
-                                  // This is a LCD2004 display with 5 analog buttons.
-
-//
-// Generic 16x2, 16x4, 20x2, or 20x4 character-based LCD.
-//
-//#define ULTRA_LCD
-/*****************************************************************************************/
-
-
-/*****************************************************************************************
- ****************************** LCD / Controller Selection *******************************
- ***************************** (I2C and Shift-Register LCDs) *****************************
- *****************************************************************************************/
-//
-// CONTROLLER TYPE: I2C
-//
-// Note: These controllers require the installation of Arduino's LiquidCrystal_I2C
-// library. For more info: https://github.com/kiyoshigawa/LiquidCrystal_I2C
-//
-
-//
-// Elefu RA Board Control Panel
-// http://www.elefu.com/index.php?route=product/product&product_id=53
-//
-//#define RA_CONTROL_PANEL
-
-//
-// Sainsmart (YwRobot) LCD Displays
-//
-// These require F.Malpartida's LiquidCrystal_I2C library
-// https://bitbucket.org/fmalpartida/new-liquidcrystal/wiki/Home
-//
-//#define LCD_SAINSMART_I2C_1602
-//#define LCD_SAINSMART_I2C_2004
-
-//
-// Generic LCM1602 LCD adapter
-//
-//#define LCM1602
-
-//
-// PANELOLU2 LCD with status LEDs,
-// separate encoder and click inputs.
-//
-// Note: This controller requires Arduino's LiquidTWI2 library v1.2.3 or later.
-// For more info: https://github.com/lincomatic/LiquidTWI2
-//
-// Note: The PANELOLU2 encoder click input can either be directly connected to
-// a pin (if BTN_ENC defined to != -1) or read through I2C (when BTN_ENC == -1).
-//
-//#define LCD_I2C_PANELOLU2
-
-//
-// Panucatt VIKI LCD with status LEDs,
-// integrated click & L/R/U/D buttons, separate encoder inputs.
-//
-//#define LCD_I2C_VIKI
-
-// Original RADDS Display from Willy
-// http://max3dshop.org/index.php/default/elektronik/radds-lcd-sd-display-with-reset-and-back-buttom.html
-//#define RADDS_DISPLAY
-
-//
-// CONTROLLER TYPE: Shift register panels
-//
-
-//
-// 2 wire Non-latching LCD SR from https://goo.gl/aJJ4sH
-// LCD configuration: http://reprap.org/wiki/SAV_3D_LCD
-//
-//#define SAV_3DLCD
-/*****************************************************************************************/
-
-
-/*****************************************************************************************
- ****************************** LCD / Controller Selection *******************************
- ******************************      (Graphical LCDs)      *******************************
- *****************************************************************************************/
-//
-// CONTROLLER TYPE: Graphical 128x64 (DOGM)
-//
-// IMPORTANT: The U8glib library is required for Graphical Display!
-//            https://github.com/olikraus/U8glib_Arduino
-//
-
-//
-// RepRapDiscount FULL GRAPHIC Smart Controller
-// http://reprap.org/wiki/RepRapDiscount_Full_Graphic_Smart_Controller
-//
-//#define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
-
-//
-// ReprapWorld Graphical LCD
-// https://reprapworld.com/?products_details&products_id/1218
-//
-//#define REPRAPWORLD_GRAPHICAL_LCD
-
-//
-// Activate one of these if you have a Panucatt Devices
-// Viki 2.0 or mini Viki with Graphic LCD
-// http://panucatt.com
-//
-//#define VIKI2
-//#define miniVIKI
-
-//
-// MakerLab Mini Panel with graphic
-// controller and SD support - http://reprap.org/wiki/Mini_panel
-//
-//#define MINIPANEL
-
-//
-// MaKr3d Makr-Panel with graphic controller and SD support.
-// http://reprap.org/wiki/MaKr3d_MaKrPanel
-//
-//#define MAKRPANEL
-
-//
-// Adafruit ST7565 Full Graphic Controller.
-// https://github.com/eboston/Adafruit-ST7565-Full-Graphic-Controller/
-//
-//#define ELB_FULL_GRAPHIC_CONTROLLER
-
-//
-// BQ LCD Smart Controller shipped by
-// default with the BQ Hephestos 2 and Witbox 2.
-//
-//#define BQ_LCD_SMART_CONTROLLER
-
-//
-// WANHAO D6 SSD1309 OLED full graphics
-//
-//#define WANHAO_D6_OLED
-
-//
-// Cartesio UI
-// http://mauk.cc/webshop/cartesio-shop/electronics/user-interface
-//
-//#define CARTESIO_UI
-
-//
-// LCD for Melzi Card with Graphical LCD
-//
-//#define LCD_FOR_MELZI
-
-//
-// SSD1306 OLED full graphics generic display
-//
-//#define U8GLIB_SSD1306
-
-//
-// SAV OLEd LCD module support using either SSD1306 or SH1106 based LCD modules
-//
-//#define SAV_3DGLCD
-//#define U8GLIB_SSD1306
-//#define U8GLIB_SH1106
-
-//
-// Original Ulticontroller from Ultimaker 2 printer with SSD1309 I2C display and encoder
-// https://github.com/Ultimaker/Ultimaker2/tree/master/1249_Ulticontroller_Board_(x1)
-//
-//#define ULTI_CONTROLLER
-
-//
-// TinyBoy2 128x64 OLED / Encoder Panel
-//
-//#define OLED_PANEL_TINYBOY2
-
-//
-// MKS MINI12864 with graphic controller and SD support
-// http://reprap.org/wiki/MKS_MINI_12864
-//
-//#define MKS_MINI_12864
-
-//
-// Factory display for Creality CR-10
-// https://www.aliexpress.com/item/Universal-LCD-12864-3D-Printer-Display-Screen-With-Encoder-For-CR-10-CR-7-Model/32833148327.html
-//
-// This is RAMPS-compatible using a single 10-pin connector.
-// (For CR-10 owners who want to replace the Melzi Creality board but retain the display)
-//
-//#define CR10_STOCKDISPLAY
-
-//
-// ANET and Tronxy Graphical Controller
-//
-//#define ANET_FULL_GRAPHICS_LCD  // Anet 128x64 full graphics lcd with rotary encoder as used on Anet A6
-                                  // A clone of the RepRapDiscount full graphics display but with
-                                  // different pins/wiring (see pins_ANET_10.h).
-
-//
-// MKS OLED 1.3" 128 × 64 FULL GRAPHICS CONTROLLER
-// http://reprap.org/wiki/MKS_12864OLED
-//
-// Tiny, but very sharp OLED display
-//
-//#define MKS_12864OLED          // Uses the SH1106 controller (default)
-//#define MKS_12864OLED_SSD1306  // Uses the SSD1306 controller
-
-//
-// AZSMZ 12864 LCD with SD
-// https://www.aliexpress.com/store/product/3D-printer-smart-controller-SMART-RAMPS-OR-RAMPS-1-4-LCD-12864-LCD-control-panel-green/2179173_32213636460.html
-//
-//#define AZSMZ_12864
-
-//
-// Silvergate GLCD controller
-// http://github.com/android444/Silvergate
-//
-//#define SILVER_GATE_GLCD_CONTROLLER
-/*****************************************************************************************/
-
-
-/*****************************************************************************************
- ****************************** LCD / Controller Selection *******************************
- ******************************      Other Controllers     *******************************
- *****************************************************************************************/
-//
-// Nextion 4.3" - 5" Enanched - 7" Enanched HMI panel
-//
-//#define NEXTION
-// Define Serial it use
-#define NEXTION_SERIAL 1
-// For GFX preview visualization enable NEXTION GFX
-//#define NEXTION_GFX
-// Define name firmware file for Nextion on SD
-#define NEXTION_FIRMWARE_FILE "mk4duo.tft"
-/*****************************************************************************************/
-
-
-/*****************************************************************************************
- ************************************** LCD Options **************************************
- *****************************************************************************************/
-
-#define SHOW_BOOTSCREEN
-#define STRING_SPLASH_LINE1 "v" SHORT_BUILD_VERSION   // will be shown during bootup in line 1
-#define STRING_SPLASH_LINE2 STRING_DISTRIBUTION_DATE  // will be shown during bootup in line 2
-#define BOOTSCREEN_TIMEOUT 2500
-
-//
-// *** VENDORS PLEASE READ ***
-//
-// MK4duo allows you to add a custom boot image for Graphical LCDs.
-// With this option MK4duo will first show your custom screen followed
-// by the standard MK4duo logo with version number and web URL.
-// We encourage you to take advantage of this new feature and we also
-// respectfully request that you retain the unmodified MK4duo boot screen.
-//
-
-// Enable to show the bitmap in MK4duo/src/lcd/custom_bootscreen.h on startup.
-//#define SHOW_CUSTOM_BOOTSCREEN
-
-// Additional options for Graphical Displays
-//
-// Use the optimizations here to improve printing performance,
-// which can be adversely affected by graphical display drawing,
-// especially when doing several short moves, and when printing
-// on DELTA and SCARA machines.
-//
-// Some of these options may result in the display lagging behind
-// controller events, as there is a trade-off between reliable
-// printing performance versus fast display updates.
-
-// Enable to save many cycles by drawing a hollow frame on the Info Screen
-#define XYZ_HOLLOW_FRAME
-
-// Enable to save many cycles by drawing a hollow frame on Menu Screens
-#define MENU_HOLLOW_FRAME
-
-// A bigger font is available for edit items. Costs 3120 bytes of PROGMEM.
-// Western only. Not available for Cyrillic, Kana, Turkish, Greek, or Chinese.
-//#define USE_BIG_EDIT_FONT
-
-// A smaller font may be used on the Info Screen. Costs 2300 bytes of PROGMEM.
-// Western only. Not available for Cyrillic, Kana, Turkish, Greek, or Chinese.
-//#define USE_SMALL_INFOFONT
-
-// Enable this option and reduce the value to optimize screen updates.
-// The normal delay is 10µs. Use the lowest value that still gives a reliable display.
-//#define DOGM_SPI_DELAY_US 5
-
-// Swap the CW/CCW indicators in the graphics overlay
-//#define OVERLAY_GFX_REVERSE
-
-//
-// LCD Menu Items
-//
-// Disable all menus and only display the Status Screen, or
-// just remove some extraneous menu items to recover space.
-//
-//#define NO_LCD_MENUS
-//#define SLIM_LCD_MENUS
-
-//
-// ENCODER SETTINGS
-//
-// This option overrides the default number of encoder pulses needed to
-// produce one step. Should be increased for high-resolution encoders.
-#define ENCODER_PULSES_PER_STEP 5
-
-// Use this option to override the number of step signals required to
-// move between next/prev menu items.
-#define ENCODER_STEPS_PER_MENU_ITEM 1
-
-//#define LCD_SCREEN_ROT_90    // Rotate screen orientation for graphics display by 90 degree clockwise
-//#define LCD_SCREEN_ROT_180   // Rotate screen orientation for graphics display by 180 degree clockwise
-//#define LCD_SCREEN_ROT_270   // Rotate screen orientation for graphics display by 270 degree clockwise
-
-//#define INVERT_CLICK_BUTTON           // Option for invert encoder button logic
-//#define INVERT_BACK_BUTTON            // Option for invert back button logic if avaible
-
-// Encoder Direction Options
-// Test your encoder's behavior first with both options disabled.
-//
-//  Reversed Value Edit and Menu Nav? Enable REVERSE_ENCODER_DIRECTION.
-//  Reversed Menu Navigation only?    Enable REVERSE_MENU_DIRECTION.
-//  Reversed Value Editing only?      Enable BOTH options.
-
-// This option reverses the encoder direction everywhere
-//  Set this option if CLOCKWISE causes values to DECREASE
-//#define REVERSE_ENCODER_DIRECTION
-
-// This option reverses the encoder direction for navigating LCD menus.
-//  If CLOCKWISE normally moves DOWN this makes it go UP.
-//  If CLOCKWISE normally moves UP this makes it go DOWN.
-//#define REVERSE_MENU_DIRECTION
-
-#define ENCODER_RATE_MULTIPLIER         // If defined, certain menu edit operations automatically multiply the steps when the encoder is moved quickly
-#define ENCODER_10X_STEPS_PER_SEC 75    // If the encoder steps per sec exceeds this value, multiply steps moved x10 to quickly advance the value
-#define ENCODER_100X_STEPS_PER_SEC 160  // If the encoder steps per sec exceeds this value, multiply steps moved x100 to really quickly advance the value
-
-// Comment to disable setting feedrate multiplier via encoder
-#define ULTIPANEL_FEEDMULTIPLY
-
-// SPEAKER/BUZZER
-// If you have a speaker that can produce tones, enable it here.
-// By default MK4duo assumes you have a buzzer with a fixed frequency.
-//#define SPEAKER
-
-// The duration and frequency for the UI feedback sound.
-// Set these to 0 to disable audio feedback in the LCD menus.
-
-// Note: Test audio output with the G-Code:
-//  M300 S<frequency Hz> P<duration ms>
-//#define LCD_FEEDBACK_FREQUENCY_DURATION_MS 2
-//#define LCD_FEEDBACK_FREQUENCY_HZ 5000
-
-// Display Voltage Logic Selector on Alligator Board
-//#define UI_VOLTAGE_LEVEL 0 // 3.3 V
-#define UI_VOLTAGE_LEVEL 1   // 5 V
-
-// Include a page of printer information in the LCD Main Menu
-#define LCD_INFO_MENU
-
-// Scroll a longer status message into view
-//#define STATUS_MESSAGE_SCROLLING
-
-// On the Info Screen, display XY with one decimal place when possible
-//#define LCD_DECIMAL_SMALL_XY
-
-// The timeout (in ms) to return to the status screen from sub-menus
-//#define LCD_TIMEOUT_TO_STATUS 15000
-
-// LED Control Menu
-// Enable this feature to add LED Control to the LCD menu
-//#define LED_CONTROL_MENU
-//#define LED_COLOR_PRESETS             // Enable the Preset Color menu option
-//#define LED_USER_PRESET_STARTUP       // Have the printer display the user preset color on startup
-#define LED_USER_PRESET_RED        255  // User defined RED value
-#define LED_USER_PRESET_GREEN      255  // User defined GREEN value
-#define LED_USER_PRESET_BLUE       255  // User defined BLUE value
-#define LED_USER_PRESET_WHITE      255  // User defined WHITE value
-#define LED_USER_PRESET_BRIGHTNESS 255  // User defined intensity
-
-// Show a progress bar on HD44780 LCDs for SD printing
-//#define LCD_PROGRESS_BAR
-// Amount of time (ms) to show the bar
-#define PROGRESS_BAR_BAR_TIME 5000
-// Amount of time (ms) to show the status message
-#define PROGRESS_BAR_MSG_TIME 1500
-// Amount of time (ms) to retain the status message (0=forever)
-#define PROGRESS_MSG_EXPIRE 0
-// Uncomment this to show messages for MSG_TIME then hide them
-//#define PROGRESS_MSG_ONCE
-// Add a menu item to test the progress bar:
-//#define LCD_PROGRESS_BAR_TEST
-/*****************************************************************************************/
-
-
 /**************************************************************************
- *************************** Canon RC-1 Remote ****************************
+ ***************************** Photo G-code *******************************
  **************************************************************************
  *                                                                        *
- * M240 Triggers a camera by emulating a Canon RC-1 Remote                *
- * Data from: http://www.doc-diy.net/photo/rc-1_hacked/                   *
+ * Add the M240 G-code to take a photo.                                   *
+ * The photo can be triggered by a digital pin or a physical movement.    *
  *                                                                        *
+ * Canon RC-1 or homebrew digital camera trigger                          *
+ * Data from: http://www.doc-diy.net/photo/rc-1_hacked/                   *
  * You also need to set PHOTOGRAPH_PIN in Configuration_pins.h            *
  *                                                                        *
+ * Canon Hack Development Kit                                             *
+ * http://captain-slow.dk/2014/03/09/3d-printing-timelapses/              *
+ * You also need to set CHDK_PIN in Configuration_pins.h                  *
+ *                                                                        *
  **************************************************************************/
-//#define PHOTOGRAPH
+//#define PHOTO_GCODE
+// A position to move to (and raise Z) before taking the photo
+//#define PHOTO_POSITION { X_MAX_POS - 5, Y_MAX_POS, 0 }  // { xpos, ypos, zraise } (M240 X Y Z)
+//#define PHOTO_DELAY_MS   100                            // (ms) Duration to pause before moving back (M240 P)
+//#define PHOTO_RETRACT_MM   6.5                          // (mm) E retract/recover for the photo move (M240 R S)
+
+// Optional second move with delay to trigger the camera shutter
+//#define PHOTO_SWITCH_POSITION { X_MAX_POS, Y_MAX_POS }  // { xpos, ypos } (M240 I J)
+
+// Duration to hold the switch or keep CHDK_PIN high
+#define PHOTO_SWITCH_MS   50 // (ms) (M240 D)
 /**************************************************************************/
 
 
@@ -1862,10 +1561,10 @@
  ********************** Double / Quad Stepping *************************
  ***********************************************************************
  *                                                                     *
- * Disable double / quad stepping                                      *
+ * Enable/Disable double / quad stepping                               *
  *                                                                     *
  ***********************************************************************/
-//#define DISABLE_DOUBLE_QUAD_STEPPING
+#define DOUBLE_QUAD_STEPPING true
 /***********************************************************************/
 
 
@@ -1973,19 +1672,16 @@
  ***********************************************************************
  *                                                                     *
  * Microstep setting - Only functional when stepper driver microstep   *
- * pins are connected to MCU.                                          *
+ * pins are connected to MCU or TMC DRIVER.                            *
+ *                                                                     *
+ * [1, 2, 4, 8, 16, 32, 64, 128]                                       *
  *                                                                     *
  * Alligator Board support 16 or 32 only value                         *
  *                                                                     *
- * [1,2,4,8,16,32]                                                     *
- *                                                                     *
  ***********************************************************************/
 #define X_MICROSTEPS  16
-#define X2_MICROSTEPS 16
 #define Y_MICROSTEPS  16
-#define Y2_MICROSTEPS 16
 #define Z_MICROSTEPS  16 // FIXME
-#define Z2_MICROSTEPS 16
 #define E0_MICROSTEPS 16
 #define E1_MICROSTEPS 16
 #define E2_MICROSTEPS 16
@@ -1997,15 +1693,15 @@
 
 /***********************************************************************
  ************************** Motor's current ****************************
+ ***********************************************************************
+ *                                                                     *
+ * Motor Current setting                                               *
+ * Values 100 - 3000 in mA                                             *
+ *                                                                     *
  ***********************************************************************/
-// Motor Current setting
-// X Y Z E0 E1 E2 E3 - Values 100 - 3000 in mA
 #define X_CURRENT   800
-#define X2_CURRENT  800
 #define Y_CURRENT   800
-#define Y2_CURRENT  800
 #define Z_CURRENT   800
-#define Z2_CURRENT  800
 #define E0_CURRENT  800
 #define E1_CURRENT  800
 #define E2_CURRENT  800
@@ -2043,6 +1739,29 @@
 //===========================================================================
 
 
+/****************************************************************************
+ **************************** Service Timers function ***********************
+ ****************************************************************************
+ *                                                                          *
+ * Activate up to 3 service interval function                               *
+ * time is in hours                                                         *
+ *                                                                          *
+ * Example:                                                                 *
+ *  SERVICE_NAME_1        "Clean bearing"                                   *
+ *  SERVICE_TIME_1        200  hours                                        *
+ *                                                                          *
+ ****************************************************************************/
+//#define SERVICE_NAME_1        "Service 1"
+//#define SERVICE_TIME_1        100
+//#define SERVICE_NAME_2        "Service 2"
+//#define SERVICE_TIME_2        100
+//#define SERVICE_NAME_3        "Service 3"
+//#define SERVICE_TIME_3        100
+
+#define SERVICE_WARNING_BUZZES  3
+/****************************************************************************/
+
+
 /****************************************************************************************
  ************************************** Buffer stuff ************************************
  ****************************************************************************************/
@@ -2057,7 +1776,6 @@
 // For Arduino DUE setting to 8
 #define BUFSIZE 8
 
-/** START Function only for 8 bit proccesor */
 // Transmission to Host Buffer Size
 // To save 386 bytes of PROGMEM (and TX_BUFFER_SIZE+3 bytes of RAM) set to 0.
 // To buffer a simple "ok" you need 4 bytes.
@@ -2084,22 +1802,22 @@
 // Enable this option to collect and display the number
 // of dropped bytes after a file transfer to SD.
 //#define SERIAL_STATS_DROPPED_RX
-/** END Function only for 8 bit proccesor */
 
 // Defines the number of memory slots for saving/restoring position (G60/G61)
-// The values should not be less than 1
+// The values should not be less than 2
 #define NUM_POSITON_SLOTS 2
 
 // minimum time in microseconds that a movement needs to take if the buffer is emptied.
-#define DEFAULT_MINSEGMENTTIME 20000
+#define DEFAULT_MIN_SEGMENT_TIME 20000
 
 //
 // G2/G3 Arc Support
 //
 // Disable this feature to save ~3226 bytes
-#define ARC_SUPPORT
-#define MM_PER_ARC_SEGMENT 1    // Length of each arc segment
-#define N_ARC_CORRECTION  25    // Number of intertpolated segments between corrections
+//#define ARC_SUPPORT
+#define MM_PER_ARC_SEGMENT  1   // Length of each arc segment
+#define MIN_ARC_SEGMENTS   24   // Minimum number of segments in a complete circle
+#define N_ARC_CORRECTION   25   // Number of intertpolated segments between corrections
 //#define ARC_P_CIRCLES         // Enable the 'P' parameter to specify complete circles
 //#define CNC_WORKSPACE_PLANES  // Allow G2/G3 to operate in XY, ZX, or YZ planes
 
@@ -2202,7 +1920,7 @@
  ****************************************************************************************/
 //#define NOZZLE_PARK_FEATURE
 
-// Specify a park position as { X, Y, Z }
+// Specify a park position as { X, Y, Z_raise }
 #define NOZZLE_PARK_POINT { 10, 10, 20 }
 #define NOZZLE_PARK_XY_FEEDRATE 100   // X and Y axes feedrate in mm/s (also used for delta printers Z axis)
 #define NOZZLE_PARK_Z_FEEDRATE    5   // Z axis feedrate in mm/s (not used for delta printers)
@@ -2254,7 +1972,7 @@
 #define FILAMENT_UNLOAD_PURGE_LENGTH       8  // (mm) An unretract is done, then this length is purged.
 
 #define PAUSE_PARK_NOZZLE_TIMEOUT         45  // (seconds) Time limit before the nozzle is turned off for safety.
-#define PAUSE_PARK_PRINTER_OFF 5              // (minute) Time limit before turn off printer if user doesn't change filament.
+#define PAUSE_PARK_PRINTER_OFF             5  // (minute) Time limit before turn off printer if user doesn't change filament.
 #define PAUSE_PARK_NUMBER_OF_ALERT_BEEPS  10  // Number of alert beeps before printer goes quiet
 #define PAUSE_PARK_NO_STEPPER_TIMEOUT         // Enable for XYZ steppers to stay powered on during filament change.
 
@@ -2337,17 +2055,6 @@
 
 
 /*****************************************************************************************
- ****************************** Extend capabilities report *******************************
- *****************************************************************************************
- *                                                                                       *
- * Include capabilities in M115 output                                                   *
- *                                                                                       *
- *****************************************************************************************/
-//#define EXTENDED_CAPABILITIES_REPORT
-/*****************************************************************************************/
-
-
-/*****************************************************************************************
  *************************************** Whatchdog ***************************************
  *****************************************************************************************
  *                                                                                       *
@@ -2396,33 +2103,3 @@
  *****************************************************************************************/
 #define PROPORTIONAL_FONT_RATIO 1
 /*****************************************************************************************/
-
-
-/*****************************************************************************************
- *********************************** User menu items *************************************
- *****************************************************************************************
- *                                                                                       *
- * USer-defined menu items that execute custom GCode                                     *
- *                                                                                       *
- *****************************************************************************************/
-//#define CUSTOM_USER_MENUS
-
-#define USER_SCRIPT_DONE "M117 User Script Done"
-
-#define USER_DESC_1 "Home & ABL"
-#define USER_GCODE_1 "G28\nG29"
-
-#define USER_DESC_2 "Preheat for PLA"
-#define USER_GCODE_2 "M140 S" STRINGIFY(PREHEAT_1_TEMP_BED) "\nM104 S" STRINGIFY(PREHEAT_1_TEMP_HOTEND)
-
-#define USER_DESC_3 "Preheat for ABS"
-#define USER_GCODE_3 "M140 S" STRINGIFY(PREHEAT_2_TEMP_BED) "\nM104 S" STRINGIFY(PREHEAT_2_TEMP_HOTEND)
-
-#define USER_DESC_4 "Heat Bed/Home/Level"
-#define USER_GCODE_4 "M140 S" STRINGIFY(PREHEAT_2_TEMP_BED) "\nG28\nG29"
-
-#define USER_DESC_5 "Home & Info"
-#define USER_GCODE_5 "G28\nM503"
-/*****************************************************************************************/
-
-#endif /* _CONFIGURATION_FEATURE_H_ */

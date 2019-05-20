@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#ifndef _BOARD_H_
-#define _BOARD_H_
+#pragma once
 
 // Macros for board type
 #define BOARD_UNKNOWN -1
@@ -42,8 +40,8 @@
  */
 #define BOARD_ULTIMAKER          7    // Ultimaker
 #define BOARD_SAINSMART_2IN1    39    // SainSmart 2 in 1
-#define BOARD_MKS_BASE          40    // MKS BASE 1.0
-#define BOARD_MKS_13            47    // MKS v1.3 or 1.4 (maybe higher)
+#define BOARD_MKS_BASE          40    // MKS BASE v1.0
+#define BOARD_MKS_13            47    // MKS GEN v1.3 or 1.4
 #define BOARD_TRIGORILLA        49    // TRIGORILLA (ANYCUBIC)
 #define BOARD_MKS_GEN_L         53    // MKS GEN L
 #define BOARD_AZTEEG_X3         67    // Azteeg X3
@@ -52,6 +50,8 @@
 #define BOARD_ULTIMAIN_2        72    // Ultimainboard 2.x (Uses TEMP_SENSOR 20)
 #define BOARD_GT2560_REV_A      74    // Geeetech GT2560 Rev. A
 #define BOARD_GT2560_REV_A_PLUS 75    // Geeetech GT2560 Rev. A+
+#define BOARD_GT2560_V3         76    // Geeetech GT2560 Rev. B for A10(M/D)
+#define BOARD_GT2560_V3_A20     86    // Geeetech GT2560 Rev. B for A20(M/D)
 #define BOARD_3DRAG             77    // 3Drag Controller
 #define BOARD_K8200             78    // Vellemann K8200 Controller (variant of the 3Drag Controller)
 #define BOARD_3DVERTEX          79    // 3DVertex Controller (Velleman K8400)
@@ -141,5 +141,3 @@
  * SAMD21J18
  */
 #define BOARD_MINITRONICS_V2  2706    // Minitronics v2.0
-
-#endif /* _BOARD_H_ */

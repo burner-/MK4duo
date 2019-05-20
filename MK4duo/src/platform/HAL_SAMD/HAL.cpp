@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@
  * Description: HAL for Arduino SAMD
  *
  * Contributors:
- * Copyright (c) 2018 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * ARDUINO_ARCH_SAMD
  */
@@ -68,6 +68,10 @@ uint8_t MCUSR;
 #if ANALOG_INPUTS > 0
   int16_t HAL::AnalogInputValues[NUM_ANALOG_INPUTS] = { 0 };
   bool    HAL::Analog_is_ready = false;
+
+  void HAL::AdcChangePin(const pin_t old_pin, const pin_t new_pin) {}
+
+  void HAL::analogStart() {}
 #endif
 
 // Wait for synchronization of registers between the clock domains
@@ -96,12 +100,12 @@ void sei(void) {
 // input parameters: Arduino pin number, frequency in Hz, duration in milliseconds
 void tone(const pin_t t_pin, const uint16_t frequency, const uint16_t duration) {
 
-  millis_t endTime = millis() + duration;
+  millis_s endTime = millis();
   const uint32_t halfPeriod = 1000000L / frequency / 2;
 
   HAL::pinMode(t_pin, OUTPUT_LOW);
 
-  while (PENDING(millis(),  endTime)) {
+  while (pending(endTime, duration)) {
     HAL::digitalWrite(t_pin, HIGH);
     HAL::delayMicroseconds(halfPeriod);
     HAL::digitalWrite(t_pin, LOW);
@@ -120,6 +124,11 @@ extern "C" int sysTickHook() {
   return 0;
 }
 
+bool HAL::SPIReady = false;
+
+// do any hardware-specific initialization here
+void HAL::hwSetup(void) { SPIReady= true; }
+
 HAL::HAL() {
   // ctor
 }
@@ -133,7 +142,7 @@ bool HAL::execute_100ms = false;
 // Return available memory
 int HAL::getFreeRam() {
   struct mallinfo memstruct = mallinfo();
-  register char * stack_ptr asm ("sp");
+  char * stack_ptr asm ("sp");
 
   // avail mem in heap + (bottom of stack addr - end of heap addr)
   return (memstruct.fordblks + (int)stack_ptr -  (int)sbrk(0));
@@ -182,7 +191,7 @@ static inline uint32_t mapResolution(uint32_t value, uint32_t from, uint32_t to)
 }
 
 
-void HAL::analogWrite(pin_t pin,  uint32_t value, const uint16_t freq/*=1000*/) {
+void HAL::analogWrite(pin_t pin, uint32_t value, const uint16_t freq/*=1000U*/, const bool hwpwm/*=true*/) {
 
   PinDescription pinDesc = g_APinDescription[pin];
   uint32_t attr = pinDesc.ulPinAttribute;
@@ -320,46 +329,43 @@ void HAL::analogWrite(pin_t pin,  uint32_t value, const uint16_t freq/*=1000*/) 
  */
 void HAL::Tick() {
 
-  static millis_t cycle_check_temp = 0;
-	millis_t now = millis();
+  static millis_s cycle_check_temp_ms = 0;
 
-  if (!printer.isRunning()) return;
+  if (printer.isStopped()) return;
 
-  #if HEATER_COUNT > 0
-  
-    LOOP_HEATER() heaters[h].SetHardwarePwm();
+  // Heaters set output PWM
+  #if HOTENDS > 0
+    LOOP_HOTEND() hotends[h].set_output_pwm();
+  #endif
+  #if BEDS > 0
+    LOOP_BED() beds[h].set_output_pwm();
+  #endif
+  #if CHAMBERS > 0
+    LOOP_CHAMBER() chambers[h].set_output_pwm();
   #endif
 
   #if FAN_COUNT > 0
-    //LOOP_FAN() fans[f].SetHardwarePwm();
+    LOOP_FAN() fans[f].set_output_pwm();
   #endif
 
   // Calculation cycle temp a 100ms
-  if (ELAPSED(now, cycle_check_temp)) {
-    cycle_check_temp = now + 100UL;
+  if (expired(&cycle_check_temp_ms, 100U)) {
     // Temperature Spin
     thermalManager.spin();
+    #if ENABLED(FAN_KICKSTART_TIME) && FAN_COUNT > 0
+      LOOP_FAN() {
+        if (fans[f].kickstart) fans[f].kickstart--;
+      }
+    #endif
   }
 
   // read analog values
   #if ANALOG_INPUTS > 0
-    LOOP_HEATER() AnalogInputValues[heaters[h].sensor.pin] = (analogRead(heaters[h].sensor.pin) * 16);
+    LOOP_HOTEND() AnalogInputValues[hotends[h].sensor.pin] = (analogRead(hotends[h].sensor.pin) * 16);
     Analog_is_ready = true;
     // Update the raw values if they've been read. Else we could be updating them during reading.
     thermalManager.set_current_temp_raw();
   #endif
-
-  #if ENABLED(BABYSTEPPING)
-    LOOP_XYZ(axis) {
-      int curTodo = mechanics.babystepsTodo[axis]; //get rid of volatile for performance
-
-      if (curTodo) {
-        stepper.babystep((AxisEnum)axis, curTodo > 0);
-        if (curTodo > 0) mechanics.babystepsTodo[axis]--;
-                    else mechanics.babystepsTodo[axis]++;
-      }
-    }
-  #endif //BABYSTEPPING
 
   endstops.Tick();
 

@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * flowmeter.h - Flowmeter control library for Arduino - Version 1
@@ -39,44 +40,34 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef _FLOWMETER_H_
-#define _FLOWMETER_H_
+#if ENABLED(FLOWMETER_SENSOR)
 
 #define FLOWMETER_CALIBRATION (FLOWMETER_MAXFREQ / FLOWMETER_MAXFLOW)
 
-#if ENABLED(FLOWMETER_SENSOR)
+class FlowMeter {
 
-  class FlowMeter {
+  public: /** Constructor */
 
-    public: /** Constructor */
+    FlowMeter() {};
 
-      FlowMeter() {};
+  public: /** Public Parameters */
 
-    public: /** Public Parameters */
+    static bool   flow_firstread;
+    static float  flowrate;
+    static int    flowrate_pulsecount;  
 
-      static bool   flow_firstread;
-      static float  flowrate;
-      static int flowrate_pulsecount;  
+  private: /** Private Parameters */
 
-    public: /** Public Function */
+    static millis_l lastflow;
 
-      static void flowrate_manage();
-      static void flow_init();
-      static void print_flow_rate_state();
+  public: /** Public Function */
 
-    private: /** Private Parameters */
+    static void init();
+    static void spin();
+    static void print_flowrate();
 
-      static millis_t flowmeter_timer,
-                      lastflow;
+};
 
-    private: /** Private Function */
-
-  };
-
-  extern FlowMeter flowmeter;
-
-  extern void flowrate_pulsecounter();
+extern FlowMeter flowmeter;
 
 #endif // ENABLED(FLOWMETER_SENSOR)
-
-#endif /* _FLOWMETER_H_ */

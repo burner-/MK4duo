@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,48 +34,14 @@
 // --------------------------------------------------------------------------
 
 #include "../platform.h"
-#include <Wire.h>
-
-// --------------------------------------------------------------------------
-// Externals
-// --------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------
 // Local defines
 // --------------------------------------------------------------------------
-#ifndef WIRE_PORT
-  #define WIRE_PORT 1
+
+#ifndef EEPROM_DELAY
+  #define EEPROM_DELAY 5
 #endif
-
-#if (WIRE_PORT == 2)
-  #define WIRE  Wire1
-#else
-  #define WIRE  Wire
-#endif
-
-// --------------------------------------------------------------------------
-// Types
-// --------------------------------------------------------------------------
-
-// --------------------------------------------------------------------------
-// Variables
-// --------------------------------------------------------------------------
-
-// --------------------------------------------------------------------------
-// Public Variables
-// --------------------------------------------------------------------------
-
-// --------------------------------------------------------------------------
-// Private Variables
-// --------------------------------------------------------------------------
-
-// --------------------------------------------------------------------------
-// Function prototypes
-// --------------------------------------------------------------------------
-
-// --------------------------------------------------------------------------
-// Private functions
-// --------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------
 // Public functions
@@ -104,7 +70,7 @@ void eeprom_write_byte(uint8_t* pos, uint8_t value) {
 
   // wait for write cycle to complete
   // this could be done more efficiently with "acknowledge polling"
-  HAL::delayMilliseconds(5);
+  HAL::delayMilliseconds(EEPROM_DELAY);
 }
 
 // WARNING: address is a page address, 6-bit end will wrap around
@@ -133,7 +99,7 @@ void eeprom_update_block(const void* pos, void* eeprom_address, size_t n) {
 
     // wait for write cycle to complete
     // this could be done more efficiently with "acknowledge polling"
-    HAL::delayMilliseconds(5);
+    HAL::delayMilliseconds(EEPROM_DELAY);
   }
 }
 

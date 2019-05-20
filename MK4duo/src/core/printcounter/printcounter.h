@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,38 +19,50 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#ifndef _PRINTCOUNTER_H_
-#define _PRINTCOUNTER_H_
-
-#include "duration_t.h"
+#pragma once
 
 //#define DEBUG_PRINTCOUNTER
 
 struct printStatistics {
-  uint16_t  totalPrints;    // Number of prints
-  uint16_t  finishedPrints; // Number of complete prints
-  uint32_t  printTime;      // Accumulated printing time
-  uint32_t  printer_usage;  // Printer usage ON
-  double    filamentUsed;   // Accumulated filament consumed in mm
+  uint16_t  totalPrints,      // Number of prints
+            finishedPrints;   // Number of complete prints
+  uint32_t  timePrint,        // Accumulated printing time
+            longestPrint,     // Longest successful print job
+            timePowerOn;      // Accumulated printer in power on
+  float     filamentUsed;     // Accumulated filament consumed in mm
+
+  #if HAS_SERVICE_TIMES
+    uint32_t  ServiceTime1,   // Service Time 1
+              ServiceTime2,   // Service Time 2
+              ServiceTime3;   // Service Time 3
+  #endif
+
+  #if HAS_POWER_CONSUMPTION_SENSOR
+    uint32_t  consumptionHour; // Holds the power consumption per hour as accurately measured
+  #endif
+
 };
 
-class PrintCounter: public Stopwatch {
-
-  public: /** Public Parameters */
-
-    static printStatistics data;
-
-    /**
-     * @brief Stats were loaded from SDCARD
-     * @details If set to true it indicates if the statistical data was already
-     * loaded from the SDCARD.
-     */
-    static bool loaded;
+class PrintCounter: public Watch {
 
   private: /** Private Parameters */
 
-    typedef Stopwatch super;
+    typedef Watch watch;
+
+    static printStatistics data;
+
+    #if ENABLED(EEPROM_I2C) || ENABLED(EEPROM_SPI) || ENABLED(CPU_32_BIT)
+      static const uint32_t address;
+    #else
+      static const uint16_t address;
+    #endif
+
+    /**
+     * @brief Timestamp of the last call to deltaDuration()
+     * @details Stores the timestamp of the last deltaDuration(), this is
+     * required due to the updateInterval cycle.
+     */
+    static millis_l lastDuration;
 
   public: /** Public Function */
 
@@ -58,7 +70,7 @@ class PrintCounter: public Stopwatch {
      * @brief Initialize the print counter
      */
     static inline void init() {
-      super::init();
+      watch::init();
       loadStats();
     }
 
@@ -70,18 +82,6 @@ class PrintCounter: public Stopwatch {
     static void initStats();
 
     /**
-     * @brief Loads the Print Statistics
-     * @details Loads the statistics from SDCARD
-     */
-    static void loadStats();
-
-    /**
-     * @brief Saves the Print Statistics
-     * @details Saves the statistics to SDCARD
-     */
-    static void saveStats();
-
-    /**
      * @brief Serial output the Print Statistics
      * @details This function may change in the future, for now it directly
      * prints the statistical data to serial.
@@ -89,11 +89,53 @@ class PrintCounter: public Stopwatch {
     static void showStats();
 
     /**
+     * @brief Loads the Print Statistics
+     * @details Loads the statistics from SDCARD
+     */
+    static void loadStats();
+
+    /**
+     * @brief Saves the Print Statistics
+     * @details Saves the statistics to EEPROM
+     */
+    static void saveStats();
+
+    /**
+     * @brief Return the currently loaded statistics
+     * @details Return the raw data, in the same structure used internally
+     */
+    static printStatistics getStats() { return data; }
+
+    /**
      * @brief Loop function
      * @details This function should be called at loop, it will take care of
      * periodically save the statistical data to SDCARD and do time keeping.
      */
     static void tick();
+
+    /**
+     * @brief Increment the total filament used
+     * @details The total filament used counter will be incremented by "amount".
+     *
+     * @param amount The amount of filament used in mm
+     */
+    static void incFilamentUsed(float const &amount);
+
+    /**
+     * @brief Reset and need Service
+     */
+    #if HAS_SERVICE_TIMES
+      static void resetServiceTime(const int index);
+      static bool needService(const int index);
+    #endif
+
+    /**
+     * @brief Increment the total Consumtion Hour
+     */
+    #if HAS_POWER_CONSUMPTION_SENSOR
+      static void incConsumptionHour() { data.consumptionHour++; }
+      static uint32_t getConsumptionHour() { return data.consumptionHour; }
+    #endif
 
     /**
      * The following functions are being overridden
@@ -108,20 +150,20 @@ class PrintCounter: public Stopwatch {
        * @brief Prints a debug message
        * @details Prints a simple debug message "PrintCounter::function"
        */
-      static void debug(const char func[]);
+      static void debug(PGM_P const func);
 
     #endif
 
   private: /** Private Function */
 
-    /**
-     * @brief Timestamp of the last call to deltaDuration()
-     * @details Stores the timestamp of the last deltaDuration(), this is
-     * required due to the updateInterval cycle.
-     */
-    static millis_t lastDuration;
+    #if HAS_SERVICE_TIMES
 
-  protected: /** Protected Parameters */
+      static void service_when(char buffer[], const char * const msg, const uint32_t when);
+      static bool service_warning(const char * const msg);
+
+    #endif
+
+  protected: /** Protected Function */
 
     /**
      * @brief dT since the last call
@@ -129,10 +171,8 @@ class PrintCounter: public Stopwatch {
      * used internally for print statistics accounting is not intended to be a
      * user callable function.
      */
-    static millis_t deltaDuration();
+    static millis_l deltaDuration();
 
 };
 
 extern PrintCounter print_job_counter;
-
-#endif /* _PRINTCOUNTER_H_ */

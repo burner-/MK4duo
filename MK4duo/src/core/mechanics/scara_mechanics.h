@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,157 +23,151 @@
 /**
  * scara_mechanics.h
  *
- * Copyright (C) 2016 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#ifndef _SCARA_MECHANICS_H_
-#define _SCARA_MECHANICS_H_
+#pragma once
 
-#if IS_SCARA
+// Struct Scara Settings
+typedef struct : public generic_data_t {
 
-  class Scara_Mechanics : public Mechanics {
+  axis_limits_t base_pos[XYZ];
 
-    public: /** Constructor */
+  float         base_home_pos[XYZ],
+                segments_per_second;
 
-      Scara_Mechanics() {}
+} mechanics_data_t;
 
-    public: /** Public Parameters */
+class Scara_Mechanics : public Mechanics {
 
-      static const float  base_max_pos[XYZ],
-                          base_min_pos[XYZ],
-                          base_home_pos[XYZ],
-                          max_length[XYZ],
-                          L1, L2,
-                          L1_2, L1_2_2,
-                          L2_2;
+  public: /** Constructor */
 
-      static float  delta[ABC],
-                    delta_segments_per_second;
+    Scara_Mechanics() {}
 
-    public: /** Public Function */
+  public: /** Public Parameters */
 
+    static mechanics_data_t data;
+
+    static const float  max_length[XYZ],
+                        L1, L2,
+                        L1_2, L1_2_2,
+                        L2_2;
+
+    static float  delta[ABC];
+
+  public: /** Public Function */
+
+    /**
+     * Initialize Factory parameters
+     */
+    static void factory_parameters();
+
+    /**
+     * Get the stepper positions in the cartesian_position[] array.
+     * Forward kinematics are applied for SCARA.
+     *
+     * The result is in the current coordinate space with
+     * leveling applied. The coordinates need to be run through
+     * unapply_leveling to obtain the "ideal" coordinates
+     * suitable for current_position, etc.
+     */
+    static void get_cartesian_from_steppers();
+
+    #if DISABLED(AUTO_BED_LEVELING_UBL)
       /**
-       * Initialize Factory parameters
-       */
-      static void factory_parameters();
-
-      /**
-       * sync_plan_position_mech_specific
+       * Prepare a linear move in a SCARA setup.
        *
-       * Set the planner/stepper positions directly from current_position with
-       * no kinematic translation. Used for homing axes.
+       * This calls buffer_line several times, adding
+       * small incremental moves for SCARA.
        */
-      static void sync_plan_position_mech_specific();
+      static bool prepare_move_to_destination_mech_specific();
+    #endif
 
-      /**
-       * Get the stepper positions in the cartesian_position[] array.
-       * Forward kinematics are applied for SCARA.
-       *
-       * The result is in the current coordinate space with
-       * leveling applied. The coordinates need to be run through
-       * unapply_leveling to obtain the "ideal" coordinates
-       * suitable for current_position, etc.
-       */
-      static void get_cartesian_from_steppers();
+    /**
+     *  Plan a move to (X, Y, Z) and set the current_position
+     *  The final current_position may not be the one that was requested
+     */
+    static void do_blocking_move_to(const float rx, const float ry, const float rz, const float &fr_mm_s=0.0);
+    static void do_blocking_move_to_x(const float &rx, const float &fr_mm_s=0.0);
+    static void do_blocking_move_to_z(const float &rz, const float &fr_mm_s=0.0);
+    static void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm_s=0.0);
 
-      #if DISABLED(AUTO_BED_LEVELING_UBL)
-        /**
-         * Prepare a linear move in a SCARA setup.
-         *
-         * This calls buffer_line several times, adding
-         * small incremental moves for SCARA.
-         */
-        static bool prepare_move_to_destination_mech_specific();
-      #endif
+    FORCE_INLINE static void do_blocking_move_to(const float (&raw)[XYZ], const float &fr_mm_s=0.0) {
+      do_blocking_move_to(raw[X_AXIS], raw[Y_AXIS], raw[Z_AXIS], fr_mm_s);
+    }
 
-      /**
-       *  Plan a move to (X, Y, Z) and set the current_position
-       *  The final current_position may not be the one that was requested
-       */
-      static void do_blocking_move_to(const float rx, const float ry, const float rz, const float &fr_mm_s=0.0);
-      static void do_blocking_move_to_x(const float &rx, const float &fr_mm_s=0.0);
-      static void do_blocking_move_to_z(const float &rz, const float &fr_mm_s=0.0);
-      static void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm_s=0.0);
+    FORCE_INLINE static void do_blocking_move_to(const float (&raw)[XYZE], const float &fr_mm_s=0.0) {
+      do_blocking_move_to(raw[X_AXIS], raw[Y_AXIS], raw[Z_AXIS], fr_mm_s);
+    }
 
-      /**
-       * SCARA function
-       */
-      static void InverseTransform(const float Ha, const float Hb, float cartesian[XYZ]);
-      static void InverseTransform(const float point[XYZ], float cartesian[XYZ]) { InverseTransform(point[X_AXIS], point[Y_AXIS], cartesian); }
-      static void Transform(const float raw[XYZ]);
+    /**
+     * SCARA function
+     */
+    static void InverseTransform(const float Ha, const float Hb, float cartesian[XYZ]);
+    static void InverseTransform(const float point[XYZ], float cartesian[XYZ]) { InverseTransform(point[X_AXIS], point[Y_AXIS], cartesian); }
+    static void Transform(const float raw[XYZ]);
 
-      /**
-       * MORGAN SCARA function
-       */
-      #if MECH(MORGAN_SCARA)
-        static bool move_to_cal(uint8_t delta_a, uint8_t delta_b);
-      #endif
+    /**
+     * MORGAN SCARA function
+     */
+    #if MECH(MORGAN_SCARA)
+      static bool move_to_cal(uint8_t delta_a, uint8_t delta_b);
+    #endif
 
-      /**
-       * Home Scara
-       */
-      static void home();
+    /**
+     * Home Scara
+     */
+    static void home();
 
-      /**
-       * Home an individual linear axis
-       */
-      static void do_homing_move(const AxisEnum axis, const float distance, const float fr_mm_s=0.0);
+    /**
+     * Home an individual linear axis
+     */
+    static void do_homing_move(const AxisEnum axis, const float distance, const float fr_mm_s=0.0);
 
-      /**
-       * Set an axis' current position to its home position (after homing).
-       *
-       * SCARA should wait until all XY homing is done before setting the XY
-       * current_position to home, because neither X nor Y is at home until
-       * both are at home. Z can however be homed individually.
-       *
-       * Callers must sync the planner position after calling this!
-       */
-      static void set_axis_is_at_home(const AxisEnum axis);
+    /**
+     * Set an axis' current position to its home position (after homing).
+     *
+     * SCARA should wait until all XY homing is done before setting the XY
+     * current_position to home, because neither X nor Y is at home until
+     * both are at home. Z can however be homed individually.
+     *
+     * Callers must sync the planner position after calling this!
+     */
+    static void set_axis_is_at_home(const AxisEnum axis);
 
-      static bool position_is_reachable(const float &rx, const float &ry);
-      static bool position_is_reachable_by_probe(const float &rx, const float &ry);
+    static bool position_is_reachable(const float &rx, const float &ry);
+    static bool position_is_reachable_by_probe(const float &rx, const float &ry);
 
-      /**
-       * Calculate delta, start a line, and set current_position to destination
-       */
-      static void prepare_uninterpolated_move_to_destination(const float fr_mm_s=0.0);
+    /**
+     * Calculate delta, start a line, and set current_position to destination
+     */
+    static void prepare_uninterpolated_move_to_destination(const float fr_mm_s=0.0);
 
-      /**
-       * Report current position to host
-       */
-      static void report_current_position_detail();
+    /**
+     * Report current position to host
+     */
+    static void report_current_position_detail();
 
-      /**
-       * Plan an arc in 2 dimensions
-       *
-       * The arc is approximated by generating many small linear segments.
-       * The length of each segment is configured in MM_PER_ARC_SEGMENT (Default 1mm)
-       * Arcs should only be made relatively large (over 5mm), as larger arcs with
-       * larger segments will tend to be more efficient. Your slicer should have
-       * options for G2/G3 arc generation. In future these options may be GCode tunable.
-       */
-      #if ENABLED(ARC_SUPPORT)
-        static void plan_arc(const float (&cart)[XYZE], const float (&offset)[2], const uint8_t clockwise);
-      #endif
+    /**
+     * Print mechanics parameters in memory
+     */
+    #if DISABLED(DISABLE_M503)
+      static void print_parameters();
+      static void print_M92();
+      static void print_M201();
+      static void print_M203();
+      static void print_M204();
+      static void print_M205();
+      static void print_M206();
+    #endif
 
-      /**
-       * Print mechanics parameters in memory
-       */
-      #if DISABLED(DISABLE_M503)
-        static void print_parameters();
-      #endif
+  private: /** Private Function */
 
-    private: /** Private Function */
+    /**
+     *  Home axis
+     */
+    static void homeaxis(const AxisEnum axis);
 
-      /**
-       *  Home axis
-       */
-      static void homeaxis(const AxisEnum axis);
+};
 
-  };
-
-  extern Scara_Mechanics mechanics;
-
-#endif // IS_SCARA
-
-#endif /* _SCARA_MECHANICS_H_ */
+extern Scara_Mechanics mechanics;

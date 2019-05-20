@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * bezier.cpp
  *
- * Copyright (C) 2016 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "../../MK4duo.h"
@@ -88,15 +88,11 @@
     bez_target[Y_AXIS] = position[Y_AXIS];
     float step = MAX_STEP;
 
-    millis_t next_idle_ms = millis() + 200UL;
+    millis_s next_idle_ms = millis();
 
     while (t < 1.0) {
 
-      millis_t now = millis();
-      if (ELAPSED(now, next_idle_ms)) {
-        next_idle_ms = now + 200UL;
-        printer.idle();
-      }
+      if (expired(&next_idle_ms, 200U)) printer.idle();
 
       // First try to reduce the step in order to make it sufficiently
       // close to a linear interpolation.
@@ -144,8 +140,16 @@
       // not linear in the distance.
       bez_target[Z_AXIS] = interp(position[Z_AXIS], target[Z_AXIS], t);
       bez_target[E_AXIS] = interp(position[E_AXIS], target[E_AXIS], t);
-      endstops.clamp_to_software(bez_target);
-      if (!planner.buffer_line_kinematic(bez_target, fr_mm_s, extruder))
+      endstops.apply_motion_limits(bez_target);
+
+      #if HAS_LEVELING && !PLANNER_LEVELING
+        float pos[XYZE] = { bez_target[X_AXIS], bez_target[Y_AXIS], bez_target[Z_AXIS], bez_target[E_AXIS] };
+        planner.apply_leveling(pos);
+      #else
+        const float (&pos)[XYZE] = bez_target;
+      #endif
+
+      if (!planner.buffer_line(bez_target, fr_mm_s, extruder))
         break;
     }
   }

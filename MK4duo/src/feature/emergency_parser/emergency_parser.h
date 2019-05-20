@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,13 +19,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * emergency_parser.h - Intercept special commands directly in the serial stream
  */
-
-#ifndef _EMERGENCY_PARSER_H_
-#define _EMERGENCY_PARSER_H_
 
 class EmergencyParser {
 
@@ -35,30 +33,21 @@ class EmergencyParser {
 
   public: /** Public Parameters */
 
-    // Currently looking for: M108, M112, M410
-    enum State : char {
-      EP_RESET,
-      EP_N,
-      EP_M,
-      EP_M1,
-      EP_M10,
-      EP_M108,
-      EP_M11,
-      EP_M112,
-      EP_M4,
-      EP_M41,
-      EP_M410,
-      EP_IGNORE // to '\n'
-    };
-
     static bool killed_by_M112;
+
+    static uint8_t M876_response;
+
+  private: /** Private Parameters */
+
+    static bool enabled;
 
   public: /** Public Function */
 
-    static void update(State &state, const uint8_t c);
+    FORCE_INLINE static void enable()   { enabled = true; }
+    FORCE_INLINE static void disable()  { enabled = false; }
+
+    static void update(EmergencyStateEnum &state, const uint8_t c);
 
 };
 
 extern EmergencyParser emergency_parser;
-
-#endif // _EMERGENCY_PARSER_H_

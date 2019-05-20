@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,10 +35,6 @@
 #endif
 #if DISABLED(KNOWN_MECH)
   #error "DEPENDENCY ERROR: You have to set a valid MECHANICS."
-#endif
-
-#if DISABLED(NUM_POSITON_SLOTS)
-  #error "DEPENDENCY ERROR: Missing setting NUM_POSITON_SLOTS."
 #endif
 
 #if DISABLED(AXIS_RELATIVE_MODES)
@@ -168,27 +164,29 @@
 #endif
 
 
-// Max/Min position
-#if DISABLED(X_MAX_POS)
-  #error "DEPENDENCY ERROR: Missing setting X_MAX_POS."
-#endif
-#if DISABLED(X_MIN_POS)
-  #error "DEPENDENCY ERROR: Missing setting X_MIN_POS."
-#endif
-#if DISABLED(Y_MAX_POS)
-  #error "DEPENDENCY ERROR: Missing setting Y_MAX_POS."
-#endif
-#if DISABLED(Y_MIN_POS)
-  #error "DEPENDENCY ERROR: Missing setting Y_MIN_POS."
-#endif
-#if DISABLED(Z_MAX_POS)
-  #error "DEPENDENCY ERROR: Missing setting Z_MAX_POS."
-#endif
-#if DISABLED(Z_MIN_POS)
-  #error "DEPENDENCY ERROR: Missing setting Z_MIN_POS."
-#endif
-#if DISABLED(E_MIN_POS)
-  #error "DEPENDENCY ERROR: Missing setting E_MIN_POS."
+// Max/Min position for nomech DELTA
+#if NOMECH(DELTA)
+  #if DISABLED(X_MAX_POS)
+    #error "DEPENDENCY ERROR: Missing setting X_MAX_POS."
+  #endif
+  #if DISABLED(X_MIN_POS)
+    #error "DEPENDENCY ERROR: Missing setting X_MIN_POS."
+  #endif
+  #if DISABLED(Y_MAX_POS)
+    #error "DEPENDENCY ERROR: Missing setting Y_MAX_POS."
+  #endif
+  #if DISABLED(Y_MIN_POS)
+    #error "DEPENDENCY ERROR: Missing setting Y_MIN_POS."
+  #endif
+  #if DISABLED(Z_MAX_POS)
+    #error "DEPENDENCY ERROR: Missing setting Z_MAX_POS."
+  #endif
+  #if DISABLED(Z_MIN_POS)
+    #error "DEPENDENCY ERROR: Missing setting Z_MIN_POS."
+  #endif
+  #if DISABLED(E_MIN_POS)
+    #error "DEPENDENCY ERROR: Missing setting E_MIN_POS."
+  #endif
 #endif
 
 
@@ -243,8 +241,8 @@
 #if DISABLED(MIN_STEPS_PER_SEGMENT)
   #error "DEPENDENCY ERROR: Missing setting MIN_STEPS_PER_SEGMENT."
 #endif
-#if DISABLED(DEFAULT_MINSEGMENTTIME)
-  #error "DEPENDENCY ERROR: Missing setting DEFAULT_MINSEGMENTTIME."
+#if DISABLED(DEFAULT_MIN_SEGMENT_TIME)
+  #error "DEPENDENCY ERROR: Missing setting DEFAULT_MIN_SEGMENT_TIME."
 #endif
 #if DISABLED(MM_PER_ARC_SEGMENT)
   #error "DEPENDENCY ERROR: Missing setting MM_PER_ARC_SEGMENT."
@@ -257,9 +255,9 @@
 #endif
 
 
-// Velocity and acceleration
-#if DISABLED(DEFAULT_MINTRAVELFEEDRATE)
-  #error "DEPENDENCY ERROR: Missing setting DEFAULT_MINTRAVELFEEDRATE."
+// Velocity and data.acceleration
+#if DISABLED(DEFAULT_MIN_TRAVEL_FEEDRATE)
+  #error "DEPENDENCY ERROR: Missing setting DEFAULT_MIN_TRAVEL_FEEDRATE."
 #endif
 #if DISABLED(DEFAULT_MAX_ACCELERATION)
   #error "DEPENDENCY ERROR: Missing setting DEFAULT_MAX_ACCELERATION."
@@ -304,93 +302,106 @@
   #endif
 #endif
 
+#if ENABLED(Z_STEPPER_AUTO_ALIGN)
+  #if !(ENABLED(Z_TWO_STEPPER_DRIVERS) || ENABLED(Z_THREE_STEPPER_DRIVERS))
+    #error "Z_STEPPER_AUTO_ALIGN requires Z_TWO_STEPPER_DRIVERS or Z_THREE_STEPPER_DRIVERS."
+  #elif !HAS_BED_PROBE
+    #error "Z_STEPPER_AUTO_ALIGN requires a Z-bed probe."
+  #endif
+  constexpr float sanity_arr_z_align_x[] = Z_STEPPER_ALIGN_X, sanity_arr_z_align_y[] = Z_STEPPER_ALIGN_Y;
+  static_assert(
+    COUNT(sanity_arr_z_align_x) == Z_STEPPER_COUNT && COUNT(sanity_arr_z_align_y) == Z_STEPPER_COUNT,
+    "Z_STEPPER_ALIGN_[XY]POS settings require one element per Z stepper."
+  );
+#endif
+
 // Pin definitions
-#if !PIN_EXISTS(X_STEP)
+#if !HAS_X_STEP
   #error "DEPENDENCY ERROR: X_STEP_PIN is not defined for your board. You have to define it yourself."
 #endif
-#if !PIN_EXISTS(X_DIR)
+#if !HAS_X_DIR
   #error "DEPENDENCY ERROR: X_DIR_PIN is not defined for your board. You have to define it yourself."
 #endif
-#if !PIN_EXISTS(X_ENABLE)
+#if !HAS_X_ENABLE
   #error "DEPENDENCY ERROR: X_ENABLE_PIN is not defined for your board. You have to define it yourself."
 #endif
-#if !PIN_EXISTS(Y_STEP)
+#if !HAS_Y_STEP
   #error "DEPENDENCY ERROR: Y_STEP_PIN is not defined for your board. You have to define it yourself."
 #endif
-#if !PIN_EXISTS(Y_DIR)
+#if !HAS_Y_DIR
   #error "DEPENDENCY ERROR: Y_DIR_PIN is not defined for your board. You have to define it yourself."
 #endif
-#if !PIN_EXISTS(Y_ENABLE)
+#if !HAS_Y_ENABLE
   #error "DEPENDENCY ERROR: Y_ENABLE_PIN is not defined for your board. You have to define it yourself."
 #endif
-#if !PIN_EXISTS(Z_STEP)
+#if !HAS_Z_STEP
   #error "DEPENDENCY ERROR: Z_STEP_PIN is not defined for your board. You have to define it yourself."
 #endif
-#if !PIN_EXISTS(Z_DIR)
+#if !HAS_Z_DIR
   #error "DEPENDENCY ERROR: Z_DIR_PIN is not defined for your board. You have to define it yourself."
 #endif
-#if !PIN_EXISTS(Z_ENABLE)
+#if !HAS_Z_ENABLE
   #error "DEPENDENCY ERROR: Z_ENABLE_PIN is not defined for your board. You have to define it yourself."
 #endif
 
 #if DRIVER_EXTRUDERS > 0
-  #if !PIN_EXISTS(E0_STEP)
+  #if !HAS_E0_STEP
     #error "DEPENDENCY ERROR: E0_STEP_PIN is not defined for your board. You have to define it yourself."
   #endif
-  #if !PIN_EXISTS(E0_DIR)
+  #if !HAS_E0_DIR
     #error "DEPENDENCY ERROR: E0_DIR_PIN is not defined for your board. You have to define it yourself."
   #endif
-  #if !PIN_EXISTS(E0_ENABLE)
+  #if !HAS_E0_ENABLE
     #error "DEPENDENCY ERROR: E0_ENABLE_PIN is not defined for your board. You have to define it yourself."
   #endif
   #if DRIVER_EXTRUDERS > 1
-    #if !PIN_EXISTS(E1_STEP)
+    #if !HAS_E1_STEP
       #error "DEPENDENCY ERROR: E1_STEP_PIN is not defined for your board. You have to define it yourself."
     #endif
-    #if !PIN_EXISTS(E1_DIR)
+    #if !HAS_E1_DIR
       #error "DEPENDENCY ERROR: E1_DIR_PIN is not defined for your board. You have to define it yourself."
     #endif
-    #if !PIN_EXISTS(E1_ENABLE)
+    #if !HAS_E1_ENABLE
       #error "DEPENDENCY ERROR: E1_ENABLE_PIN is not defined for your board. You have to define it yourself."
     #endif
     #if DRIVER_EXTRUDERS > 2
-      #if !PIN_EXISTS(E2_STEP)
+      #if !HAS_E2_STEP
         #error "DEPENDENCY ERROR: E2_STEP_PIN is not defined for your board. You have to define it yourself."
       #endif
-      #if !PIN_EXISTS(E2_DIR)
+      #if !HAS_E2_DIR
         #error "DEPENDENCY ERROR: E2_DIR_PIN is not defined for your board. You have to define it yourself."
       #endif
-      #if !PIN_EXISTS(E2_ENABLE)
+      #if !HAS_E2_ENABLE
         #error "DEPENDENCY ERROR: E2_ENABLE_PIN is not defined for your board. You have to define it yourself."
       #endif
       #if DRIVER_EXTRUDERS > 3
-        #if !PIN_EXISTS(E3_STEP)
+        #if !HAS_E3_STEP
           #error "DEPENDENCY ERROR: E3_STEP_PIN is not defined for your board. You have to define it yourself."
         #endif
-        #if !PIN_EXISTS(E3_DIR)
+        #if !HAS_E3_DIR
           #error "DEPENDENCY ERROR: E3_DIR_PIN is not defined for your board. You have to define it yourself."
         #endif
-        #if !PIN_EXISTS(E3_ENABLE)
+        #if !HAS_E3_ENABLE
           #error "DEPENDENCY ERROR: E3_ENABLE_PIN is not defined for your board. You have to define it yourself."
         #endif
         #if DRIVER_EXTRUDERS > 4
-          #if !PIN_EXISTS(E4_STEP)
+          #if !HAS_E4_STEP
             #error "DEPENDENCY ERROR: E4_STEP_PIN is not defined for your board. You have to define it yourself."
           #endif
-          #if !PIN_EXISTS(E4_DIR)
+          #if !HAS_E4_DIR
             #error "DEPENDENCY ERROR: E4_DIR_PIN is not defined for your board. You have to define it yourself."
           #endif
-          #if !PIN_EXISTS(E4_ENABLE)
+          #if !HAS_E4_ENABLE
             #error "DEPENDENCY ERROR: E4_ENABLE_PIN is not defined for your board. You have to define it yourself."
           #endif
           #if DRIVER_EXTRUDERS > 5
-            #if !PIN_EXISTS(E5_STEP)
+            #if !HAS_E5_STEP
               #error "DEPENDENCY ERROR: E5_STEP_PIN is not defined for your board. You have to define it yourself."
             #endif
-            #if !PIN_EXISTS(E5_DIR)
+            #if !HAS_E5_DIR
               #error "DEPENDENCY ERROR: E5_DIR_PIN is not defined for your board. You have to define it yourself."
             #endif
-            #if !PIN_EXISTS(E5_ENABLE)
+            #if !HAS_E5_ENABLE
               #error "DEPENDENCY ERROR: E5_ENABLE_PIN is not defined for your board. You have to define it yourself."
             #endif
           #endif
@@ -399,7 +410,7 @@
     #endif
   #endif
 #endif
-#if X2_HAS_DRV(TMC26X) && (!PIN_EXISTS(X2_ENABLE) || !PIN_EXISTS(X2_STEP) || !PIN_EXISTS(X2_DIR))
+#if X2_HAS_DRV(TMC26X) && (!PIN_EXISTS(X2_ENABLE) || !HAS_X2_STEP || !PIN_EXISTS(X2_DIR))
   #error "DEPENDENCY ERROR: You have to set X2_ENABLE_PIN, X2_STEP_PIN and X2_DIR_PIN to a valid pin if you enable X2_IS_TMC."
 #endif
 
@@ -511,12 +522,9 @@
     #error "DEPENDENCY ERROR: Missing setting TOWER_C_DIAGROD_ADJ."
   #endif
 
-  #if ENABLED(AUTO_BED_LEVELING_FEATURE)
+  #if HAS_BED_PROBE
     #if DISABLED(XY_PROBE_SPEED)
       #error "DEPENDENCY ERROR: Missing setting XY_PROBE_SPEED."
-    #endif
-    #if DISABLED(Z_PROBE_SPEED)
-      #error "DEPENDENCY ERROR: Missing setting Z_PROBE_SPEED."
     #endif
     #if DISABLED(X_PROBE_OFFSET_FROM_NOZZLE)
       #error "DEPENDENCY ERROR: Missing setting X_PROBE_OFFSET_FROM_NOZZLE."

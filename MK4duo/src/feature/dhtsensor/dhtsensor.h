@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,57 +19,64 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * dhtsensor.h
  *
- * Copyright (C) 2017 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  */
-
-#ifndef _DHTSENSOR_H_
-#define _DHTSENSOR_H_
 
 #if ENABLED(DHT_SENSOR)
 
-  // Define types of sensors.
-  #define DHT11 11
-  #define DHT21 21
-  #define DHT22 22
+// Define types of sensors.
+enum DHTEnum : uint8_t { DHT11=11, DHT12=12, DHT21=21, DHT22=22 };
 
-  class DhtSensor {
+// Struct DHT data
+typedef struct {
+  pin_t   pin;
+  DHTEnum type;
+} dht_data_t;
 
-    public: /** Constructor */
+class DHTSensor {
 
-      DhtSensor() {}
+  public: /** Constructor */
 
-    public: /** Public Parameters */
+    DHTSensor() {}
 
-      static pin_t    pin;
-      static uint8_t  type;
+  public: /** Public Parameters */
 
-      static float    Temperature,
-                      Humidity;
+    static dht_data_t data;
 
-    private: /** Private Parameters */
+    static float  Temperature,
+                  Humidity;
 
-      static enum SensorState {
-        Init,
-        Wait_250ms,
-        Wait_20ms,
-        Read
-      } state;
-  
-    public: /** Public Function */
+  private: /** Private Parameters */
 
-      static void init();
-      static void change_type(const uint8_t dhtType);
-      static void print_parameters();
-      static void spin();
+    static const millis_l _maxcycles;
 
-  };
+    static uint8_t read_data[5];
 
-  extern DhtSensor dhtsensor;
+  public: /** Public Function */
+
+    static void init();
+    static void factory_parameters();
+    static void change_type(const DHTEnum dhtType);
+    static void print_M305();
+    static void spin();
+
+    static float dewPoint();
+    static float dewPointFast();
+
+  private: /** Private Function */
+
+    static uint32_t expectPulse(bool level);
+
+    static float read_temperature();
+    static float read_humidity();
+
+};
+
+extern DHTSensor dhtsensor;
 
 #endif // ENABLED(DHT_SENSOR)
-
-#endif /* _DHTSENSOR_H_ */

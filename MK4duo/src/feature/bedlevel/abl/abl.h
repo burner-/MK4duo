@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,78 +19,74 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
-#ifndef _ABL_H_
-#define _ABL_H_
+class AutoBedLevel {
 
-#if ENABLED(AUTO_BED_LEVELING_BILINEAR)
+  public: /** Constructor */
 
-  class AutoBedLevel {
+    AutoBedLevel() {}
 
-    public: /** Constructor */
+  public: /** Public Parameters */
 
-      AutoBedLevel() {}
+    static int    bilinear_grid_spacing[2],
+                  bilinear_start[2];
+    static float  z_values[GRID_MAX_POINTS_X][GRID_MAX_POINTS_Y];
 
-    public: /** Public Parameters */
+  private: /** Private Parameters */
 
-      static int    bilinear_grid_spacing[2],
-                    bilinear_start[2];
-      static float  z_values[GRID_MAX_POINTS_X][GRID_MAX_POINTS_Y];
+    static float  bilinear_grid_factor[2];
 
-    private: /** Private Parameters */
+    #if ENABLED(ABL_BILINEAR_SUBDIVISION)
+      #define ABL_GRID_POINTS_VIRT_X (GRID_MAX_POINTS_X - 1) * (BILINEAR_SUBDIVISIONS) + 1
+      #define ABL_GRID_POINTS_VIRT_Y (GRID_MAX_POINTS_Y - 1) * (BILINEAR_SUBDIVISIONS) + 1
+      #define ABL_TEMP_POINTS_X (GRID_MAX_POINTS_X + 2)
+      #define ABL_TEMP_POINTS_Y (GRID_MAX_POINTS_Y + 2)
 
-      static float  bilinear_grid_factor[2];
+      static float  bilinear_grid_factor_virt[2],
+                    z_values_virt[ABL_GRID_POINTS_VIRT_X][ABL_GRID_POINTS_VIRT_Y];
+      static int    bilinear_grid_spacing_virt[2];
+    #endif
 
-      #if ENABLED(ABL_BILINEAR_SUBDIVISION)
-        #define ABL_GRID_POINTS_VIRT_X (GRID_MAX_POINTS_X - 1) * (BILINEAR_SUBDIVISIONS) + 1
-        #define ABL_GRID_POINTS_VIRT_Y (GRID_MAX_POINTS_Y - 1) * (BILINEAR_SUBDIVISIONS) + 1
-        #define ABL_TEMP_POINTS_X (GRID_MAX_POINTS_X + 2)
-        #define ABL_TEMP_POINTS_Y (GRID_MAX_POINTS_Y + 2)
+  public: /** Public Function */
 
-        static float  bilinear_grid_factor_virt[2],
-                      z_values_virt[ABL_GRID_POINTS_VIRT_X][ABL_GRID_POINTS_VIRT_Y];
-        static int    bilinear_grid_spacing_virt[2];
-      #endif
+    static float bilinear_z_offset(const float raw[XYZ]);
+    static void refresh_bed_level();
 
-    public: /** Public Function */
+    /**
+     * Fill in the unprobed points (corners of circular print surface)
+     * using linear extrapolation, away from the center.
+     */
+    static void extrapolate_unprobed_bed_level();
 
-      static float bilinear_z_offset(const float raw[XYZ]);
-      static void refresh_bed_level();
+    static void print_bilinear_leveling_grid();
 
-      /**
-       * Fill in the unprobed points (corners of circular print surface)
-       * using linear extrapolation, away from the center.
-       */
-      static void extrapolate_unprobed_bed_level();
+    #if ENABLED(ABL_BILINEAR_SUBDIVISION)
+      static void print_bilinear_leveling_grid_virt();
+      static void virt_interpolate();
+    #endif
 
-      static void print_bilinear_leveling_grid();
+    #if !IS_KINEMATIC
+      void bilinear_line_to_destination(float fr_mm_s, uint16_t x_splits=0xFFFF, uint16_t y_splits=0xFFFF);
+    #endif
 
-      #if ENABLED(ABL_BILINEAR_SUBDIVISION)
-        static void print_bilinear_leveling_grid_virt();
-        static void virt_interpolate();
-      #endif
+  private: /** Private Function */
 
-      #if !IS_KINEMATIC
-        void bilinear_line_to_destination(float fr_mm_s, uint16_t x_splits=0xFFFF, uint16_t y_splits=0xFFFF);
-      #endif
+    /**
+     * Extrapolate a single point from its neighbors
+     */
+    static void extrapolate_one_point(const uint8_t x, const uint8_t y, const int8_t xdir, const int8_t ydir);
 
-    private: /** Private Function */
+    #if ENABLED(ABL_BILINEAR_SUBDIVISION)
+      static float bed_level_virt_coord(const uint8_t x, const uint8_t y);
+      static float bed_level_virt_cmr(const float p[4], const uint8_t i, const float t);
+      static float bed_level_virt_2cmr(const uint8_t x, const uint8_t y, const float &tx, const float &ty);
+    #endif
 
-      /**
-       * Extrapolate a single point from its neighbors
-       */
-      static void extrapolate_one_point(const uint8_t x, const uint8_t y, const int8_t xdir, const int8_t ydir);
+};
 
-      #if ENABLED(ABL_BILINEAR_SUBDIVISION)
-        static float bed_level_virt_coord(const uint8_t x, const uint8_t y);
-        static float bed_level_virt_cmr(const float p[4], const uint8_t i, const float t);
-        static float bed_level_virt_2cmr(const uint8_t x, const uint8_t y, const float &tx, const float &ty);
-      #endif
+extern AutoBedLevel abl;
 
-  };
-
-  extern AutoBedLevel abl;
-
-#endif // AUTO_BED_LEVELING_BILINEAR
-
-#endif /* _ABL_H_ */
+#define _GET_MESH_X(I) (abl.bilinear_start[X_AXIS] + (I) * abl.bilinear_grid_spacing[X_AXIS])
+#define _GET_MESH_Y(J) (abl.bilinear_start[Y_AXIS] + (J) * abl.bilinear_grid_spacing[Y_AXIS])
+#define Z_VALUES_ARR    abl.z_values

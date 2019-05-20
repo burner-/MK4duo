@@ -1,12 +1,12 @@
 /****************************************************************************************
-* 1550
+* 1551
 *
 * RURAMPS4DUE V1.3  (Hotend0, Hotend1, Hotend2, Fan0, Fan1, Bed)
 ****************************************************************************************/
 
 //###CHIP
 #if DISABLED(ARDUINO_ARCH_SAM)
-  #error Oops!  Make sure you have 'Arduino Due' selected from the 'Tools -> Boards' menu.
+  #error "Oops! Select 'Arduino Due' in 'Tools > Board.'"
 #endif
 //@@@
 
@@ -114,21 +114,37 @@
 #define Z_STOP_PIN                 NoPin
 
 //###HEATER
-#define ORIG_HEATER_0_PIN          13
-#define ORIG_HEATER_1_PIN          12
-#define ORIG_HEATER_2_PIN          11
-#define ORIG_HEATER_3_PIN          NoPin
-#define ORIG_HEATER_BED_PIN         7
-#define ORIG_HEATER_CHAMBER_PIN    NoPin
-#define ORIG_COOLER_PIN            NoPin
+#define ORIG_HEATER_HE0_PIN        13
+#define ORIG_HEATER_HE1_PIN        12
+#define ORIG_HEATER_HE2_PIN        11
+#define ORIG_HEATER_HE3_PIN        NoPin
+#define ORIG_HEATER_HE4_PIN        NoPin
+#define ORIG_HEATER_HE5_PIN        NoPin
+#define ORIG_HEATER_BED0_PIN        7
+#define ORIG_HEATER_BED1_PIN       NoPin
+#define ORIG_HEATER_BED2_PIN       NoPin
+#define ORIG_HEATER_BED3_PIN       NoPin
+#define ORIG_HEATER_CHAMBER0_PIN   NoPin
+#define ORIG_HEATER_CHAMBER1_PIN   NoPin
+#define ORIG_HEATER_CHAMBER2_PIN   NoPin
+#define ORIG_HEATER_CHAMBER3_PIN   NoPin
+#define ORIG_HEATER_COOLER_PIN     NoPin
 
 //###TEMPERATURE
-#define ORIG_TEMP_0_PIN             0
-#define ORIG_TEMP_1_PIN             1
-#define ORIG_TEMP_2_PIN             2
-#define ORIG_TEMP_3_PIN             3
-#define ORIG_TEMP_BED_PIN           4
-#define ORIG_TEMP_CHAMBER_PIN      NoPin
+#define ORIG_TEMP_HE0_PIN           0
+#define ORIG_TEMP_HE1_PIN           1
+#define ORIG_TEMP_HE2_PIN           2
+#define ORIG_TEMP_HE3_PIN           3
+#define ORIG_TEMP_HE4_PIN          NoPin
+#define ORIG_TEMP_HE5_PIN          NoPin
+#define ORIG_TEMP_BED0_PIN          4
+#define ORIG_TEMP_BED1_PIN         NoPin
+#define ORIG_TEMP_BED2_PIN         NoPin
+#define ORIG_TEMP_BED3_PIN         NoPin
+#define ORIG_TEMP_CHAMBER0_PIN     NoPin
+#define ORIG_TEMP_CHAMBER1_PIN     NoPin
+#define ORIG_TEMP_CHAMBER2_PIN     NoPin
+#define ORIG_TEMP_CHAMBER3_PIN     NoPin
 #define ORIG_TEMP_COOLER_PIN       NoPin
 
 //###FAN
@@ -136,6 +152,8 @@
 #define ORIG_FAN1_PIN               8
 #define ORIG_FAN2_PIN              NoPin
 #define ORIG_FAN3_PIN              NoPin
+#define ORIG_FAN4_PIN              NoPin
+#define ORIG_FAN5_PIN              NoPin
 
 //###SERVO
 #define SERVO0_PIN                  5
@@ -144,7 +162,7 @@
 #define SERVO3_PIN                 NoPin
 
 //###MISC
-#define ORIG_PS_ON_PIN             NoPin
+#define ORIG_PS_ON_PIN             65
 #define ORIG_BEEPER_PIN            NoPin
 #define LED_PIN                    NoPin
 #define SDPOWER_PIN                NoPin
@@ -162,13 +180,17 @@
 //###UNKNOWN_PINS
 // I2C EEPROM with 32K of space
 #define EEPROM_I2C
+#define EEPROM_DELAY  10
 #define E2END 0x8000
 //@@@
 
 //###IF_BLOCKS
-#if ENABLED(ULTRA_LCD)
+#if HAS_SPI_LCD
 
   #if ENABLED(RADDS_DISPLAY) || ENABLED(REPRAP_DISCOUNT_SMART_CONTROLLER)
+
+    #define ORIG_BEEPER_PIN 62
+
     #define LCD_PINS_RS     63
     #define LCD_PINS_ENABLE 64
     #define LCD_PINS_D4     48
@@ -176,15 +198,11 @@
     #define LCD_PINS_D6     52
     #define LCD_PINS_D7     53
 
-    #define ORIG_BEEPER_PIN 62
-
-    #define BTN_EN1         44
-    #define BTN_EN2         42
-    #define BTN_ENC         40
-
     #define SD_DETECT_PIN   51
 
   #elif ENABLED(REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER)
+
+    #define ORIG_BEEPER_PIN 62
 
     #define LCD_PINS_RS     52
     #define LCD_PINS_ENABLE 53
@@ -193,22 +211,22 @@
     #define LCD_PINS_D6     52
     #define LCD_PINS_D7     53
 
-    #define ORIG_BEEPER_PIN 62
-
-    #define BTN_EN1         44
-    #define BTN_EN2         42
-    #define BTN_ENC         40
     #define SD_DETECT_PIN   51
 
   #elif ENABLED(SSD1306_OLED_I2C_CONTROLLER)
 
-    #define BTN_EN1         44
-    #define BTN_EN2         42
-    #define BTN_ENC         40
-    #define SD_DETECT_PIN   51
-
     #define ORIG_BEEPER_PIN 62
     #define LCD_SDSS        10
+    #define SD_DETECT_PIN   51
+
+  #elif ENABLED(MKS_MINI_12864)
+
+    #define ORIG_BEEPER_PIN 62
+
+    #define DOGLCD_A0       52
+    #define DOGLCD_CS       50
+
+    #define SD_DETECT_PIN   51
 
   #elif ENABLED(SPARK_FULL_GRAPHICS)
 
@@ -220,6 +238,12 @@
     #define BTN_ENC         37
 
   #endif // SPARK_FULL_GRAPHICS
+
+  #if ENABLED(NEWPANEL)
+    #define BTN_EN1         44
+    #define BTN_EN2         42
+    #define BTN_ENC         40
+  #endif
 
 #endif // ULTRA_LCD
 //@@@

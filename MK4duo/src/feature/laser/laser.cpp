@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@
             Laser::firing       = LASER_OFF,
             Laser::diagnostics  = false;
 
-  millis_t  Laser::last_firing  = 0;
+  millis_l  Laser::last_firing  = 0;
   
   uint16_t  Laser::time         = 0,
             Laser::lifetime     = 0;
@@ -153,7 +153,7 @@
   }
 
   void Laser::set_mode(uint8_t mode) {
-    switch(mode) {
+    switch (mode) {
       case 0:
         laser.mode = CONTINUOUS;
         return;
@@ -193,7 +193,7 @@
           if (laser.diagnostics)
             SERIAL_LM(ER, "Peripheral control board failed to respond");
 
-          printer.Stop();
+          printer.stop();
           break;
         }
       }

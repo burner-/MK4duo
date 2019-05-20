@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,13 +42,13 @@
   #define digitalPinToTimer_DEBUG(p) digitalPinToTimer_plus_70(p)
   #define digitalPinToBitMask_DEBUG(p) digitalPinToBitMask_plus_70(p)
   #define digitalPinToPort_DEBUG(p) digitalPinToPort_plus_70(p)
-  bool GET_PINMODE(int8_t pin) {return *portModeRegister(digitalPinToPort_DEBUG(pin)) & digitalPinToBitMask_DEBUG(pin); }
+  bool GET_PINMODE(pin_t pin) {return *portModeRegister(digitalPinToPort_DEBUG(pin)) & digitalPinToBitMask_DEBUG(pin); }
 
 #else
   #define digitalPinToTimer_DEBUG(p) digitalPinToTimer(p)
   #define digitalPinToBitMask_DEBUG(p) digitalPinToBitMask(p)
   #define digitalPinToPort_DEBUG(p) digitalPinToPort(p)
-  bool GET_PINMODE(int8_t pin) {return *portModeRegister(digitalPinToPort_DEBUG(pin)) & digitalPinToBitMask_DEBUG(pin); }
+  bool GET_PINMODE(pin_t pin) {return *portModeRegister(digitalPinToPort_DEBUG(pin)) & digitalPinToBitMask_DEBUG(pin); }
   #define GET_ARRAY_PIN(p) pgm_read_byte(&pin_array[p].pin)
 #endif
 
@@ -83,7 +83,7 @@ void PRINT_ARRAY_NAME(uint8_t x) {
   #define NUM_DIGITAL_PINS 32     // set to digital only + digital/analog
 #endif
 
-#define PWM_PRINT(V) do{ sprintf_P(buffer, PSTR("PWM:  %4d"), V); SERIAL_PS(buffer); }while(0)
+#define PWM_PRINT(V) do{ sprintf_P(buffer, PSTR("PWM:  %4d"), V); SERIAL_STR(buffer); }while(0)
 #define PWM_CASE(N,Z)                                           \
   case TIMER##N##Z:                                             \
     if (TCCR##N##A & (_BV(COM##N##Z##1) | _BV(COM##N##Z##0))) { \
@@ -97,7 +97,7 @@ void PRINT_ARRAY_NAME(uint8_t x) {
  * Print a pin's PWM status.
  * Return true if it's currently a PWM pin.
  */
-static bool pwm_status(uint8_t pin) {
+static bool pwm_status(pin_t pin) {
   char buffer[20];   // for the sprintf statements
 
   switch (digitalPinToTimer_DEBUG(pin)) {
@@ -285,7 +285,7 @@ void timer_prefix(uint8_t T, char L, uint8_t N) {  // T - timer    L - pwm  N - 
   if (TEST(*TMSK, TOIE)) err_prob_interrupt();
 }
 
-static void pwm_details(uint8_t pin) {
+static void pwm_details(pin_t pin) {
   switch (digitalPinToTimer_DEBUG(pin)) {
 
     #if ENABLED(TCCR0A) && ENABLED(COM0A1)
@@ -356,7 +356,7 @@ static void pwm_details(uint8_t pin) {
 
 
 #if DISABLED(digitalRead_mod)
-  int digitalRead_mod(const int8_t pin) { // same as digitalRead except the PWM stop section has been removed
+  int digitalRead_mod(const pin_t pin) { // same as digitalRead except the PWM stop section has been removed
     const uint8_t port = digitalPinToPort_DEBUG(pin);
     return (port != NOT_A_PIN) && (*portInputRegister(port) & digitalPinToBitMask_DEBUG(pin)) ? HIGH : LOW;
   }
@@ -364,7 +364,7 @@ static void pwm_details(uint8_t pin) {
 
 #if DISABLED(PRINT_PORT)
 
-  void print_port(int8_t pin) {   // print port number
+  void print_port(pin_t pin) {   // print port number
     #if ENABLED(digitalPinToPort_DEBUG)
       uint8_t x;
       SERIAL_MSG("  Port: ");
@@ -398,4 +398,4 @@ static void pwm_details(uint8_t pin) {
 
 #endif
 
-#define PRINT_PIN(p) do {sprintf_P(buffer, PSTR("%3d "), p); SERIAL_PS(buffer);} while (0)
+#define PRINT_PIN(p) do {sprintf_P(buffer, PSTR("%3d "), p); SERIAL_STR(buffer);} while (0)

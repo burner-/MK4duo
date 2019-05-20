@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#ifndef _EEPROM_H_
-#define _EEPROM_H_
+#pragma once
 
 class EEPROM {
 
@@ -35,7 +33,8 @@ class EEPROM {
 
     #if HAS_EEPROM
 
-      static bool eeprom_error;
+      static bool eeprom_error,
+                  validating;
  
       #if ENABLED(AUTO_BED_LEVELING_UBL)  // Eventually make these available if any leveling system
                                           // That can store is enabled
@@ -50,11 +49,11 @@ class EEPROM {
 
     FORCE_INLINE static bool Init() {
       bool success = true;
-      Factory_Settings();
+      reset();
       #if HAS_EEPROM
-        if ((success = Store_Settings())) {
+        if ((success = store())) {
           #if ENABLED(AUTO_BED_LEVELING_UBL)
-            success = Load_Settings(); // UBL uses load() to know the end of EEPROM
+            success = load(); // UBL uses load() to know the end of EEPROM
           #elif ENABLED(EEPROM_CHITCHAT)
             Print_Settings();
           #endif
@@ -63,11 +62,14 @@ class EEPROM {
       return success;
     }
 
-    static void Factory_Settings();
-    static bool Store_Settings();   // Return 'true' if data was saved
+    static uint16_t datasize();
+
+    static void reset();
+    static bool store();      // Return 'true' if data was stored ok
 
     #if HAS_EEPROM
-      static bool Load_Settings();  // Return 'true' if data was loaded ok
+      static bool load();     // Return 'true' if data was loaded ok
+      static bool validate(); // Return 'true' if EEPROM data is ok
 
       #if ENABLED(AUTO_BED_LEVELING_UBL) // Eventually make these available if any leveling system
                                          // That can store is enabled
@@ -82,7 +84,7 @@ class EEPROM {
         //static void defrag_meshes();  // "
       #endif
     #else
-      FORCE_INLINE static bool Load_Settings() { Factory_Settings(); Print_Settings(); return true; }
+      FORCE_INLINE static bool load() { reset(); Print_Settings(); return true; }
     #endif
 
     #if DISABLED(DISABLE_M503)
@@ -93,10 +95,13 @@ class EEPROM {
 
   private: /** Private Function */
 
-    static void Postprocess();
+    static void post_process();
+
+    #if HAS_EEPROM
+      static bool _load();
+      static bool size_error(const uint16_t size);
+    #endif
 
 };
 
 extern EEPROM eeprom;
-
-#endif /* _EEPROM_H_ */

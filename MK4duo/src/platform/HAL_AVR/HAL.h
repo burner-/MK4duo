@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@
  * Copyright (c) 2014 Bob Cousins bobcousins42@googlemail.com
  *                    Nico Tonnhofer wurstnase.reprap@gmail.com
  *
- * Copyright (c) 2015 - 2016 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * ARDUINO_ARCH_AVR
  */
@@ -56,6 +56,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <Arduino.h>
+#include <Wire.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +76,16 @@ typedef uint16_t  ptr_int_t;
 // --------------------------------------------------------------------------
 // Defines
 // --------------------------------------------------------------------------
+#ifndef WIRE_PORT
+  #define WIRE_PORT 1
+#endif
+
+#if (WIRE_PORT == 2)
+  #define WIRE  Wire1
+#else
+  #define WIRE  Wire
+#endif
+
 // A SW memory barrier, to ensure GCC does not overoptimize loops
 #define sw_barrier() asm volatile("": : :"memory")
 
@@ -94,10 +105,11 @@ typedef uint16_t  ptr_int_t;
 //#define EXTERNALSERIAL  // Force using arduino serial
 #ifndef EXTERNALSERIAL
   #include "HardwareSerial.h"
-  #define MKSERIAL MKSerial
+  #define MKSERIAL1 MKSerial
 #else
-  #define MKSERIAL Serial
+  #define MKSERIAL1 Serial
 #endif
+#define NUM_SERIAL 1
 
 // --------------------------------------------------------------------------
 // Defines
@@ -130,9 +142,6 @@ typedef uint16_t  ptr_int_t;
 #undef HIGH
 #define HIGH        1
 
-// EEPROM START
-#define EEPROM_OFFSET 100
-
 // Voltage for Pin
 #define HAL_VOLTAGE_PIN 5.0
 
@@ -148,7 +157,9 @@ typedef uint16_t  ptr_int_t;
 #define ANALOG_PRESCALER      _BV(ADPS0)|_BV(ADPS1)|_BV(ADPS2)
 #define OVERSAMPLENR          16
 #define ABS_ZERO              -273.15
-#define AD_RANGE              1023
+#define AD_RANGE              1024
+#define AD595_MAX             500.0f
+#define AD8495_MAX            1000.0f
 
 #define HARDWARE_PWM          false
 
@@ -161,7 +172,6 @@ typedef uint16_t  ptr_int_t;
 // --------------------------------------------------------------------------
 
 #define HAL_TIMER_RATE              ((F_CPU) / 8)
-#define HAL_ACCELERATION_RATE       (4096.0 * 4096.0 / (HAL_TIMER_RATE))
 
 #define STEPPER_TIMER_RATE          HAL_TIMER_RATE
 #define STEPPER_TIMER_PRESCALE      8
@@ -171,7 +181,7 @@ typedef uint16_t  ptr_int_t;
 
 #define PULSE_TIMER_PRESCALE        STEPPER_TIMER_PRESCALE
 
-#define TEMP_TIMER_FREQUENCY        ((F_CPU) / 64.0 / 64.0) // 3096 Hz
+#define TEMP_TIMER_FREQUENCY        ((F_CPU) / 64.0 / 256.0) // 976 Hz
 
 #define STEPPER_TIMER               1
 #define STEPPER_TCCR                TCCR1A
@@ -197,7 +207,6 @@ typedef uint16_t  ptr_int_t;
 #define DISABLE_TEMP_INTERRUPT()    CBI(TEMP_TIMSK, TEMP_OCIE)
 #define TEMP_ISR_ENABLED()          TEST(TEMP_TIMSK, TEMP_OCIE)
 
-#define _CAT(a, ...) a ## __VA_ARGS__
 #define HAL_timer_set_count(timer, count)           (_CAT(TIMER_OCR_, timer) = count)
 #define HAL_timer_get_count(timer)                  _CAT(TIMER_OCR_, timer)
 #define HAL_timer_get_current_count(timer)          _CAT(TIMER_COUNTER_, timer)
@@ -293,7 +302,7 @@ typedef uint16_t  ptr_int_t;
 #endif
 
 /* 18 cycles maximum latency */
-#define HAL_STEPPER_TIMER_ISR \
+#define HAL_STEPPER_TIMER_ISR() \
 extern "C" void TIMER1_COMPA_vect (void) __attribute__ ((signal, naked, used, externally_visible)); \
 extern "C" void TIMER1_COMPA_vect_bottom (void) asm ("TIMER1_COMPA_vect_bottom") __attribute__ ((used, externally_visible, noinline)); \
 void TIMER1_COMPA_vect (void) { \
@@ -439,8 +448,7 @@ extern uint16_t HAL_min_pulse_cycle,
                 HAL_min_pulse_tick,
                 HAL_add_pulse_ticks;
 
-extern uint32_t HAL_min_isr_frequency,
-                HAL_frequency_limit[8];
+extern uint32_t HAL_frequency_limit[8];
 
 // --------------------------------------------------------------------------
 // Private Variables
@@ -450,32 +458,15 @@ extern uint32_t HAL_min_isr_frequency,
 // Public functions
 // --------------------------------------------------------------------------
 
-class InterruptProtectedBlock {
-  uint8_t sreg;
+class InterruptLock {
   public:
-    inline void protect() {
-      cli();
-    }
-
-    inline void unprotect() {
-      SREG = sreg;
-    }
-
-    inline InterruptProtectedBlock(bool later = false) {
-      sreg = SREG;
-      if (!later) cli();
-    }
-
-    inline ~InterruptProtectedBlock() {
-      SREG = sreg;
-    }
+   InterruptLock()  { noInterrupts(); }
+   ~InterruptLock() { interrupts();   }
 };
 
 void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency);
 
 void HAL_calc_pulse_cycle();
-
-uint32_t HAL_calc_timer_interval(uint32_t step_rate, uint8_t* loops, const uint8_t scale);
 
 class HAL {
 
@@ -508,9 +499,10 @@ class HAL {
 
     static void setPwmFrequency(const pin_t pin, uint8_t val);
 
-    static inline void analogWrite(const pin_t pin, const uint8_t value) {
-      ::analogWrite(pin, value);
-    }
+    static void analogWrite(const pin_t pin, const uint8_t uValue, const uint16_t freq=1000U, const bool hwpwm=true);
+
+    static void Tick();
+
     static inline void digitalWrite(const pin_t pin, const uint8_t value) {
       ::digitalWrite(pin, value);
     }
@@ -539,7 +531,7 @@ class HAL {
     }
 
     FORCE_INLINE static void delayNanoseconds(const uint32_t delayNs) {
-      HAL_delay_cycles(delayNs * (CYCLES_PER_US) / 1000L);
+      HAL_delay_cycles(delayNs * (CYCLES_PER_US) / 1000UL);
     }
     FORCE_INLINE static void delayMicroseconds(const uint32_t delayUs) {
       HAL_delay_cycles(delayUs * (CYCLES_PER_US));
@@ -557,23 +549,6 @@ class HAL {
       return millis();
     }
 
-    static inline void serialSetBaudrate(const uint16_t baud) {
-      MKSERIAL.begin(baud);
-      HAL::delayMilliseconds(1);
-    }
-    static inline bool serialByteAvailable() {
-      return MKSERIAL.available() > 0;
-    }
-    static inline uint8_t serialReadByte() {
-      return MKSERIAL.read();
-    }
-    static inline void serialWriteByte(const char b) {
-      MKSERIAL.write(b);
-    }
-    static inline void serialFlush() {
-      MKSERIAL.flush();
-    }
-
     // SPI related functions
     #if ENABLED(SOFTWARE_SPI)
       static void spiBegin();
@@ -587,10 +562,10 @@ class HAL {
       static void spiBegin();
       static void spiInit(uint8_t spiRate);
       // Write single byte to SPI
-      static void spiSend(byte b);
+      static void spiSend(uint8_t b);
       static void spiSend(const uint8_t* buf, size_t n);
       // Read single byte from SPI
-      static uint8_t spiReceive(uint8_t send=0xFF);
+      static uint8_t spiReceive(void);
       // Read from SPI into buffer
       static void spiReadBlock(uint8_t* buf, uint16_t nbyte);
       // Write from buffer to SPI

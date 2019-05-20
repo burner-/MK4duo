@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * stepper.h - stepper motor driver: executes motion plans of planner.c using the stepper motors
@@ -40,9 +41,6 @@
  * along with Grbl. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _STEPPER_H_
-#define _STEPPER_H_
-
 #include "stepper_indirection.h"
 
 class Stepper {
@@ -55,10 +53,11 @@ class Stepper {
 
     static uint16_t direction_flag; // Driver Stepper direction flag
 
-    #if ENABLED(X_TWO_ENDSTOPS) || ENABLED(Y_TWO_ENDSTOPS) || ENABLED(Z_TWO_ENDSTOPS)
-      static bool homing_dual_axis;
+    #if HAS_MULTI_ENDSTOP || ENABLED(Z_STEPPER_AUTO_ALIGN)
+      static bool   separate_multi_axis;
     #endif
 
+    static bool     quad_stepping;
     static uint8_t  minimum_pulse;
     static uint32_t maximum_rate,
                     direction_delay;
@@ -72,8 +71,11 @@ class Stepper {
 
     static bool     abort_current_block;    // Signals to the stepper that current block should be aborted
 
-    #if DISABLED(COLOR_MIXING_EXTRUDER)
-      static uint8_t last_moved_extruder;   // Last-moved extruder, as set when the last movement was fetched from planner
+    // Last-moved extruder, as set when the last movement was fetched from planner
+    #if EXTRUDERS < 2
+      static constexpr uint8_t last_moved_extruder = 0;
+    #elif DISABLED(COLOR_MIXING_EXTRUDER)
+      static uint8_t last_moved_extruder;
     #endif
 
     #if ENABLED(X_TWO_ENDSTOPS)
@@ -82,7 +84,9 @@ class Stepper {
     #if ENABLED(Y_TWO_ENDSTOPS)
       static bool locked_Y_motor, locked_Y2_motor;
     #endif
-    #if ENABLED(Z_TWO_ENDSTOPS)
+    #if ENABLED(Z_THREE_ENDSTOPS) || (ENABLED(Z_STEPPER_AUTO_ALIGN) && ENABLED(Z_THREE_STEPPER_DRIVERS))
+      static bool locked_Z_motor, locked_Z2_motor, locked_Z3_motor;
+    #elif ENABLED(Z_TWO_ENDSTOPS) || ENABLED(Z_STEPPER_AUTO_ALIGN)
       static bool locked_Z_motor, locked_Z2_motor;
     #endif
 
@@ -94,19 +98,16 @@ class Stepper {
     static uint32_t advance_dividend[XYZE],
                     advance_divisor,
                     step_events_completed,  // The number of step events executed in the current block
-                    accelerate_until,       // The point from where we need to stop acceleration
+                    accelerate_until,       // The point from where we need to stop data.acceleration
                     decelerate_after,       // The point from where we need to start decelerating
                     step_event_count;       // The total event count for the current block
 
-    #if ENABLED(COLOR_MIXING_EXTRUDER)
-      static int32_t  delta_error_m[MIXING_STEPPERS];
-      static uint32_t advance_dividend_m[MIXING_STEPPERS],
-                      advance_divisor_m;
-      #define MIXING_STEPPERS_LOOP(VAR) \
-        for (uint8_t VAR = 0; VAR < MIXING_STEPPERS; VAR++)
-    #else
+    #if EXTRUDERS > 1 || ENABLED(COLOR_MIXING_EXTRUDER)
       static uint8_t  active_extruder,        // Active extruder
                       active_extruder_driver; // Active extruder driver
+    #else
+      static constexpr uint8_t  active_extruder = 0,
+                                active_extruder_driver = 0;
     #endif
 
     #if ENABLED(BEZIER_JERK_CONTROL)
@@ -154,7 +155,7 @@ class Stepper {
     #endif
 
     #if ENABLED(LASER)
-      static int32_t counter_L;
+      static int32_t delta_error_laser;
       #if ENABLED(LASER_RASTER)
         static int counter_raster;
       #endif
@@ -193,15 +194,15 @@ class Stepper {
     static void report_positions();
 
     /**
+     * Set direction bits for all steppers
+     */
+    static void set_directions();
+
+    /**
      * The stepper subsystem goes to sleep when it runs out of things to execute. Call this
      * to notify the subsystem that it is time to go to work.
      */
     FORCE_INLINE static void wake_up() { ENABLE_STEPPER_INTERRUPT(); }
-
-    /**
-     * Set direction bits for all steppers
-     */
-    static void set_directions();
 
     /**
      * Enabled or Disable one or all stepper driver
@@ -214,6 +215,7 @@ class Stepper {
     static void disable_Z();
     static void enable_E();
     static void disable_E();
+    static void disable_E(const uint8_t e);
     static void enable_all();
     static void disable_all();
 
@@ -234,56 +236,16 @@ class Stepper {
       FORCE_INLINE static void disable_E4() { /* nada */ }
       FORCE_INLINE static void disable_E5() { /* nada */ }
     #else
-      FORCE_INLINE static void enable_E1() {
-        #if (DRIVER_EXTRUDERS > 1) && HAS_E1_ENABLE
-          E1_ENABLE_WRITE(E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void disable_E1() {
-        #if (DRIVER_EXTRUDERS > 1) && HAS_E1_ENABLE
-          E1_ENABLE_WRITE(!E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void enable_E2() {
-        #if (DRIVER_EXTRUDERS > 2) && HAS_E2_ENABLE
-          E2_ENABLE_WRITE(E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void disable_E2() {
-        #if (DRIVER_EXTRUDERS > 2) && HAS_E2_ENABLE
-          E2_ENABLE_WRITE(!E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void enable_E3() {
-        #if (DRIVER_EXTRUDERS > 3) && HAS_E3_ENABLE
-          E3_ENABLE_WRITE(E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void disable_E3() {
-        #if (DRIVER_EXTRUDERS > 3) && HAS_E3_ENABLE
-          E3_ENABLE_WRITE(!E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void enable_E4() {
-        #if (DRIVER_EXTRUDERS > 4) && HAS_E4_ENABLE
-          E4_ENABLE_WRITE(E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void disable_E4() {
-        #if (DRIVER_EXTRUDERS > 4) && HAS_E4_ENABLE
-          E4_ENABLE_WRITE(!E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void enable_E5() {
-        #if (DRIVER_EXTRUDERS > 5) && HAS_E5_ENABLE
-          E5_ENABLE_WRITE(E_ENABLE_ON);
-        #endif
-      }
-      FORCE_INLINE static void disable_E5() {
-        #if (DRIVER_EXTRUDERS > 5) && HAS_E5_ENABLE
-          E5_ENABLE_WRITE(!E_ENABLE_ON);
-        #endif
-      }
+      static void enable_E1();
+      static void disable_E1();
+      static void enable_E2();
+      static void disable_E2();
+      static void enable_E3();
+      static void disable_E3();
+      static void enable_E4();
+      static void disable_E4();
+      static void enable_E5();
+      static void disable_E5();
     #endif
 
     /**
@@ -306,7 +268,7 @@ class Stepper {
      */
     FORCE_INLINE static uint8_t movement_extruder() {
       return
-        #if ENABLED(COLOR_MIXING_EXTRUDER)
+        #if ENABLED(COLOR_MIXING_EXTRUDER) || EXTRUDERS < 2
           0
         #else
           last_moved_extruder
@@ -338,8 +300,8 @@ class Stepper {
       static void microstep_readings();
     #endif
 
-    #if ENABLED(X_TWO_ENDSTOPS) || ENABLED(Y_TWO_ENDSTOPS) || ENABLED(Z_TWO_ENDSTOPS)
-      FORCE_INLINE static void set_homing_dual_axis(const bool state) { homing_dual_axis = state; }
+    #if HAS_MULTI_ENDSTOP || ENABLED(Z_STEPPER_AUTO_ALIGN)
+      FORCE_INLINE static void set_separate_multi_axis(const bool state) { separate_multi_axis = state; }
     #endif
     #if ENABLED(X_TWO_ENDSTOPS)
       FORCE_INLINE static void set_x_lock(const bool state) { locked_X_motor = state; }
@@ -349,7 +311,11 @@ class Stepper {
       FORCE_INLINE static void set_y_lock(const bool state) { locked_Y_motor = state; }
       FORCE_INLINE static void set_y2_lock(const bool state) { locked_Y2_motor = state; }
     #endif
-    #if ENABLED(Z_TWO_ENDSTOPS)
+    #if ENABLED(Z_THREE_ENDSTOPS) || (ENABLED(Z_STEPPER_AUTO_ALIGN) && ENABLED(Z_THREE_STEPPER_DRIVERS))
+      FORCE_INLINE static void set_z_lock(const bool state) { locked_Z_motor = state; }
+      FORCE_INLINE static void set_z2_lock(const bool state) { locked_Z2_motor = state; }
+      FORCE_INLINE static void set_z3_lock(const bool state) { locked_Z3_motor = state; }
+    #elif ENABLED(Z_TWO_ENDSTOPS) || ENABLED(Z_STEPPER_AUTO_ALIGN)
       FORCE_INLINE static void set_z_lock(const bool state) { locked_Z_motor = state; }
       FORCE_INLINE static void set_z2_lock(const bool state) { locked_Z2_motor = state; }
     #endif
@@ -365,6 +331,15 @@ class Stepper {
       SET_BIT(direction_flag, axis, onoff);
     }
     FORCE_INLINE static bool isStepDir(const AxisEnum axis) { return TEST(direction_flag, axis); }
+
+    #if ENABLED(BABYSTEPPING)
+      static void babystep(const AxisEnum axis, const bool direction); // perform a short step with a single stepper motor, outside of any convention
+    #endif
+
+    #if ENABLED(LASER)
+      static bool laser_status();
+      FORCE_INLINE static float laser_intensity() { return current_block->laser_intensity; }
+    #endif
 
   private: /** Private Function */
 
@@ -408,6 +383,8 @@ class Stepper {
     static void set_X_dir(const bool dir);
     static void set_Y_dir(const bool dir);
     static void set_Z_dir(const bool dir);
+    static void set_nor_E_dir(const uint8_t e=0);
+    static void set_rev_E_dir(const uint8_t e=0);
 
     /**
      * Set current position in steps
@@ -429,20 +406,12 @@ class Stepper {
       static int32_t _eval_bezier_curve(const uint32_t curr_step);
     #endif
 
-    #if ENABLED(BABYSTEPPING)
-      static void babystep(const AxisEnum axis, const bool direction); // perform a short step with a single stepper motor, outside of any convention
-    #endif
-
     #if HAS_DIGIPOTSS || HAS_MOTOR_CURRENT_PWM
       static void digipot_init();
     #endif
 
     #if HAS_MICROSTEPS
       static void microstep_init();
-    #endif
-
-    #if HAS_EXT_ENCODER
-      static void test_extruder_encoder();
     #endif
 
     #if HAS_STEPPER_RESET
@@ -457,8 +426,54 @@ class Stepper {
       }
     #endif
 
+    FORCE_INLINE static hal_timer_t calc_timer_interval(uint32_t step_rate, uint8_t* loops, uint8_t scale) {
+
+      uint8_t multistep = 1;
+
+      // Scale the frequency, as requested by the caller
+      step_rate <<= scale;
+
+      if (quad_stepping) {
+        // Select the proper multistepping
+        uint8_t idx = 0;
+        while (idx < 7 && step_rate > HAL_frequency_limit[idx]) {
+          step_rate >>= 1;
+          multistep <<= 1;
+          ++idx;
+        };
+      }
+      else 
+        NOMORE(step_rate, HAL_frequency_limit[0]);
+
+      *loops = multistep;
+
+      #if ENABLED(CPU_32_BIT)
+        // In case of high-performance processor, it is able to calculate in real-time
+        return uint32_t(STEPPER_TIMER_RATE) / step_rate;
+      #else
+        hal_timer_t timer;
+        constexpr uint32_t min_step_rate = F_CPU / 500000U;
+        NOLESS(step_rate, min_step_rate);
+        step_rate -= min_step_rate;   // Correct for minimal speed
+        if (step_rate >= (8 * 256)) { // higher step rate
+          const uint8_t   tmp_step_rate = (step_rate & 0x00FF);
+          const uint16_t  table_address = (uint16_t)&speed_lookuptable_fast[(uint8_t)(step_rate >> 8)][0],
+                          gain = (uint16_t)pgm_read_word_near(table_address + 2);
+          timer = MultiU16X8toH16(tmp_step_rate, gain);
+          timer = (uint16_t)pgm_read_word_near(table_address) - timer;
+        }
+        else { // lower step rates
+          uint16_t table_address = (uint16_t)&speed_lookuptable_slow[0][0];
+          table_address += ((step_rate) >> 1) & 0xFFFC;
+          timer = (uint16_t)pgm_read_word_near(table_address)
+                - (((uint16_t)pgm_read_word_near(table_address + 2) * (uint8_t)(step_rate & 0x0007)) >> 3);
+        }
+
+        return timer;
+      #endif
+
+    }
+
 };
 
 extern Stepper stepper;
-
-#endif /* _STEPPER_H_ */

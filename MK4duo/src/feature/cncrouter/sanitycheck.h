@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * sanitycheck.h
@@ -26,11 +27,6 @@
  * Test configuration values for errors at compile-time.
  */
 
-#ifndef _CNCROUTER_SANITYCHECK_H_
-#define _CNCROUTER_SANITYCHECK_H_
-
 #if ENABLED(CNCROUTER) && !PIN_EXISTS(CNCROUTER)
   #error "DEPENDENCY ERROR: You have to set CNCROUTER_PIN to a valid pin if you enable CNCROUTER."
 #endif
-
-#endif /* _CNCROUTER_SANITYCHECK_H_ */

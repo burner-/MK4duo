@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,67 +19,115 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
-#ifndef _POWER_H_
-#define _POWER_H_
+union flagpower_t {
+  uint8_t all;
+  struct {
+    bool  Logic   : 1;
+    bool  Pullup  : 1;
+    bool  bit2    : 1;
+    bool  bit3    : 1;
+    bool  bit4    : 1;
+    bool  bit5    : 1;
+    bool  bit6    : 1;
+    bool  bit7    : 1;
+  };
+  flagpower_t() { all = 0x00; }
+};
 
-#if HAS_POWER_SWITCH || HAS_POWER_CONSUMPTION_SENSOR
+#if HAS_POWER_SWITCH || HAS_POWER_CONSUMPTION_SENSOR || HAS_POWER_CHECK
 
-  class Power {
+class Power {
 
-    public: /** Constructor */
+  public: /** Constructor */
 
     Power() {};
 
-    public: /** Public Parameters */
+  public: /** Public Parameters */
 
-      #if HAS_POWER_CONSUMPTION_SENSOR
-        static int16_t  current_raw_powconsumption;
-        static float    consumption_meas;   // holds the power consumption as accurately measured
-        static uint32_t consumption_hour,   // holds the power consumption per hour as accurately measured
-                        startpower;
+    static flagpower_t flag;
+
+    #if HAS_POWER_CONSUMPTION_SENSOR
+      static int16_t  current_raw_powconsumption;
+      static float    consumption_meas;   // holds the power consumption as accurately measured
+      static uint32_t startpower;
+    #endif
+
+  private: /** Private Parameters */
+
+    #if HAS_POWER_SWITCH
+      static bool powersupply_on;
+      #if (POWER_TIMEOUT > 0)
+        static millis_s last_Power_On_ms;
       #endif
+    #endif
 
-    private: /** Private Parameters */
+  public: /** Public Function */
 
-      #if HAS_POWER_SWITCH
-        static bool powersupply_on;
-        #if (POWER_TIMEOUT > 0)
-          static watch_t watch_lastPowerOn;
-        #endif
-      #endif
+    #if HAS_POWER_SWITCH || HAS_POWER_CHECK
 
-    public: /** Public Function */
+      /**
+       * Initialize the Power switch and Power Check pins
+       */
+      static void init();
 
-      #if HAS_POWER_SWITCH
+    #endif
 
-        static void spin();
-        static void power_on();
-        static void power_off();
+    #if HAS_POWER_CHECK
 
-        FORCE_INLINE static bool is_on() { return powersupply_on; }
+      /**
+       * Initialize Factory parameters
+       */
+      static void factory_parameters();
 
-      #endif
+      /**
+       * Setup Pullup
+       */
+      static void setup_pullup();
 
-      #if HAS_POWER_CONSUMPTION_SENSOR
-        static float  analog2voltage(),
-                      analog2current(),
-                      analog2power(),
-                      raw_analog2voltage(),
-                      analog2error(float current),
-                      analog2efficiency(float watt);
-      #endif
+      /**
+       * Print logical and pullup
+       */
+      static void report();
 
-    private: /** Private Function */
+    #endif
 
-      #if HAS_POWER_SWITCH
-        static bool is_power_needed();
-      #endif
+    #if HAS_POWER_SWITCH
 
-  };
+      static void spin();
+      static void power_on();
+      static void power_off();
 
-  extern Power powerManager;
+      FORCE_INLINE static bool is_on() { return powersupply_on; }
+
+    #endif
+
+    #if HAS_POWER_CONSUMPTION_SENSOR
+      static float  analog2voltage(),
+                    analog2current(),
+                    analog2power(),
+                    raw_analog2voltage(),
+                    analog2error(float current),
+                    analog2efficiency(float watt);
+    #endif
+
+    // Flag bit 0 Set power check logic
+    FORCE_INLINE static void setLogic(const bool logic) { flag.Logic = logic; }
+    FORCE_INLINE static bool isLogic() { return flag.Logic; }
+
+    // Flag bit 1 Set power check pullup
+    FORCE_INLINE static void setPullup(const bool pullup) { flag.Pullup = pullup; }
+    FORCE_INLINE static bool isPullup() { return flag.Pullup; }
+
+  private: /** Private Function */
+
+    #if HAS_POWER_SWITCH
+      static bool is_power_needed();
+    #endif
+
+};
+
+extern Power powerManager;
 
 #endif // HAS_POWER_SWITCH || HAS_POWER_CONSUMPTION_SENSOR
-
-#endif /* _POWER_H_ */

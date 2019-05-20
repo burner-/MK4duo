@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,18 +45,17 @@
  * Copyright (c) 2014 Bob Cousins bobcousins42@googlemail.com
  *                    Nico Tonnhofer wurstnase.reprap@gmail.com
  *
- * Copyright (c) 2015 - 2016 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * ARDUINO_ARCH_ARM
  */
 
-#include "../../../MK4duo.h"
-
-#if ENABLED(__AVR__)
+#ifdef __AVR__
 
 // --------------------------------------------------------------------------
 // Includes
 // --------------------------------------------------------------------------
+#include "../../../MK4duo.h"
 
 // --------------------------------------------------------------------------
 // Externals
@@ -78,8 +77,7 @@ uint16_t  HAL_min_pulse_cycle     = 0,
           HAL_min_pulse_tick      = 0,
           HAL_add_pulse_ticks     = 0;
 
-uint32_t  HAL_min_isr_frequency   = 0,
-          HAL_frequency_limit[8]  = { 0 };
+uint32_t  HAL_frequency_limit[8]  = { 0 };
 
 // --------------------------------------------------------------------------
 // Private Variables
@@ -142,24 +140,24 @@ void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) {
       break;
 
     case TEMP_TIMER:
-      TEMP_TCCR =  0; // set entire TEMP_TCCR register to 0
-      TEMP_OCR  = 64; // Set divisor for 64 3906 Hz
+      // Use timer0 for temperature measurement
+      // Interleave temperature interrupt with millies interrupt
+      TEMP_OCR  = 256;
       break;
   }
 }
 
 uint32_t HAL_isr_execuiton_cycle(const uint32_t rate) {
-  return (ISR_BASE_CYCLES + ISR_BEZIER_CYCLES + (ISR_LOOP_CYCLES * rate) + ISR_LA_BASE_CYCLES + ISR_LA_LOOP_CYCLES) / rate;
+  return (ISR_BASE_CYCLES + ISR_BEZIER_CYCLES + (ISR_LOOP_CYCLES) * rate + ISR_LA_BASE_CYCLES + ISR_LA_LOOP_CYCLES) / rate;
 }
 
 void HAL_calc_pulse_cycle() {
-  HAL_min_pulse_cycle   = MAX((uint32_t)(F_CPU) / stepper.maximum_rate, ((F_CPU) / 500000UL) * (uint32_t)stepper.minimum_pulse);
-  HAL_min_pulse_tick    = (stepper.minimum_pulse * (STEPPER_TIMER_TICKS_PER_US)) + ((MIN_ISR_START_LOOP_CYCLES) / (uint32_t)(PULSE_TIMER_PRESCALE));
-  HAL_add_pulse_ticks   = (HAL_min_pulse_cycle / (PULSE_TIMER_PRESCALE)) - HAL_min_pulse_tick;
-  HAL_min_isr_frequency = (F_CPU) / HAL_isr_execuiton_cycle(1);
+  HAL_min_pulse_cycle = MAX((uint32_t)((F_CPU) / stepper.maximum_rate), ((F_CPU) / 500000UL) * MAX((uint32_t)stepper.minimum_pulse, 1UL));
+  HAL_min_pulse_tick  = uint32_t(stepper.minimum_pulse) * (STEPPER_TIMER_TICKS_PER_US);
+  HAL_add_pulse_ticks = (HAL_min_pulse_cycle / (PULSE_TIMER_PRESCALE)) - HAL_min_pulse_tick;
 
   // The stepping frequency limits for each multistepping rate
-  HAL_frequency_limit[0] = ((F_CPU) / HAL_isr_execuiton_cycle(1))   >> 0;
+  HAL_frequency_limit[0] = ((F_CPU) / HAL_isr_execuiton_cycle(1))       ;
   HAL_frequency_limit[1] = ((F_CPU) / HAL_isr_execuiton_cycle(2))   >> 1;
   HAL_frequency_limit[2] = ((F_CPU) / HAL_isr_execuiton_cycle(4))   >> 2;
   HAL_frequency_limit[3] = ((F_CPU) / HAL_isr_execuiton_cycle(8))   >> 3;
@@ -169,59 +167,20 @@ void HAL_calc_pulse_cycle() {
   HAL_frequency_limit[7] = ((F_CPU) / HAL_isr_execuiton_cycle(128)) >> 7;
 }
 
-uint32_t HAL_calc_timer_interval(uint32_t step_rate, uint8_t* loops, const uint8_t scale) {
-
-  uint32_t timer = 0;
-  uint8_t multistep = 1;
-
-  // Scale the frequency, as requested by the caller
-  step_rate <<= scale;
-
-  #if DISABLED(DISABLE_MULTI_STEPPING)
-    // Select the proper multistepping
-    uint8_t idx = 0;
-    while (idx < 7 && step_rate > HAL_frequency_limit[idx]) {
-      step_rate >>= 1;
-      multistep <<= 1;
-      ++idx;
-    };
-  #else
-    NOMORE(step_rate, HAL_min_isr_frequency);
-  #endif
-
-  *loops = multistep;
-
-  constexpr uint32_t min_step_rate = F_CPU / 500000U;
-  NOLESS(step_rate, min_step_rate);
-  step_rate -= min_step_rate;   // Correct for minimal speed
-  if (step_rate >= (8 * 256)) { // higher step rate
-    const uint8_t   tmp_step_rate = (step_rate & 0x00FF);
-    const uint16_t  table_address = (uint16_t)&speed_lookuptable_fast[(uint8_t)(step_rate >> 8)][0],
-                    gain = (uint16_t)pgm_read_word_near(table_address + 2);
-    timer = MultiU16X8toH16(tmp_step_rate, gain);
-    timer = (uint16_t)pgm_read_word_near(table_address) - timer;
-  }
-  else { // lower step rates
-    uint16_t table_address = (uint16_t)&speed_lookuptable_slow[0][0];
-    table_address += ((step_rate) >> 1) & 0xFFFC;
-    timer = (uint16_t)pgm_read_word_near(table_address)
-          - (((uint16_t)pgm_read_word_near(table_address + 2) * (uint8_t)(step_rate & 0x0007)) >> 3);
-  }
-
-  return timer;
-
-}
-
 // Return available memory
-int HAL::getFreeRam() {
-  int freeram = 0;
-  InterruptProtectedBlock noInts;
-  uint8_t * heapptr, * stackptr;
-  heapptr = (uint8_t *)malloc(4);          // get heap pointer
-  free(heapptr);      // free up the memory again (sets heapptr to 0)
-  stackptr =  (uint8_t *)(SP);           // save value of stack pointer
-  freeram = (int)stackptr-(int)heapptr;
-  return freeram;
+extern "C" {
+  extern char __bss_end;
+  extern char __heap_start;
+  extern void* __brkval;
+
+  int HAL::getFreeRam() {
+    int free_memory;
+    if ((int)__brkval == 0)
+      free_memory = ((int)&free_memory) - ((int)&__bss_end);
+    else
+      free_memory = ((int)&free_memory) - ((int)__brkval);
+    return free_memory;
+  }
 }
 
 void(* resetFunc) (void) = 0; // declare reset function @ address 0
@@ -246,7 +205,7 @@ void HAL::showStartReason() {
 
   void HAL::analogStart() {
 
-    #if MB(RUMBA) && ((TEMP_SENSOR_0==-1) || (TEMP_SENSOR_1==-1) || (TEMP_SENSOR_2==-1) || (TEMP_SENSOR_BED==-1) || (TEMP_SENSOR_CHAMBER==-1) || (TEMP_SENSOR_COOLER==-1))
+    #if MB(RUMBA) && ((TEMP_SENSOR_HE0==-1) || (TEMP_SENSOR_HE1==-1) || (TEMP_SENSOR_HE2==-1) || (TEMP_SENSOR_BED0==-1) || (TEMP_SENSOR_CHAMBER0==-1))
       // disable RUMBA JTAG in case the thermocouple extension is plugged on top of JTAG connector
       MCUCR = _BV(JTD);
       MCUCR = _BV(JTD);
@@ -298,7 +257,7 @@ void HAL::hwSetup() { /*nope*/ }
 
 void HAL::setPwmFrequency(const pin_t pin, uint8_t val) {
   val &= 0x07;
-  switch(digitalPinToTimer(pin)) {
+  switch (digitalPinToTimer(pin)) {
 
     #if ENABLED(TCCR0A)
       case TIMER0A:
@@ -361,57 +320,43 @@ void HAL::setPwmFrequency(const pin_t pin, uint8_t val) {
   }
 }
 
-void HAL_temp_isr() {
+void HAL::analogWrite(const pin_t pin, const uint8_t uValue, const uint16_t freq/*=1000U*/, const bool hwpwm/*=true*/) {
+  UNUSED(freq);
+  UNUSED(hwpwm);
+  softpwm.set(pin, uValue);
+}
 
-  static uint16_t cycle_100ms       = 0;
+void HAL::Tick() {
 
-  static uint8_t  pwm_count_heater  = 0,
-                  pwm_count_fan     = 0,
-                  channel           = 0;
+  static millis_s cycle_100_ms  = millis();
+  static uint8_t  channel       = 0;
 
-  /**
-   * Standard PWM modulation
-   */
-  if (pwm_count_heater == 0) {
-    #if HEATER_COUNT > 0
-      LOOP_HEATER() {
-        if (heaters[h].pin > -1 && ((heaters[h].pwm_pos = (heaters[h].soft_pwm & HEATER_PWM_MASK)) > 0))
-          HAL::digitalWrite(heaters[h].pin, heaters[h].isHWInverted() ? LOW : HIGH);
-      }
-    #endif
-  }
-
-  if (pwm_count_fan == 0) {
-    #if FAN_COUNT >0
-      LOOP_FAN() {
-        if ((fans[f].pwm_pos = (fans[f].Speed & FAN_PWM_MASK)) > 0)
-          HAL::digitalWrite(fans[f].pin, fans[f].isHWInverted() ? LOW : HIGH);
-      }
-    #endif
-  }
-
-  #if HEATER_COUNT > 0
-    LOOP_HEATER() {
-      if (heaters[h].pin > -1 && heaters[h].pwm_pos == pwm_count_heater && heaters[h].pwm_pos != HEATER_PWM_MASK)
-        HAL::digitalWrite(heaters[h].pin, heaters[h].isHWInverted() ? HIGH : LOW);
-    }
+  // Heaters set output PWM
+  #if HOTENDS > 0
+    LOOP_HOTEND() hotends[h].set_output_pwm();
+  #endif
+  #if BEDS > 0
+    LOOP_BED() beds[h].set_output_pwm();
+  #endif
+  #if CHAMBERS > 0
+    LOOP_CHAMBER() chambers[h].set_output_pwm();
   #endif
 
+  // Fans set output PWM
   #if FAN_COUNT > 0
-    LOOP_FAN() {
-      if (fans[f].Kickstart == 0 && fans[f].pwm_pos == pwm_count_fan && fans[f].pwm_pos != FAN_PWM_MASK)
-        HAL::digitalWrite(fans[f].pin, fans[f].isHWInverted() ? HIGH : LOW);
-    }
+    LOOP_FAN() fans[f].set_output_pwm();
   #endif
+
+  // Software PWM modulation
+  softpwm.spin();
 
   // Calculation cycle approximate a 100ms
-  if (++cycle_100ms >= (F_CPU / 40960)) {
-    cycle_100ms = 0;
+  if (expired(&cycle_100_ms, 100U)) {
     // Temperature Spin
     thermalManager.spin();
     #if ENABLED(FAN_KICKSTART_TIME) && FAN_COUNT > 0
       LOOP_FAN() {
-        if (fans[f].Kickstart) fans[f].Kickstart--;
+        if (fans[f].kickstart) fans[f].kickstart--;
       }
     #endif
   }
@@ -452,33 +397,31 @@ void HAL_temp_isr() {
 
   #endif
 
-  pwm_count_heater  += HEATER_PWM_STEP;
-  pwm_count_fan     += FAN_PWM_STEP;
-
   // Tick endstops state, if required
   endstops.Tick();
 
 }
 
 /**
- * Timer 0 is is called 3906 timer per second.
- * It is used to update pwm values for heater and some other frequent jobs.
+ * Timer 0 is shared with millies so don't change the prescaler.
+ *
+ * On AVR this ISR uses the compare method so it runs at the base
+ * frequency (16 MHz / 64 / 256 = 976.5625 Hz), but at the TCNT0 set
+ * in OCR0B above (128 or halfway between OVFs).
  *
  *  - Manage PWM to all the heaters and fan
  *  - Prepare or Measure one of the raw ADC sensor values
- *  - Step the babysteps value for each axis towards 0
- *  - For PINS_DEBUGGING, monitor and report endstop pins
  *  - For ENDSTOP_INTERRUPTS_FEATURE check endstops if flagged
  */
 HAL_TEMP_TIMER_ISR {
-  if (!printer.isRunning()) return;
-  TEMP_OCR += 64;
-  HAL_temp_isr();
+  if (printer.isStopped()) return;
+  TEMP_OCR += 256;
+  HAL::Tick();
 }
 
 /**
  * Interrupt Service Routines
  */
-HAL_STEPPER_TIMER_ISR { stepper.Step(); }
+HAL_STEPPER_TIMER_ISR() { stepper.Step(); }
 
 #endif // __AVR__

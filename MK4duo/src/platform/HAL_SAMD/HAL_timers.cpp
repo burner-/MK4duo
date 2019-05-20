@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@
  * Copyright (c) 2014 Bob Cousins bobcousins42@googlemail.com
  *                    Nico Tonnhofer wurstnase.reprap@gmail.com
  *
- * Copyright (c) 2015 - 2016 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * ARDUINO_ARCH_SAM
  */
@@ -101,7 +101,7 @@ bool tcIsSyncing()
 }
 
 void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) { /* moet nog iets met freq */
-    SerialUSB.println("Init stepper");
+
     GCLK->CLKCTRL.reg = (uint16_t) (GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK0 | GCLK_CLKCTRL_ID( GCM_TC4_TC5 )) ;
     while (GCLK->STATUS.bit.SYNCBUSY);
     
@@ -149,10 +149,9 @@ uint32_t HAL_isr_execution_cycle(const uint32_t rate) {
 }
 
 void HAL_calc_pulse_cycle() {
-  HAL_min_pulse_cycle   = MAX((uint32_t)((F_CPU) / stepper.maximum_rate), ((F_CPU) / 500000UL) * (uint32_t)stepper.minimum_pulse);
-  HAL_min_pulse_tick    = ((uint32_t)stepper.minimum_pulse * (STEPPER_TIMER_TICKS_PER_US)) + ((MIN_ISR_START_LOOP_CYCLES) / (uint32_t)(PULSE_TIMER_PRESCALE));
-  HAL_add_pulse_ticks   = (HAL_min_pulse_cycle / (PULSE_TIMER_PRESCALE)) - HAL_min_pulse_tick;
-  HAL_min_isr_frequency = (F_CPU) / HAL_isr_execution_cycle(1);
+  HAL_min_pulse_cycle = MAX((uint32_t)((F_CPU) / stepper.maximum_rate), ((F_CPU) / 500000UL) * MAX((uint32_t)stepper.minimum_pulse, 1UL));
+  HAL_min_pulse_tick  = uint32_t(stepper.minimum_pulse) * (STEPPER_TIMER_TICKS_PER_US);
+  HAL_add_pulse_ticks = (HAL_min_pulse_cycle / (PULSE_TIMER_PRESCALE)) - HAL_min_pulse_tick;
 
   // The stepping frequency limits for each multistepping rate
   HAL_frequency_limit[0] = ((F_CPU) / HAL_isr_execution_cycle(1))   >> 0;
@@ -165,35 +164,7 @@ void HAL_calc_pulse_cycle() {
   HAL_frequency_limit[7] = ((F_CPU) / HAL_isr_execution_cycle(128)) >> 7;
 }
 
-
-uint32_t HAL_calc_timer_interval(uint32_t step_rate, uint8_t* loops, const uint8_t scale) {
-
-  uint8_t multistep = 1;
-
-  // Scale the frequency, as requested by the caller
-  step_rate <<= scale;
-
-  #if DISABLED(DISABLE_DOUBLE_QUAD_STEPPING)
-  // Select the proper multistepping
-    uint8_t idx = 0;
-    while (idx < 7 && step_rate > HAL_frequency_limit[idx]) {
-      step_rate >>= 1;
-      multistep <<= 1;
-      ++idx;
-    };
-  #else
-    NOMORE(step_rate, HAL_min_isr_frequency);
-  #endif
-
-
-  *loops = multistep;
-
-  // In case of high-performance processor, it is able to calculate in real-time
-  return uint32_t(HAL_TIMER_RATE) / step_rate;
-
-}
-
-STEPPER_TIMER_ISR {
+STEPPER_TIMER_ISR() {
 
   HAL_timer_isr_prologue(STEPPER_TIMER);
 

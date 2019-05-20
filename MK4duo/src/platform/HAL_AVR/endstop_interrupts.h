@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * Endstop Interrupts
@@ -169,6 +170,26 @@ void Endstops::setup_interrupts(void) {
       // Not all used endstop/probe -pins can raise interrupts. Please deactivate ENDSTOP_INTERRUPTS or change the pin configuration!
       static_assert(digitalPinToPCICR(Z2_MIN_PIN) != NULL, "Z2_MIN_PIN is not interrupt-capable");
       pciSetup(Z2_MIN_PIN);
+    #endif
+  #endif
+
+  #if HAS_Z3_MAX
+    #if (digitalPinToInterrupt(Z3_MAX_PIN) != NOT_AN_INTERRUPT)
+      attachInterrupt(digitalPinToInterrupt(Z3_MAX_PIN), endstop_ISR, CHANGE);
+    #else
+      // Not all used endstop/probe -pins can raise interrupts. Please deactivate ENDSTOP_INTERRUPTS or change the pin configuration!
+      static_assert(digitalPinToPCICR(Z3_MAX_PIN) != NULL, "Z3_MAX_PIN is not interrupt-capable");
+      pciSetup(Z3_MAX_PIN);
+    #endif
+  #endif
+
+  #if HAS_Z3_MIN
+    #if (digitalPinToInterrupt(Z3_MIN_PIN) != NOT_AN_INTERRUPT)
+      attachInterrupt(digitalPinToInterrupt(Z3_MIN_PIN), endstop_ISR, CHANGE);
+    #else
+      // Not all used endstop/probe -pins can raise interrupts. Please deactivate ENDSTOP_INTERRUPTS or change the pin configuration!
+      static_assert(digitalPinToPCICR(Z3_MIN_PIN) != NULL, "Z3_MIN_PIN is not interrupt-capable");
+      pciSetup(Z3_MIN_PIN);
     #endif
   #endif
 

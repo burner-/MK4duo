@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,19 +45,18 @@
  * Copyright (c) 2014 Bob Cousins bobcousins42@googlemail.com
  *                    Nico Tonnhofer wurstnase.reprap@gmail.com
  *
- * Copyright (c) 2015 - 2016 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * ARDUINO_ARCH_SAM
  */
-
-#ifndef _HAL_H_
-#define _HAL_H_
+#pragma once
 
 // --------------------------------------------------------------------------
 // Includes
 // --------------------------------------------------------------------------
 #include <stdint.h>
 #include <Arduino.h>
+#include <Wire.h>
 #include <Reset.h>
 
 // --------------------------------------------------------------------------
@@ -78,11 +77,20 @@ typedef uint32_t  ptr_int_t;
 // --------------------------------------------------------------------------
 // Defines
 // --------------------------------------------------------------------------
+#ifndef WIRE_PORT
+  #define WIRE_PORT 1
+#endif
+
+#if (WIRE_PORT == 2)
+  #define WIRE  Wire1
+#else
+  #define WIRE  Wire
+#endif
 
 // do not use program space memory with Due
 #define PROGMEM
 #ifndef PGM_P
-  #define PGM_P const char*
+  #define PGM_P PGM_P
 #endif
 #undef PSTR
 #define PSTR(s) s
@@ -107,25 +115,54 @@ typedef uint32_t  ptr_int_t;
 #ifndef strncpy_P
   #define strncpy_P(dest, src, num) strncpy((dest), (src), (num))
 #endif
+#ifndef strchr_P
+  #define strchr_P(s,c) strchr(s,c)
+#endif
 #ifndef vsnprintf_P
   #define vsnprintf_P(buf, size, a, b) vsnprintf((buf), (size), (a), (b))
 #endif
 
-// SERIAL
-#if SERIAL_PORT == -1
-  #define MKSERIAL SerialUSB
-#elif SERIAL_PORT == 0
-  #define MKSERIAL Serial
-#elif SERIAL_PORT == 1
-  #define MKSERIAL Serial1
-#elif SERIAL_PORT == 2
-  #define MKSERIAL Serial2
-#elif SERIAL_PORT == 3
-  #define MKSERIAL Serial3
+// SERIAL ports
+#include "HardwareSerial.h"
+#if !WITHIN(SERIAL_PORT_1, -1, 3)
+  #error "SERIAL_PORT_1 must be from -1 to 3"
+#endif
+#if SERIAL_PORT_1 == -1
+  #define MKSERIAL1 SerialUSB
+#elif SERIAL_PORT_1 == 0
+  #define MKSERIAL1 MKSerial
+#elif SERIAL_PORT_1 == 1
+  #define MKSERIAL1 MKSerial1
+#elif SERIAL_PORT_1 == 2
+  #define MKSERIAL1 MKSerial2
+#elif SERIAL_PORT_1 == 3
+  #define MKSERIAL1 MKSerial3
 #endif
 
-// EEPROM START
-#define EEPROM_OFFSET 10
+#if ENABLED(SERIAL_PORT_2) && SERIAL_PORT_2 >= -1
+  #if !WITHIN(SERIAL_PORT_2, -1, 3)
+    #error "SERIAL_PORT_2 must be from -1 to 3"
+  #elif SERIAL_PORT_2 == SERIAL_PORT_1
+    #error "SERIAL_PORT_2 must be different than SERIAL_PORT_1"
+  #elif SERIAL_PORT_2 == -1
+    #define MKSERIAL2 SerialUSB
+    #define NUM_SERIAL 2
+  #elif SERIAL_PORT_2 == 0
+    #define MKSERIAL2 MKSerial
+    #define NUM_SERIAL 2
+  #elif SERIAL_PORT_2 == 1
+    #define MKSERIAL2 MKSerial1
+    #define NUM_SERIAL 2
+  #elif SERIAL_PORT_2 == 2
+    #define MKSERIAL2 MKSerial2
+    #define NUM_SERIAL 2
+  #elif SERIAL_PORT_2 == 3
+    #define MKSERIAL2 MKSerial3
+    #define NUM_SERIAL 2
+  #endif
+#else
+  #define NUM_SERIAL 1
+#endif
 
 // CRITICAL SECTION
 #define CRITICAL_SECTION_START  uint32_t primask = __get_PRIMASK(); __disable_irq();
@@ -159,7 +196,7 @@ typedef uint32_t  ptr_int_t;
 #define HIGH        1
 
 // Macros for stepper.cpp
-#define HAL_MULTI_ACC(A,B)  MultiU32X32toH32(A,B)
+#define HAL_MULTI_ACC(A,B)  MultiU32X24toH32(A,B)
 
 #define HAL_TIMER_TYPE_MAX  0xFFFFFFFF
 
@@ -167,15 +204,16 @@ typedef uint32_t  ptr_int_t;
 #undef analogInputToDigitalPin
 #define analogInputToDigitalPin(p) ((p < 12) ? (p) + 54 : -1)
 #undef NUM_ANALOG_INPUTS
-#define NUM_ANALOG_INPUTS 16
+#define NUM_ANALOG_INPUTS       16
+#define ADC_TEMPERATURE_SENSOR  15
 // Bits of the ADC converter
 #define ANALOG_INPUT_BITS 12
-#define OVERSAMPLENR 2
-#define AD_RANGE  (1 << (ANALOG_INPUT_BITS + OVERSAMPLENR))
-
-#define ABS_ZERO  -273.15
-#define NUM_ADC_SAMPLES 32
-#define ADC_TEMPERATURE_SENSOR 15
+#define OVERSAMPLENR       2
+#define AD_RANGE       16384
+#define ABS_ZERO        -273.15f
+#define NUM_ADC_SAMPLES   32
+#define AD595_MAX        330.0f
+#define AD8495_MAX       660.0f
 
 #define HARDWARE_PWM true
 
@@ -196,6 +234,18 @@ extern "C" char *dtostrf (double __val, signed char __width, unsigned char __pre
 
 typedef AveragingFilter<NUM_ADC_SAMPLES> ADCAveragingFilter;
 
+// ISR handler type
+using pfnISR_Handler = void(*)(void);
+
+// Install a new interrupt vector handler for the given irq, returning the old one
+pfnISR_Handler install_isr(IRQn_Type irq, pfnISR_Handler newHandler);
+
+class InterruptLock {
+  public:
+   InterruptLock()  { noInterrupts(); }
+   ~InterruptLock() { interrupts();   }
+};
+
 class HAL {
 
   public: /** Constructor */
@@ -211,11 +261,20 @@ class HAL {
 
   private: /** Private Parameters */
 
-    #if HEATER_COUNT > 0
-      static ADCAveragingFilter sensorFilters[HEATER_COUNT];
+    #if HOTENDS > 0
+      static ADCAveragingFilter sensorFilters[HOTENDS];
+    #endif
+    #if BEDS > 0
+      static ADCAveragingFilter BEDsensorFilters[BEDS];
+    #endif
+    #if CHAMBERS > 0
+      static ADCAveragingFilter CHAMBERsensorFilters[CHAMBERS];
+    #endif
+    #if COOLERS > 0
+      static ADCAveragingFilter COOLERsensorFilters[COOLERS];
     #endif
 
-    #if HAS_FILAMENT_SENSOR
+    #if ENABLED(FILAMENT_WIDTH_SENSOR)
       static ADCAveragingFilter filamentFilter;
     #endif
 
@@ -237,7 +296,7 @@ class HAL {
     static bool pwm_status(const pin_t pin);
     static bool tc_status(const pin_t pin);
 
-    static void analogWrite(const pin_t pin, uint32_t ulValue, const uint16_t freq=1000);
+    static void analogWrite(const pin_t pin, uint32_t ulValue, const uint16_t freq=1000U, const bool hwpwm=true);
 
     static void Tick();
 
@@ -268,7 +327,7 @@ class HAL {
     }
 
     FORCE_INLINE static void delayNanoseconds(const uint32_t delayNs) {
-      HAL_delay_cycles(delayNs * (CYCLES_PER_US) / 1000L);
+      HAL_delay_cycles(delayNs * (CYCLES_PER_US) / 1000UL);
     }
     FORCE_INLINE static void delayMicroseconds(const uint32_t delayUs) {
       HAL_delay_cycles(delayUs * (CYCLES_PER_US));
@@ -286,27 +345,6 @@ class HAL {
       return millis();
     }
 
-    // Serial communication
-    FORCE_INLINE static char readFlashByte(PGM_P ptr) {
-      return pgm_read_byte(ptr);
-    }
-    FORCE_INLINE static void serialSetBaudrate(const long baud) {
-      MKSERIAL.begin(baud);
-      HAL::delayMilliseconds(1);
-    }
-    FORCE_INLINE static bool serialByteAvailable() {
-      return MKSERIAL.available() > 0;
-    }
-    FORCE_INLINE static uint8_t serialReadByte() {
-      return MKSERIAL.read();
-    }
-    FORCE_INLINE static void serialWriteByte(char c) {
-      MKSERIAL.write(c);
-    }
-    FORCE_INLINE static void serialFlush() {
-      MKSERIAL.flush();
-    }
-
     static void showStartReason();
 
     static int getFreeRam();
@@ -314,23 +352,24 @@ class HAL {
 
     // SPI related functions
     #if ENABLED(SOFTWARE_SPI)
-      static uint8_t spiTransfer(uint8_t b); // using Mode 0
+      static uint8_t spiTransfer(uint8_t nbyte); // using Mode 0
       static void spiBegin();
       static void spiInit(uint8_t spiRate);
       static uint8_t spiReceive();
       static void spiReadBlock(uint8_t* buf, uint16_t nbyte);
-      static void spiSend(uint8_t b);
-      static void spiSend(const uint8_t* buf , size_t n) ;
+      static void spiSend(uint8_t nbyte);
+      static void spiSend(const uint8_t* buf , size_t nbyte) ;
       static void spiSendBlock(uint8_t token, const uint8_t* buf);
     #else
       // Hardware setup
       static void spiBegin();
-      static void spiInit(uint8_t spiRate);
+      static void spiInit(uint8_t spiRate=6);
+      static uint8_t spiTransfer(uint8_t nbyte);
       // Write single byte to SPI
-      static void spiSend(byte b);
-      static void spiSend(const uint8_t* buf, size_t n);
-      static void spiSend(uint32_t chan, byte b);
-      static void spiSend(uint32_t chan ,const uint8_t* buf, size_t n);
+      static void spiSend(uint8_t nbyte);
+      static void spiSend(const uint8_t* buf, size_t nbyte);
+      static void spiSend(uint32_t chan, uint8_t nbyte);
+      static void spiSend(uint32_t chan ,const uint8_t* buf, size_t nbyte);
       // Read single byte from SPI
       static uint8_t spiReceive(void);
       static uint8_t spiReceive(uint32_t chan);
@@ -352,8 +391,6 @@ void cli(void);
 // Enable interrupts
 void sei(void);
 
-int freeMemory(void);
-
 // SPI: Extended functions which take a channel number (hardware SPI only)
 /** Write single byte to specified SPI channel */
 void spiSend(uint32_t chan, byte b);
@@ -363,12 +400,11 @@ void spiSend(uint32_t chan, const uint8_t* buf, size_t n);
 uint8_t spiReceive(uint32_t chan);
 
 // Tone for due
-void tone(const pin_t _pin, const uint16_t frequency, const uint16_t duration);
+void tone(const pin_t _pin, const uint16_t frequency, const uint16_t duration=0);
+void noTone(const pin_t _pin);
 
 // EEPROM
 uint8_t eeprom_read_byte(uint8_t* pos);
 void eeprom_read_block(void* pos, const void* eeprom_address, size_t n);
 void eeprom_write_byte(uint8_t* pos, uint8_t value);
 void eeprom_update_block(const void* pos, void* eeprom_address, size_t n);
-
-#endif /* _HAL_H_ */

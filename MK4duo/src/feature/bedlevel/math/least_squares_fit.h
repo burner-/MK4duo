@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
- * Incremental Least Squares Best Fit  By Roxy and Ed Williams
+ * Incremental Least Squares Best Fit By Roxy and Ed Williams
  *
  * This algorithm is high speed and has a very small code footprint.
  * Its results are identical to both the Iterative Least-Squares published
@@ -31,9 +32,6 @@
  * A point can be probed and its values fed into the algorithm and then discarded.
  *
  */
-
-#ifndef _LEAST_SQUARES_FIT_H_
-#define _LEAST_SQUARES_FIT_H_
 
 #if ABL_PLANAR || ENABLED(AUTO_BED_LEVELING_UBL)
 
@@ -84,5 +82,3 @@
   int finish_incremental_LSF(struct linear_fit_data *);
 
 #endif // ENABLED(AUTO_BED_LEVELING_LINEAR)
-
-#endif /* _LEAST_SQUARES_FIT_H_ */

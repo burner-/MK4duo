@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,15 +19,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * sanitycheck.h
  *
  * Test configuration values for errors at compile-time.
  */
-
-#ifndef _STEPPER_SANITYCHECK_H_
-#define _STEPPER_SANITYCHECK_H_
 
 // Advanced motion
 #if DISABLED(DEFAULT_STEPPER_DEACTIVE_TIME)
@@ -61,17 +59,6 @@
       #error "DEPENDENCY ERROR: Missing setting X_MICROSTEPS."
     #endif
   #endif
-  #if X2_HAS_DRV(TMC26X)
-    #if DISABLED(X2_CURRENT)
-      #error "DEPENDENCY ERROR: Missing setting X2_CURRENT."
-    #endif
-    #if DISABLED(X2_SENSE_RESISTOR)
-      #error "DEPENDENCY ERROR: Missing setting X2_SENSE_RESISTOR."
-    #endif
-    #if DISABLED(X2_MICROSTEPS)
-      #error "DEPENDENCY ERROR: Missing setting X2_MICROSTEPS."
-    #endif
-  #endif
   #if Y_HAS_DRV(TMC26X)
     #if DISABLED(Y_CURRENT)
       #error "DEPENDENCY ERROR: Missing setting Y_CURRENT."
@@ -83,17 +70,6 @@
       #error "DEPENDENCY ERROR: Missing setting Y_MICROSTEPS."
     #endif
   #endif
-  #if Y2_HAS_DRV(TMC26X)
-    #if DISABLED(Y2_CURRENT)
-      #error "DEPENDENCY ERROR: Missing setting Y2_CURRENT."
-    #endif
-    #if DISABLED(Y2_SENSE_RESISTOR)
-      #error "DEPENDENCY ERROR: Missing setting Y2_SENSE_RESISTOR."
-    #endif
-    #if DISABLED(Y2_MICROSTEPS)
-      #error "DEPENDENCY ERROR: Missing setting Y2_MICROSTEPS."
-    #endif
-  #endif
   #if Z_HAS_DRV(TMC26X)
     #if DISABLED(Z_CURRENT)
       #error "DEPENDENCY ERROR: Missing setting Z_CURRENT."
@@ -103,17 +79,6 @@
     #endif
     #if DISABLED(Z_MICROSTEPS)
       #error "DEPENDENCY ERROR: Missing setting Z_MICROSTEPS."
-    #endif
-  #endif
-  #if Z2_HAS_DRV(TMC26X)
-    #if DISABLED(Z2_MAX_CURRENT)
-      #error "DEPENDENCY ERROR: Missing setting Z2_MAX_CURRENT."
-    #endif
-    #if DISABLED(Z2_SENSE_RESISTOR)
-      #error "DEPENDENCY ERROR: Missing setting Z2_SENSE_RESISTOR."
-    #endif
-    #if DISABLED(Z2_MICROSTEPS)
-      #error "DEPENDENCY ERROR: Missing setting Z2_MICROSTEPS."
     #endif
   #endif
   #if E0_HAS_DRV(TMC26X)
@@ -176,20 +141,6 @@
       #error "DEPENDENCY ERROR: Missing setting X_STALLCURRENT."
     #endif
   #endif
-  #if X2_HAS_DRV(L6470)
-    #if DISABLED(X2_MICROSTEPS)
-      #error "DEPENDENCY ERROR: Missing setting X2_MICROSTEPS."
-    #endif
-    #if DISABLED(X2_K_VAL)
-      #error "DEPENDENCY ERROR: Missing setting X2_K_VAL."
-    #endif
-    #if DISABLED(X2_OVERCURRENT)
-      #error "DEPENDENCY ERROR: Missing setting X2_OVERCURRENT."
-    #endif
-    #if DISABLED(X2_STALLCURRENT)
-      #error "DEPENDENCY ERROR: Missing setting X2_STALLCURRENT."
-    #endif
-  #endif
   #if Y_HAS_DRV(L6470)
     #if DISABLED(Y_MICROSTEPS)
       #error "DEPENDENCY ERROR: Missing setting Y_MICROSTEPS."
@@ -204,20 +155,6 @@
       #error "DEPENDENCY ERROR: Missing setting Y_STALLCURRENT."
     #endif
   #endif
-  #if Y2_HAS_DRV(L6470)
-    #if DISABLED(Y2_MICROSTEPS)
-      #error "DEPENDENCY ERROR: Missing setting Y2_MICROSTEPS."
-    #endif
-    #if DISABLED(Y2_K_VAL)
-      #error "DEPENDENCY ERROR: Missing setting Y2_K_VAL."
-    #endif
-    #if DISABLED(Y2_OVERCURRENT)
-      #error "DEPENDENCY ERROR: Missing setting Y2_OVERCURRENT."
-    #endif
-    #if DISABLED(Y2_STALLCURRENT)
-      #error "DEPENDENCY ERROR: Missing setting Y2_STALLCURRENT."
-    #endif
-  #endif
   #if Z_HAS_DRV(L6470)
     #if DISABLED(Z_MICROSTEPS)
       #error "DEPENDENCY ERROR: Missing setting Z_MICROSTEPS."
@@ -230,20 +167,6 @@
     #endif
     #if DISABLED(Z_STALLCURRENT)
       #error "DEPENDENCY ERROR: Missing setting Z_STALLCURRENT."
-    #endif
-  #endif
-  #if Z2_HAS_DRV(L6470)
-    #if DISABLED(Z2_MICROSTEPS)
-      #error "DEPENDENCY ERROR: Missing setting Z2_MICROSTEPS."
-    #endif
-    #if DISABLED(Z2_K_VAL)
-      #error "DEPENDENCY ERROR: Missing setting Z2_K_VAL."
-    #endif
-    #if DISABLED(Z2_OVERCURRENT)
-      #error "DEPENDENCY ERROR: Missing setting Z2_OVERCURRENT."
-    #endif
-    #if DISABLED(Z2_STALLCURRENT)
-      #error "DEPENDENCY ERROR: Missing setting Z2_STALLCURRENT."
     #endif
   #endif
   #if E0_HAS_DRV(L6470)
@@ -303,5 +226,3 @@
     #endif
   #endif
 #endif
-
-#endif /* _STEPPER_SANITYCHECK_H_ */

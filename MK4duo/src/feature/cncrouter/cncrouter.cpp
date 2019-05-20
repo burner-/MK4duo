@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,7 +49,6 @@
 
   #if ENABLED(CNCROUTER_SLOWSTART) && ENABLED(FAST_PWM_CNCROUTER)
     uint32_t Cncrouter::rpm_target = 0;
-    millis_t Cncrouter::next_speed_step = 0; 
   #endif
 
   #if ENABLED(FAST_PWM_CNCROUTER)
@@ -65,13 +64,9 @@
 
   void Cncrouter::manage() {
     #if ENABLED(CNCROUTER_SLOWSTART) && ENABLED(FAST_PWM_CNCROUTER)
-      if (rpm_target != rpm_instant) {
-        millis_t ms = millis();
-        if (ELAPSED(ms, next_speed_step)) {
-          next_speed_step = ms + (CNCROUTER_SLOWSTART_INTERVAL * 1000L);
-          speed_step();   
-        }
-      }
+      static millis_s next_speed_step_ms(true);
+      if (rpm_target != rpm_instant && expired(&next_speed_step_ms, millis_s(CNCROUTER_SLOWSTART_INTERVAL * 1000U)))
+        speed_step();   
     #endif
   }
 
@@ -84,10 +79,7 @@
 
     if (tool_id != active_tool) {
 
-      if (wait) {
-        SERIAL_STR(PAUSE);
-        SERIAL_EOL();
-      }
+      if (wait) host_action.pause();
 
       planner.synchronize();
 
@@ -109,13 +101,13 @@
         printer.keepalive(PausedforUser);
 
         #if HAS_BUZZER
-          millis_t next_buzz = millis();
+          millis_l next_buzz = millis();
         #endif
 
         while (printer.isWaitForUser()) {
           #if HAS_BUZZER
             if (millis() - next_buzz > 60000) {
-              for (uint8_t i = 0; i < 3; i++) BUZZ(300, 1000);
+              for (uint8_t i = 0; i < 3; i++) sound.playtone(300, NOTE_C6);
               next_buzz = millis();
             }
           #endif
@@ -134,10 +126,9 @@
 
       if (wait) {
         printer.keepalive(InHandler);
-
-        SERIAL_STR(RESUME);
-        SERIAL_EOL();
+        host_action.resume();
       }
+
     }
   }
 

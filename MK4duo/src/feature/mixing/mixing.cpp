@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,70 +23,153 @@
 /**
  * mixing.cpp
  *
- * Copyright (C) 2017 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "../../../MK4duo.h"
 
 #if ENABLED(COLOR_MIXING_EXTRUDER)
 
-  float mixing_factor[MIXING_STEPPERS] = { 0.0 }; // Mix proportion. 0.0 = off
+Mixer mixer;
 
-  #if MIXING_VIRTUAL_TOOLS  > 1
+/** Public Parameters */
+float Mixer::collector[MIXING_STEPPERS]; // mix proportion. 0.0 = off, otherwise <= COLOR_A_MASK.
 
-    float mixing_virtual_tool_mix[MIXING_VIRTUAL_TOOLS][MIXING_STEPPERS] = { 0.0 };
+#if HAS_GRADIENT_MIX
 
-    void mixing_tools_init() {
-      // Virtual Tools 0, 1, 2, 3 = Filament 1, 2, 3, 4, etc.
-      for (uint8_t t = 0; t < MIXING_VIRTUAL_TOOLS && t < MIXING_STEPPERS; t++)
-        for (uint8_t i = 0; i < MIXING_STEPPERS; i++)
-          mixing_virtual_tool_mix[t][i] = (t == i) ? 1.0 : 0.0;
+  mixer_perc_t Mixer::mix[MIXING_STEPPERS];
 
-      // Remaining virtual tools are 100% filament 1
-      #if MIXING_STEPPERS < MIXING_VIRTUAL_TOOLS
-        for (uint8_t t = MIXING_STEPPERS; t < MIXING_VIRTUAL_TOOLS; t++)
-          for (uint8_t i = 0; i < MIXING_STEPPERS; i++)
-            mixing_virtual_tool_mix[t][i] = (i == 0) ? 1.0 : 0.0;
-      #endif
+  gradient_t Mixer::gradient = {
+    false,        // enabled
+    { 0 },        // color (array)
+    0, 0,         // start_z, end_z
+    0, 1,         // start_vtool, end_vtool
+    { 0 }, { 0 }  // start_mix, end_mix (array)
+  };
 
-      // Initialize mixing to tool 0 color
-      for (uint8_t i = 0; i < MIXING_STEPPERS; i++)
-        mixing_factor[i] = mixing_virtual_tool_mix[0][i];
+  float Mixer::prev_z = 0;
+
+#endif
+
+/** Private Parameters */
+// Used up to Planner level
+uint_fast8_t  Mixer::selected_vtool = 0;
+mixer_color_t Mixer::color[MIXING_VIRTUAL_TOOLS][MIXING_STEPPERS];
+
+// Used in Stepper
+int_fast8_t   Mixer::runner = 0;
+mixer_color_t Mixer::s_color[MIXING_STEPPERS];
+mixer_accu_t  Mixer::accu[MIXING_STEPPERS] = { 0 };
+
+void Mixer::normalize(const uint8_t tool_index) {
+  float cmax = 0;
+  #if ENABLED(MIXING_DEBUG)
+    float csum = 0;
+  #endif
+
+  MIXING_STEPPER_LOOP(i) {
+    const float v = collector[i];
+    NOLESS(cmax, v);
+    #if ENABLED(MIXING_DEBUG)
+      csum += v;
+    #endif
+  }
+  #if ENABLED(MIXING_DEBUG)
+    SERIAL_MSG("Mixer: Old relation : [ ");
+    MIXING_STEPPER_LOOP(i) {
+      SERIAL_VAL(collector[i] / csum, 3);
+      SERIAL_CHR(' ');
+    }
+    SERIAL_EM("]");
+  #endif
+
+  // Scale all values so their maximum is COLOR_A_MASK
+  const float scale = float(COLOR_A_MASK) / cmax;
+  MIXING_STEPPER_LOOP(i)
+    color[tool_index][i] = collector[i] * scale;
+
+  #if ENABLED(MIXING_DEBUG)
+    csum = 0;
+    SERIAL_MSG("Mixer: Normalize to : [ ");
+    MIXING_STEPPER_LOOP(i) {
+      SERIAL_VAL(uint16_t(color[tool_index][i]));
+      SERIAL_CHR(' ');
+      csum += color[tool_index][i];
+    }
+    SERIAL_EM("]");
+    SERIAL_MSG("Mixer: New relation : [ ");
+    MIXING_STEPPER_LOOP(i) {
+      SERIAL_VAL(uint16_t(color[tool_index][i]) / csum, 3);
+      SERIAL_CHR(' ');
+    }
+    SERIAL_EM("]");
+  #endif
+
+  #if HAS_GRADIENT_MIX
+    refresh_gradient();
+  #endif
+
+}
+
+void Mixer::reset_vtools() {
+  // Virtual Tools 0, 1, 2, 3 = Filament 1, 2, 3, 4, etc.
+  // Every virtual tool gets a pure filament
+  for (uint8_t t = 0; t < MIXING_VIRTUAL_TOOLS && t < MIXING_STEPPERS; t++)
+    MIXING_STEPPER_LOOP(i)
+      color[t][i] = (t == i) ? COLOR_A_MASK : 0;
+
+  // Remaining virtual tools are 100% filament 1
+  #if MIXING_VIRTUAL_TOOLS > MIXING_STEPPERS
+    for (uint8_t t = MIXING_STEPPERS; t < MIXING_VIRTUAL_TOOLS; t++)
+      MIXING_STEPPER_LOOP(i)
+        color[t][i] = (i == 0) ? COLOR_A_MASK : 0;
+  #endif
+}
+
+// called at boot
+void Mixer::init() {
+  reset_vtools();
+  ZERO(collector);
+  #if HAS_GRADIENT_MIX
+    update_mix_from_vtool();
+    update_gradient_for_planner_z();
+  #endif
+}
+
+void Mixer::refresh_collector(const float proportion/*=1.0*/, const uint8_t t/*=selected_vtool*/) {
+  float csum = 0, cmax = 0;
+  MIXING_STEPPER_LOOP(i) {
+    const float v = color[t][i];
+    cmax = MAX(cmax, v);
+    csum += v;
+  }
+  const float inv_prop = proportion / csum;
+  MIXING_STEPPER_LOOP(i) collector[i] = color[t][i] * inv_prop;
+}
+
+#if HAS_GRADIENT_MIX
+
+  void Mixer::update_gradient_for_z(const float z) {
+    if (z == prev_z) return;
+    prev_z = z;
+
+    const float slice = gradient.end_z - gradient.start_z;
+
+    float pct = float(z - gradient.start_z) / slice;
+    NOLESS(pct, 0.0f); NOMORE(pct, 1.0f);
+
+    MIXING_STEPPER_LOOP(i) {
+      const mixer_perc_t sm = gradient.start_mix[i];
+      mix[i] = sm + (gradient.end_mix[i] - sm) * pct;
     }
 
-  #endif // MIXING_VIRTUAL_TOOLS > 1
-
-  void normalize_mix() {
-    float mix_total = 0.0;
-    for (uint8_t i = 0; i < MIXING_STEPPERS; i++) mix_total += RECIPROCAL(mixing_factor[i]);
-    // Scale all values if they don't add up to ~1.0
-    if (!NEAR(mix_total, 1.0)) {
-      SERIAL_EM("Warning: Mix factors must add up to 1.0. Scaling.");
-      for (uint8_t i = 0; i < MIXING_STEPPERS; i++) mixing_factor[i] *= mix_total;
-    }
+    copy_mix_to_color(gradient.color);
   }
 
-  // Get mixing parameters from the GCode
-  // The total "must" be 1.0 (but it will be normalized)
-  // If no mix factors are given, the old mix is preserved
-  void get_mix_from_command() {
-    const char mixing_codes[] = { 'A', 'B', 'C', 'D', 'H', 'I' };
-    byte mix_bits = 0;
-    for (uint8_t i = 0; i < MIXING_STEPPERS; i++) {
-      if (parser.seenval(mixing_codes[i])) {
-        SBI(mix_bits, i);
-        float v = parser.value_float();
-        NOLESS(v, 0.0);
-        mixing_factor[i] = RECIPROCAL(v);
-      }
-    }
-    // If any mixing factors were included, clear the rest
-    // If none were included, preserve the last mix
-    if (mix_bits) {
-      for (uint8_t i = 0; i < MIXING_STEPPERS; i++)
-        if (!TEST(mix_bits, i)) mixing_factor[i] = 0.0;
-      normalize_mix();
-    }
+  void Mixer::update_gradient_for_planner_z() {
+    update_gradient_for_z(mechanics.current_position[Z_AXIS]);
   }
+
+#endif
 
 #endif // ENABLED(COLOR_MIXING_EXTRUDER)

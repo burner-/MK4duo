@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,24 +19,32 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * conditionals_pre.h
  * Defines that depend on configuration but are not editable.
  */
 
-#ifndef _CONDITIONALS_PRE_H_
-#define _CONDITIONALS_PRE_H_
-
 #if DISABLED(STRING_CONFIG_H_AUTHOR)
   #define STRING_CONFIG_H_AUTHOR "(none, default config)"
 #endif
 
-#define LCD_HAS_DIRECTIONAL_BUTTONS (BUTTON_EXISTS(UP) || BUTTON_EXISTS(DWN) || BUTTON_EXISTS(LFT) || BUTTON_EXISTS(RT))
-
 #if ENABLED(NEXTION)
-  #define LCD_HEIGHT 4
+  #define LCD_WIDTH 26
+  #define LCD_HEIGHT 6
   #define LCD_DECIMAL_SMALL_XY
+  #undef GAME_BRICKOUT
+  #undef GAME_INVADERS
+  #undef GAME_SNAKE
+  #undef GAME_MAZE
+  #undef ENCODER_RATE_MULTIPLIER
+  #undef ULTIPANEL_FEEDMULTIPLY
+  #undef REVERSE_ENCODER_DIRECTION
+  #define REVERSE_MENU_DIRECTION
+  #if DISABLED(NEXTION_MAX_MESSAGE_LENGTH)
+    #define NEXTION_MAX_MESSAGE_LENGTH 30
+  #endif
 #endif
 
 #if DISABLED(LCD_TIMEOUT_TO_STATUS)
@@ -57,9 +65,9 @@
 
 #elif ENABLED(ZONESTAR_LCD)
 
+  #define ADC_KEYPAD
   #define REPRAPWORLD_KEYPAD
   #define REPRAPWORLD_KEYPAD_MOVE_STEP 10.0
-  #define ADC_KEYPAD
   #define ADC_KEY_NUM 8
   #define ULTIPANEL
 
@@ -83,9 +91,9 @@
 
 #elif ENABLED(miniVIKI) || ENABLED(VIKI2) || ENABLED(ELB_FULL_GRAPHIC_CONTROLLER) || ENABLED(AZSMZ_12864)
 
-  #define ULTRA_LCD           // General LCD support, also 16x2
-  #define DOGLCD              // Support for SPI LCD 128x64 (Controller ST7565R graphic Display Family)
-  #define ULTIMAKERCONTROLLER // as available from the Ultimaker online store.
+  #define ULTRA_LCD
+  #define DOGLCD
+  #define ULTIMAKERCONTROLLER
 
   #if ENABLED(miniVIKI)
     #define LCD_CONTRAST_MIN      75
@@ -132,12 +140,13 @@
 #elif ENABLED(WANHAO_D6_OLED)
 
   #define U8GLIB_SSD1306
-  #define LCD_WIDTH 22
+  #define LCD_WIDTH 21
   #define LCD_HEIGHT 5
   #define LCD_CONTRAST_MIN 10
   #define LCD_CONTRAST_MAX 255
   #define DEFAULT_LCD_CONTRAST 100
   #define ULTIPANEL
+  #define SPEAKER
 
 #elif ENABLED(CR10_STOCKDISPLAY)
 
@@ -225,6 +234,18 @@
 #endif
 
 /**
+ * SPI PANELS
+ */
+
+// Einstart OLED has Cardinal nav via pins defined in pins_EINSTART-S.h
+#if ENABLED(U8GLIB_SH1106_EINSTART)
+  #define ULTRA_LCD
+  #define DOGLCD
+  #define ULTIPANEL
+  #define NEWPANEL
+#endif
+ 
+/**
  * I2C PANELS
  */
 
@@ -309,87 +330,48 @@
   #define ULTIPANEL
 #endif
 
-#if ENABLED(DOGLCD) // Change number of lines to match the DOG graphic display
-  #if DISABLED(LCD_WIDTH)
-    #if ENABLED(LCD_WIDTH_OVERRIDE)
-      #define LCD_WIDTH LCD_WIDTH_OVERRIDE
-    #else
-      #define LCD_WIDTH 22
-    #endif
-  #endif
-  #if DISABLED(LCD_HEIGHT)
-    #define LCD_HEIGHT 5
-  #endif
-#endif
-
-#if ENABLED(NO_LCD_MENUS)
-  #undef ULTIPANEL
-#endif
-
 #if ENABLED(ULTIPANEL)
   #define NEWPANEL  // Disable this if you actually have no click-encoder panel
   #define ULTRA_LCD
-  #if DISABLED(LCD_WIDTH)
-    #define LCD_WIDTH 20
-  #endif
-  #if DISABLED(LCD_HEIGHT)
-    #define LCD_HEIGHT 4
-  #endif
-#elif ENABLED(ULTRA_LCD)  // no panel but just LCD
-  #ifndef LCD_WIDTH
-    #define LCD_WIDTH 16
-  #endif
-  #ifndef LCD_HEIGHT
-    #define LCD_HEIGHT 2
-  #endif
 #endif
 
-#if ENABLED(DOGLCD)
-  /* Custom characters defined in font dogm_font_data_mk4duo_symbols.h / MK4duo_symbols.fon */
-  // \x00 intentionally skipped to avoid problems in strings
-  #define LCD_STR_REFRESH     "\x01"
-  #define LCD_STR_FOLDER      "\x02"
-  #define LCD_STR_ARROW_RIGHT "\x03"
-  #define LCD_STR_UPLEVEL     "\x04"
-  #define LCD_STR_CLOCK       "\x05"
-  #define LCD_STR_FEEDRATE    "\x06"
-  #define LCD_STR_BEDTEMP     "\x07"
-  #define LCD_STR_THERMOMETER "\x08"
-  #define LCD_STR_DEGREE      "\x09"
+// Aliases for LCD features
+#define HAS_NEXTION_LCD       ENABLED(NEXTION)
+#define HAS_SPI_LCD           ENABLED(ULTRA_LCD)
+#define HAS_GRAPHICAL_LCD     ENABLED(DOGLCD)
+#define HAS_CHARACTER_LCD     (HAS_SPI_LCD && !HAS_GRAPHICAL_LCD)
+#define HAS_LCD               (ENABLED(NEWPANEL) || HAS_NEXTION_LCD)
+#define HAS_LCD_MENU          ((ENABLED(ULTIPANEL) || ENABLED(NEXTION)) && DISABLED(NO_LCD_MENUS))
 
-  #define LCD_STR_SPECIAL_MAX '\x09'
-  // Maximum here is 0x1F because 0x20 is ' ' (space) and the normal charsets begin.
-  // Better stay below 0x10 because DISPLAY_CHARSET_HD44780_WESTERN begins here.
+#define HAS_ADC_BUTTONS       ENABLED(ADC_KEYPAD)
 
-  // Symbol characters
-  #define LCD_STR_FILAM_DIA   "\xf8"
-  #define LCD_STR_FILAM_MUL   "\xa4"
-#else
-  // Custom characters defined in the first 8 characters of the LCD
-  #define LCD_BEDTEMP_CHAR     0x00  // Print only as a char. This will have 'unexpected' results when used in a string!
-  #define LCD_DEGREE_CHAR      0x01
-  #define LCD_STR_THERMOMETER "\x02" // Still used with string concatenation
-  #define LCD_UPLEVEL_CHAR     0x03
-  #define LCD_STR_REFRESH     "\x04"
-  #define LCD_STR_FOLDER      "\x05"
-  #define LCD_FEEDRATE_CHAR    0x06
-  #define LCD_CLOCK_CHAR       0x07
-  #define LCD_STR_ARROW_RIGHT ">"  /* from the default character set */
-#endif
+#define HAS_DIGITAL_BUTTONS   (!HAS_ADC_BUTTONS && ENABLED(NEWPANEL)        \
+                              || (BUTTON_EXISTS(EN1) && BUTTON_EXISTS(EN2)) \
+                              || BUTTON_EXISTS(ENC) || BUTTON_EXISTS(BACK)  \
+                              || BUTTON_EXISTS(UP)  || BUTTON_EXISTS(DWN)   \
+                              || BUTTON_EXISTS(LFT) || BUTTON_EXISTS(RT))
 
-/**
- * Default LCD contrast for dogm-like LCD displays
- */
-#if ENABLED(DOGLCD)
+#define HAS_SHIFT_ENCODER     (!HAS_ADC_BUTTONS && (ENABLED(REPRAPWORLD_KEYPAD) || (HAS_SPI_LCD && DISABLED(NEWPANEL))))
+#define HAS_ENCODER_WHEEL     ((!HAS_ADC_BUTTONS && ENABLED(NEWPANEL)) || (BUTTON_EXISTS(EN1) && BUTTON_EXISTS(EN2)) )
+#define HAS_ENCODER_ACTION    (HAS_LCD_MENU || ENABLED(ULTIPANEL_FEEDMULTIPLY))
 
-  #define HAS_LCD_CONTRAST ( \
-      ENABLED(MAKRPANEL) \
-   || ENABLED(CARTESIO_UI) \
-   || ENABLED(VIKI2) \
-   || ENABLED(AZSMZ_12864) \
-   || ENABLED(miniVIKI) \
-   || ENABLED(ELB_FULL_GRAPHIC_CONTROLLER) \
-   || ENABLED(WANHAO_D6_OLED) \
+// I2C buttons must be read in the main thread
+#define HAS_SLOW_BUTTONS      (ENABLED(LCD_I2C_VIKI) || ENABLED(LCD_I2C_PANELOLU2))
+
+#define LCD_HAS_DIRECTIONAL_BUTTONS (BUTTON_EXISTS(UP) || BUTTON_EXISTS(DWN) || BUTTON_EXISTS(LFT) || BUTTON_EXISTS(RT))
+
+#if HAS_GRAPHICAL_LCD
+
+  /**
+   * Default LCD contrast for Graphical LCD displays
+   */
+  #define HAS_LCD_CONTRAST (                \
+       ENABLED(MAKRPANEL)                   \
+    || ENABLED(CARTESIO_UI)                 \
+    || ENABLED(VIKI2)                       \
+    || ENABLED(AZSMZ_12864)                 \
+    || ENABLED(miniVIKI)                    \
+    || ENABLED(ELB_FULL_GRAPHIC_CONTROLLER) \
   )
 
   #if HAS_LCD_CONTRAST
@@ -403,13 +385,7 @@
       #define DEFAULT_LCD_CONTRAST 32
     #endif
   #endif
-#endif
 
-// Boot screens
-#if DISABLED(ULTRA_LCD)
-  #undef SHOW_BOOTSCREEN
-#elif DISABLED(BOOTSCREEN_TIMEOUT)
-  #define BOOTSCREEN_TIMEOUT 2500
 #endif
 
 /**
@@ -419,32 +395,43 @@
  *  EXTRUDERS         - Number of Selectable Tools
  *  HOTENDS           - Number of hotends, whether connected or separate
  *  DRIVER_EXTRUDERS  - Number of driver extruders
- *  TOOL_E_INDEX      - Index to use when getting/setting the tool state
+ *  E_MANUAL     - Number of E steppers for LCD move options
  *
  */
 #if ENABLED(DONDOLO_SINGLE_MOTOR)        // One E stepper, unified E axis, two hotends
-  #undef SINGLENOZZLE
-  #undef EXTRUDERS
-  #undef DRIVER_EXTRUDERS
+  #undef  SINGLENOZZLE
+  #undef  EXTRUDERS
+  #undef  DRIVER_EXTRUDERS
   #define EXTRUDERS         2
   #define DRIVER_EXTRUDERS  1
-  #define TOOL_E_INDEX      0
+  #define E_MANUAL          2
 #elif ENABLED(DONDOLO_DUAL_MOTOR)         // Two E stepper, two hotends
-  #undef SINGLENOZZLE
-  #undef EXTRUDERS
-  #undef DRIVER_EXTRUDERS
+  #undef  SINGLENOZZLE
+  #undef  EXTRUDERS
+  #undef  DRIVER_EXTRUDERS
   #define EXTRUDERS         2
   #define DRIVER_EXTRUDERS  2
-  #define TOOL_E_INDEX      current_block->active_extruder
+  #define E_MANUAL          2
 #elif ENABLED(COLOR_MIXING_EXTRUDER)      // Multi-stepper, unified E axis, one hotend
   #define SINGLENOZZLE
-  #undef EXTRUDERS
-  #undef DRIVER_EXTRUDERS
+  #undef  EXTRUDERS
+  #undef  DRIVER_EXTRUDERS
   #define EXTRUDERS         1
   #define DRIVER_EXTRUDERS  MIXING_STEPPERS
-  #define TOOL_E_INDEX      0
+  #define E_MANUAL          1
+  #define HAS_GRADIENT_MIX  (MIXING_STEPPERS == 2)
+#elif ENABLED(PRUSA_MMU2)                 // Multi-Material-Unit V2
+  #define SINGLENOZZLE
+  #undef  EXTRUDERS
+  #undef  DRIVER_EXTRUDERS
+  #define EXTRUDERS         5
+  #define DRIVER_EXTRUDERS  1
+  #define E_MANUAL          5
+  #ifndef TOOLCHANGE_ZRAISE
+    #define TOOLCHANGE_ZRAISE 0
+  #endif
 #else
-  #define TOOL_E_INDEX      current_block->active_extruder
+  #define E_MANUAL          DRIVER_EXTRUDERS
 #endif
 
 // One hotend, multi-extruder
@@ -474,12 +461,12 @@
  */
 #if EXTRUDERS > 1
   #define XYZE_N          (3 + EXTRUDERS)
-  #define E_AXIS_N        (E_AXIS + extruder)
-  #define E_INDEX         (E_AXIS + tools.active_extruder)
+  #define E_AXIS_N(E)     (uint8_t(E_AXIS) + E)
+  #define E_INDEX         (uint8_t(E_AXIS) + tools.active_extruder)
   #define TARGET_EXTRUDER tools.target_extruder
 #elif EXTRUDERS == 1
   #define XYZE_N          XYZE
-  #define E_AXIS_N        E_AXIS
+  #define E_AXIS_N(E)     E_AXIS
   #define E_INDEX         E_AXIS
   #define TARGET_EXTRUDER 0
 #elif EXTRUDERS == 0
@@ -487,7 +474,7 @@
   #define PIDTEMP         false
   #undef FWRETRACT
   #define XYZE_N          XYZ
-  #define E_AXIS_N        0
+  #define E_AXIS_N(E)     0
   #define E_INDEX         0
   #define TARGET_EXTRUDER 0
 #endif
@@ -511,16 +498,25 @@
   #undef SERVO_DEACTIVATION_DELAY
   #define SERVO_DEACTIVATION_DELAY 50
   #if DISABLED(BLTOUCH_DELAY)
-    #define BLTOUCH_DELAY 375
+    #define BLTOUCH_DELAY 500
   #endif
   #undef Z_SERVO_ANGLES
   #define Z_SERVO_ANGLES { BLTOUCH_DEPLOY, BLTOUCH_STOW }
 
-  #define BLTOUCH_DEPLOY    10
-  #define BLTOUCH_STOW      90
-  #define BLTOUCH_SELFTEST 120
-  #define BLTOUCH_RESET    160
-
 #endif
 
-#endif /* _CONDITIONALS_PRE_H_ */
+// Label Preheat
+#ifndef PREHEAT_1_LABEL
+  #define PREHEAT_1_LABEL "PLA"
+#endif
+#ifndef PREHEAT_2_LABEL
+  #define PREHEAT_2_LABEL "ABS"
+#endif
+#ifndef PREHEAT_3_LABEL
+  #define PREHEAT_3_LABEL "GUM"
+#endif
+
+// Boot Screen small on slim menu
+#if ENABLED(SLIM_LCD_MENUS) && ENABLED(BOOTSCREEN_MKLOGO_HIGH)
+  #undef BOOTSCREEN_MKLOGO_HIGH
+#endif

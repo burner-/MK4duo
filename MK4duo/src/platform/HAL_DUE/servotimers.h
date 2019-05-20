@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@
  * timer16_Sequence_t enumerates the sequence that the timers should be allocated
  * _Nbr_16timers indicates how many 16 bit timers are available.
  */
+#pragma once
 
 /**
  * SAM Only definitions

@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,15 +33,11 @@
         mesh_bed_leveling::index_to_xpos[GRID_MAX_POINTS_X],
         mesh_bed_leveling::index_to_ypos[GRID_MAX_POINTS_Y];
 
-  mesh_bed_leveling::mesh_bed_leveling() {
+  void mesh_bed_leveling::reset() {
     for (uint8_t i = 0; i < GRID_MAX_POINTS_X; ++i)
       index_to_xpos[i] = MESH_MIN_X + i * (MESH_X_DIST);
     for (uint8_t i = 0; i < GRID_MAX_POINTS_Y; ++i)
       index_to_ypos[i] = MESH_MIN_Y + i * (MESH_Y_DIST);
-    reset();
-  }
-
-  void mesh_bed_leveling::reset() {
     z_offset = 0;
     ZERO(z_values);
   }
@@ -50,19 +46,15 @@
    * Prepare a mesh-leveled linear move in a Cartesian setup,
    * splitting the move where it crosses mesh borders.
    */
-  void mesh_bed_leveling::line_to_destination(float fr_mm_s, uint8_t x_splits/*= 0xFF*/, uint8_t y_splits/*= 0xFF*/) {
+  void mesh_bed_leveling::line_to_destination(float fr_mm_s, uint16_t x_splits/*=0xFFFF*/, uint16_t y_splits/*=0xFFFF*/) {
     int cx1 = cell_index_x(mechanics.current_position[X_AXIS]),
         cy1 = cell_index_y(mechanics.current_position[Y_AXIS]),
         cx2 = cell_index_x(mechanics.destination[X_AXIS]),
         cy2 = cell_index_y(mechanics.destination[Y_AXIS]);
-    NOMORE(cx1, GRID_MAX_POINTS_X - 2);
-    NOMORE(cy1, GRID_MAX_POINTS_Y - 2);
-    NOMORE(cx2, GRID_MAX_POINTS_X - 2);
-    NOMORE(cy2, GRID_MAX_POINTS_Y - 2);
 
     if (cx1 == cx2 && cy1 == cy2) {
       // Start and end on same mesh square
-      mechanics.line_to_destination(fr_mm_s);
+      mechanics.buffer_line_to_destination(fr_mm_s);
       mechanics.set_current_to_destination();
       return;
     }
@@ -94,7 +86,7 @@
     else {
       // Must already have been split on these border(s)
       // This should be a rare case.
-      mechanics.line_to_destination(fr_mm_s);
+      mechanics.buffer_line_to_destination(fr_mm_s);
       mechanics.set_current_to_destination();
       return;
     }

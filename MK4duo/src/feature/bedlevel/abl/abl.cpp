@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,29 +29,27 @@
   int   AutoBedLevel::bilinear_grid_spacing[2],
         AutoBedLevel::bilinear_start[2];
   float AutoBedLevel::bilinear_grid_factor[2],
-        AutoBedLevel::z_values[GRID_MAX_POINTS_X][GRID_MAX_POINTS_Y];
+        AutoBedLevel::z_values[GRID_MAX_POINTS_X][GRID_MAX_POINTS_Y] = { 0, 0 };
 
   /**
    * Extrapolate a single point from its neighbors
    */
   void AutoBedLevel::extrapolate_one_point(const uint8_t x, const uint8_t y, const int8_t xdir, const int8_t ydir) {
-    #if ENABLED(DEBUG_FEATURE)
-      if (printer.debugFeature()) {
-        SERIAL_MSG("Extrapolate [");
-        if (x < 10) SERIAL_CHR(' ');
-        SERIAL_VAL((int)x);
-        SERIAL_CHR(xdir ? (xdir > 0 ? '+' : '-') : ' ');
-        SERIAL_CHR(' ');
-        if (y < 10) SERIAL_CHR(' ');
-        SERIAL_VAL((int)y);
-        SERIAL_CHR(ydir ? (ydir > 0 ? '+' : '-') : ' ');
-        SERIAL_CHR(']');
-      }
-    #endif
+
+    if (printer.debugFeature()) {
+      DEBUG_MSG("Extrapolate [");
+      if (x < 10) DEBUG_CHR(' ');
+      DEBUG_VAL((int)x);
+      DEBUG_CHR(xdir ? (xdir > 0 ? '+' : '-') : ' ');
+      DEBUG_CHR(' ');
+      if (y < 10) DEBUG_CHR(' ');
+      DEBUG_VAL((int)y);
+      DEBUG_CHR(ydir ? (ydir > 0 ? '+' : '-') : ' ');
+      DEBUG_CHR(']');
+    }
+
     if (!isnan(z_values[x][y])) {
-      #if ENABLED(DEBUG_FEATURE)
-        if (printer.debugFeature()) SERIAL_EM(" (done)");
-      #endif
+      if (printer.debugFeature()) DEBUG_EM(" (done)");
       return;  // Don't overwrite good values.
     }
     SERIAL_EOL();
@@ -357,7 +355,7 @@
 
       if (cx1 == cx2 && cy1 == cy2) {
         // Start and end on same mesh square
-        mechanics.line_to_destination(fr_mm_s);
+        mechanics.buffer_line_to_destination(fr_mm_s);
         mechanics.set_current_to_destination();
         return;
       }
@@ -365,26 +363,30 @@
       #define LINE_SEGMENT_END(A) (mechanics.current_position[_AXIS(A)] + (mechanics.destination[_AXIS(A)] - mechanics.current_position[_AXIS(A)]) * normalized_dist)
 
       float normalized_dist, end[XYZE];
+      const int8_t gcx = MAX(cx1, cx2), gcy = MAX(cy1, cy2);
 
-      // Split at the left/front border of the right/top square
-      int8_t gcx = MAX(cx1, cx2), gcy = MAX(cy1, cy2);
+      // Crosses on the X and not already split on this X?
+      // The x_splits flags are insurance against rounding errors.
       if (cx2 != cx1 && TEST(x_splits, gcx)) {
+        // Split on the X grid line
+        CBI(x_splits, gcx);
         COPY_ARRAY(end, mechanics.destination);
         mechanics.destination[X_AXIS] = bilinear_start[X_AXIS] + ABL_BG_SPACING(X_AXIS) * gcx;
         normalized_dist = (mechanics.destination[X_AXIS] - mechanics.current_position[X_AXIS]) / (end[X_AXIS] - mechanics.current_position[X_AXIS]);
         mechanics.destination[Y_AXIS] = LINE_SEGMENT_END(Y);
-        CBI(x_splits, gcx);
       }
+      // Crosses on the Y and not already split on this Y?
       else if (cy2 != cy1 && TEST(y_splits, gcy)) {
+        CBI(y_splits, gcy);
         COPY_ARRAY(end, mechanics.destination);
         mechanics.destination[Y_AXIS] = bilinear_start[Y_AXIS] + ABL_BG_SPACING(Y_AXIS) * gcy;
         normalized_dist = (mechanics.destination[Y_AXIS] - mechanics.current_position[Y_AXIS]) / (end[Y_AXIS] - mechanics.current_position[Y_AXIS]);
         mechanics.destination[X_AXIS] = LINE_SEGMENT_END(X);
-        CBI(y_splits, gcy);
       }
       else {
-        // Already split on a border
-        mechanics.line_to_destination(fr_mm_s);
+        // Must already have been split on these border(s)
+        // This should be a rare case.
+        mechanics.buffer_line_to_destination(fr_mm_s);
         mechanics.set_current_to_destination();
         return;
       }

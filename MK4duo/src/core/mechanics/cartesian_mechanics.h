@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,166 +23,160 @@
 /**
  * cartesian_mechanics.h
  *
- * Copyright (C) 2016 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#ifndef _CARTESIAN_MECHANICS_H_
-#define _CARTESIAN_MECHANICS_H_
+#pragma once
 
-#if IS_CARTESIAN
+// Struct Cartesian Settings
+typedef struct : public generic_data_t {
 
-  class Cartesian_Mechanics : public Mechanics {
+  axis_limits_t base_pos[XYZ];
+  float         base_home_pos[XYZ];
 
-    public: /** Constructor */
+} mechanics_data_t;
 
-      Cartesian_Mechanics() {}
+class Cartesian_Mechanics : public Mechanics {
 
-    public: /** Public Parameters */
+  public: /** Constructor */
 
-      static const float  base_max_pos[XYZ],
-                          base_min_pos[XYZ],
-                          base_home_pos[XYZ],
-                          max_length[XYZ];
+    Cartesian_Mechanics() {}
 
-      #if ENABLED(DUAL_X_CARRIAGE)
-        static DualXMode  dual_x_carriage_mode;
-        static float      inactive_hotend_x_pos,        // used in mode 0 & 1
-                          raised_parked_position[XYZE], // used in mode 1
-                          duplicate_hotend_x_offset;    // used in mode 2
-        static int16_t    duplicate_hotend_temp_offset; // used in mode 2
-        static millis_t   delayed_move_time;            // used in mode 1
-        static bool       active_hotend_parked,         // used in mode 1 & 2
-                          hotend_duplication_enabled;   // used in mode 2 & 3
-      #endif
+  public: /** Public Parameters */
 
-    public: /** Public Function */
+    static mechanics_data_t data;
 
-      /**
-       * Initialize Factory parameters
-       */
-      static void factory_parameters();
+    #if ENABLED(DUAL_X_CARRIAGE)
+      static DualXModeEnum  dual_x_carriage_mode;
+      static float          inactive_extruder_x_pos,        // used in mode 0 & 1
+                            raised_parked_position[XYZE],   // used in mode 1
+                            duplicate_extruder_x_offset;    // used in mode 2 & 3
+      static int16_t        duplicate_extruder_temp_offset; // used in mode 2 & 3
+      static millis_s       delayed_move_ms;                // used in mode 1
+      static bool           active_extruder_parked,         // used in mode 1, 2 & 3
+                            extruder_duplication_enabled,   // used in mode 2
+                            scaled_duplication_mode;        // used in mode 3
+    #endif
 
-      /**
-       * sync_plan_position_mech_specific
-       *
-       * Set the planner/stepper positions directly from current_position with
-       * no kinematic translation. Used for homing axes and cartesian/core syncing.
-       */
-      static void sync_plan_position_mech_specific();
+  public: /** Public Function */
 
-      /**
-       * Get the stepper positions in the cartesian_position[] array.
-       *
-       * The result is in the current coordinate space with
-       * leveling applied. The coordinates need to be run through
-       * unapply_leveling to obtain the "ideal" coordinates
-       * suitable for current_position, etc.
-       */
-      static void get_cartesian_from_steppers();
+    /**
+     * Initialize Factory parameters
+     */
+    static void factory_parameters();
 
-      /**
-       *  Plan a move to (X, Y, Z) and set the current_position
-       *  The final current_position may not be the one that was requested
-       */
-      static void do_blocking_move_to(const float rx, const float ry, const float rz, const float &fr_mm_s=0.0);
-      static void do_blocking_move_to_x(const float &rx, const float &fr_mm_s=0.0);
-      static void do_blocking_move_to_z(const float &rz, const float &fr_mm_s=0.0);
-      static void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm_s=0.0);
+    /**
+     * Get the stepper positions in the cartesian_position[] array.
+     *
+     * The result is in the current coordinate space with
+     * leveling applied. The coordinates need to be run through
+     * unapply_leveling to obtain the "ideal" coordinates
+     * suitable for current_position, etc.
+     */
+    static void get_cartesian_from_steppers();
 
-      /**
-       * Home all axes according to settings
-       */
-      static void home(const bool homeX=false, const bool homeY=false, const bool homeZ=false);
+    /**
+     *  Plan a move to (X, Y, Z) and set the current_position
+     *  The final current_position may not be the one that was requested
+     */
+    static void do_blocking_move_to(const float rx, const float ry, const float rz, const float &fr_mm_s=0.0);
+    static void do_blocking_move_to_x(const float &rx, const float &fr_mm_s=0.0);
+    static void do_blocking_move_to_z(const float &rz, const float &fr_mm_s=0.0);
+    static void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm_s=0.0);
 
-      /**
-       * Home an individual linear axis
-       */
-      static void do_homing_move(const AxisEnum axis, const float distance, const float fr_mm_s=0.0);
+    FORCE_INLINE static void do_blocking_move_to(const float (&raw)[XYZ], const float &fr_mm_s=0.0) {
+      do_blocking_move_to(raw[X_AXIS], raw[Y_AXIS], raw[Z_AXIS], fr_mm_s);
+    }
 
-      /**
-       * Prepare a linear move in a Cartesian setup.
-       *
-       * When a mesh-based leveling system is active, moves are segmented
-       * according to the configuration of the leveling system.
-       *
-       * Returns true if current_position[] was set to destination[]
-       */
-      static bool prepare_move_to_destination_mech_specific();
+    FORCE_INLINE static void do_blocking_move_to(const float (&raw)[XYZE], const float &fr_mm_s=0.0) {
+      do_blocking_move_to(raw[X_AXIS], raw[Y_AXIS], raw[Z_AXIS], fr_mm_s);
+    }
 
-      /**
-       * Set an axis' current position to its home position (after homing).
-       *
-       * For Cartesian robots this applies one-to-one when an
-       * individual axis has been homed.
-       *
-       * Callers must sync the planner position after calling this!
-       */
-      static void set_axis_is_at_home(const AxisEnum axis);
+    /**
+     * Home all axes according to settings
+     */
+    static void home(const bool homeX=false, const bool homeY=false, const bool homeZ=false);
 
-      static bool position_is_reachable(const float &rx, const float &ry);
-      static bool position_is_reachable_by_probe(const float &rx, const float &ry);
+    /**
+     * Home an individual linear axis
+     */
+    static void do_homing_move(const AxisEnum axis, const float distance, const float fr_mm_s=0.0);
 
-      /**
-       * Report current position to host
-       */
-      static void report_current_position_detail();
+    /**
+     * Prepare a linear move in a Cartesian setup.
+     *
+     * When a mesh-based leveling system is active, moves are segmented
+     * according to the configuration of the leveling system.
+     *
+     * Returns true if current_position[] was set to destination[]
+     */
+    static bool prepare_move_to_destination_mech_specific();
 
-      /**
-       * Plan an arc in 2 dimensions
-       *
-       * The arc is approximated by generating many small linear segments.
-       * The length of each segment is configured in MM_PER_ARC_SEGMENT (Default 1mm)
-       * Arcs should only be made relatively large (over 5mm), as larger arcs with
-       * larger segments will tend to be more efficient. Your slicer should have
-       * options for G2/G3 arc generation. In future these options may be GCode tunable.
-       */
-      #if ENABLED(ARC_SUPPORT)
-        static void plan_arc(const float (&cart)[XYZE], const float (&offset)[2], const uint8_t clockwise);
-      #endif
+    /**
+     * Set an axis' current position to its home position (after homing).
+     *
+     * For Cartesian robots this applies one-to-one when an
+     * individual axis has been homed.
+     *
+     * Callers must sync the planner position after calling this!
+     */
+    static void set_axis_is_at_home(const AxisEnum axis);
 
-      /**
-       * Prepare a linear move in a dual X axis setup
-       */
-      #if ENABLED(DUAL_X_CARRIAGE)
-        static float  x_home_pos(const int extruder);
-        static bool   dual_x_carriage_unpark();
-        FORCE_INLINE static int x_home_dir(const uint8_t extruder) { return extruder ? X2_HOME_DIR : X_HOME_DIR; }
-      #endif
+    static bool position_is_reachable(const float &rx, const float &ry);
+    static bool position_is_reachable_by_probe(const float &rx, const float &ry);
 
-      /**
-       * Print mechanics parameters in memory
-       */
-      #if DISABLED(DISABLE_M503)
-        static void print_parameters();
-      #endif
+    /**
+     * Report current position to host
+     */
+    static void report_current_position_detail();
 
-      #if ENABLED(NEXTION) && ENABLED(NEXTION_GFX)
-        static void Nextion_gfx_clear();
-      #endif
+    /**
+     * Prepare a linear move in a dual X axis setup
+     */
+    #if ENABLED(DUAL_X_CARRIAGE)
+      FORCE_INLINE static bool dxc_is_duplicating() { return dual_x_carriage_mode >= DXC_DUPLICATION_MODE; }
+      static float  x_home_pos(const int extruder);
+      static bool   dual_x_carriage_unpark();
+      FORCE_INLINE static int x_home_dir(const uint8_t extruder) { return extruder ? X2_HOME_DIR : X_HOME_DIR; }
+    #endif
 
-    private: /** Private Function */
+    /**
+     * Print mechanics parameters in memory
+     */
+    #if DISABLED(DISABLE_M503)
+      static void print_parameters();
+      static void print_M92();
+      static void print_M201();
+      static void print_M203();
+      static void print_M204();
+      static void print_M205();
+      static void print_M206();
+      static void print_M228();
+    #endif
 
-      /**
-       *  Home axis
-       */
-      static void homeaxis(const AxisEnum axis);
+    #if HAS_NEXTION_LCD && ENABLED(NEXTION_GFX)
+      static void Nextion_gfx_clear();
+    #endif
 
-      #if ENABLED(QUICK_HOME)
-        static void quick_home_xy();
-      #endif
+  private: /** Private Function */
 
-      #if ENABLED(Z_SAFE_HOMING)
-        static void home_z_safely();
-      #endif
+    /**
+     *  Home axis
+     */
+    static void homeaxis(const AxisEnum axis);
 
-      #if ENABLED(DOUBLE_Z_HOMING)
-        static void double_home_z();
-      #endif
+    #if ENABLED(QUICK_HOME)
+      static void quick_home_xy();
+    #endif
 
-  };
+    #if ENABLED(Z_SAFE_HOMING)
+      static void home_z_safely();
+    #endif
 
-  extern Cartesian_Mechanics mechanics;
+    #if ENABLED(DOUBLE_Z_HOMING)
+      static void double_home_z();
+    #endif
 
-#endif // IS_CARTESIAN
+};
 
-#endif /* _CARTESIAN_MECHANICS_H_ */
+extern Cartesian_Mechanics mechanics;

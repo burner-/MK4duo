@@ -4,8 +4,8 @@
 ****************************************************************************************/
 
 //###CHIP
-#if DISABLED(__AVR_ATmega644P__) && DISABLED(__AVR_ATmega1284P__)
-  #error Oops!  Make sure you have 'Sanguino' or 'Anet' selected from the 'Tools -> Boards' menu.
+#if DISABLED(__AVR_ATmega644__) && DISABLED(__AVR_ATmega644P__) && DISABLED(__AVR_ATmega1284P__)
+  #error "Oops! Select 'Sanguino' in 'Tools > Board.'"
 #endif
 //@@@
 
@@ -113,21 +113,37 @@
 #define Z_STOP_PIN                 20
 
 //###HEATER
-#define ORIG_HEATER_0_PIN          13
-#define ORIG_HEATER_1_PIN          NoPin
-#define ORIG_HEATER_2_PIN          NoPin
-#define ORIG_HEATER_3_PIN          NoPin
-#define ORIG_HEATER_BED_PIN        12
-#define ORIG_HEATER_CHAMBER_PIN    NoPin
-#define ORIG_COOLER_PIN            NoPin
+#define ORIG_HEATER_HE0_PIN        13
+#define ORIG_HEATER_HE1_PIN        NoPin
+#define ORIG_HEATER_HE2_PIN        NoPin
+#define ORIG_HEATER_HE3_PIN        NoPin
+#define ORIG_HEATER_HE4_PIN        NoPin
+#define ORIG_HEATER_HE5_PIN        NoPin
+#define ORIG_HEATER_BED0_PIN       12
+#define ORIG_HEATER_BED1_PIN       NoPin
+#define ORIG_HEATER_BED2_PIN       NoPin
+#define ORIG_HEATER_BED3_PIN       NoPin
+#define ORIG_HEATER_CHAMBER0_PIN   NoPin
+#define ORIG_HEATER_CHAMBER1_PIN   NoPin
+#define ORIG_HEATER_CHAMBER2_PIN   NoPin
+#define ORIG_HEATER_CHAMBER3_PIN   NoPin
+#define ORIG_HEATER_COOLER_PIN     NoPin
 
 //###TEMPERATURE
-#define ORIG_TEMP_0_PIN             7
-#define ORIG_TEMP_1_PIN            NoPin
-#define ORIG_TEMP_2_PIN            NoPin
-#define ORIG_TEMP_3_PIN            NoPin
-#define ORIG_TEMP_BED_PIN           6
-#define ORIG_TEMP_CHAMBER_PIN      NoPin
+#define ORIG_TEMP_HE0_PIN           7
+#define ORIG_TEMP_HE1_PIN          NoPin
+#define ORIG_TEMP_HE2_PIN          NoPin
+#define ORIG_TEMP_HE3_PIN          NoPin
+#define ORIG_TEMP_HE4_PIN          NoPin
+#define ORIG_TEMP_HE5_PIN          NoPin
+#define ORIG_TEMP_BED0_PIN          6
+#define ORIG_TEMP_BED1_PIN         NoPin
+#define ORIG_TEMP_BED2_PIN         NoPin
+#define ORIG_TEMP_BED3_PIN         NoPin
+#define ORIG_TEMP_CHAMBER0_PIN     NoPin
+#define ORIG_TEMP_CHAMBER1_PIN     NoPin
+#define ORIG_TEMP_CHAMBER2_PIN     NoPin
+#define ORIG_TEMP_CHAMBER3_PIN     NoPin
 #define ORIG_TEMP_COOLER_PIN       NoPin
 
 //###FAN
@@ -135,6 +151,8 @@
 #define ORIG_FAN1_PIN              NoPin
 #define ORIG_FAN2_PIN              NoPin
 #define ORIG_FAN3_PIN              NoPin
+#define ORIG_FAN4_PIN              NoPin
+#define ORIG_FAN5_PIN              NoPin
 
 //###SERVO
 #define SERVO0_PIN                 NoPin
@@ -168,9 +186,9 @@
  *  ANET_FULL_GRAPHICS_LCD
  *  REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
 */
-#if ENABLED(ULTRA_LCD) && ENABLED(NEWPANEL)
+#if HAS_SPI_LCD
   #define LCD_SDSS           28
-  #if ENABLED(ADC_KEYPAD)
+  #if HAS_ADC_BUTTONS
     #define SERVO0_PIN       27 // free for BLTouch/3D-Touch
     #define LCD_PINS_RS      28
     #define LCD_PINS_ENABLE  29

@@ -3,7 +3,7 @@
  *
  * Based on Marlin, Sprinter and grbl
  * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * probe.cpp
  *
- * Copyright (C) 2017 Alberto Cotronei @MagoKimbra
+ * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "../../../MK4duo.h"
@@ -31,34 +31,31 @@
 Probe probe;
 
 /** Public Parameters */
-float Probe::offset[XYZ] = { X_PROBE_OFFSET_FROM_NOZZLE, Y_PROBE_OFFSET_FROM_NOZZLE, Z_PROBE_OFFSET_FROM_NOZZLE };
+probe_data_t Probe::data;
 
 /** Public Function */
+void Probe::factory_parameters() {
+  data.offset[X_AXIS] = X_PROBE_OFFSET_FROM_NOZZLE;
+  data.offset[Y_AXIS] = Y_PROBE_OFFSET_FROM_NOZZLE;
+  data.offset[Z_AXIS] = Z_PROBE_OFFSET_FROM_NOZZLE;
+  data.speed_fast     = Z_PROBE_SPEED_FAST;
+  data.speed_slow     = Z_PROBE_SPEED_SLOW;
+  data.repetitions    = Z_PROBE_REPETITIONS;
+}
 
 // returns false for ok and true for failure
 bool Probe::set_deployed(const bool deploy) {
 
-  // Can be extended to servo probes, if needed.
-  #if ENABLED(PROBE_IS_TRIGGERED_WHEN_STOWED_TEST)
-    #if HAS_Z_PROBE_PIN
-      #define _TRIGGERED_WHEN_STOWED_TEST (READ(Z_PROBE_PIN) != endstops.isLogic(Z_PROBE))
-    #else
-      #define _TRIGGERED_WHEN_STOWED_TEST (READ(Z_MIN_PIN) != endstops.isLogic(Z_MIN))
-    #endif
-  #endif
-
-  #if ENABLED(DEBUG_FEATURE)
-    if (printer.debugFeature()) {
-      DEBUG_POS("probe.set_deployed", mechanics.current_position);
-      SERIAL_EMV("deploy: ", deploy);
-    }
-  #endif
+  if (printer.debugFeature()) {
+    DEBUG_POS("probe.set_deployed", mechanics.current_position);
+    DEBUG_EMV("deploy: ", deploy);
+  }
 
   if (endstops.isProbeEnabled() == deploy) return false;
 
   // Make room for probe to deploy (or stow)
   // Fix-mounted probe should only raise for deploy
-  #if ENABLED(Z_PROBE_FIX_MOUNTED)
+  #if ENABLED(Z_PROBE_FIX_MOUNTED) && DISABLED(PAUSE_BEFORE_DEPLOY_STOW)
     const bool deploy_stow_condition = deploy;
   #else
     constexpr bool deploy_stow_condition = true;
@@ -70,59 +67,53 @@ bool Probe::set_deployed(const bool deploy) {
   #if ENABLED(Z_PROBE_SLED)
     if (mechanics.axis_unhomed_error(true, false, false)) {
       SERIAL_LM(ER, MSG_STOP_UNHOMED);
-      printer.Stop();
+      sound.feedback(false);
+      printer.stop();
       return true;
     }
   #elif ENABLED(Z_PROBE_ALLEN_KEY)
-    if (mechanics.axis_unhomed_error(true, true,  true )) {
+    if (mechanics.axis_unhomed_error()) {
       SERIAL_LM(ER, MSG_STOP_UNHOMED);
-      printer.Stop();
+      sound.feedback(false);
+      printer.stop();
       return true;
     }
   #endif
 
-  const float oldXpos = mechanics.current_position[X_AXIS],
-              oldYpos = mechanics.current_position[Y_AXIS];
+  COPY_ARRAY(mechanics.stored_position[1], mechanics.current_position);
 
-  #if ENABLED(_TRIGGERED_WHEN_STOWED_TEST)
+  #if ENABLED(Z_PROBE_ALLEN_KEY)
 
-    // If endstop is already false, the Z probe is deployed
-    if (_TRIGGERED_WHEN_STOWED_TEST == deploy) {                // closed after the probe specific actions.
-                                                                // Would a goto be less ugly?
-      //while (!_TRIGGERED_WHEN_STOWED_TEST) { printer.idle();  // would offer the opportunity
-                                                                // for a triggered when stowed manual probe.
+    #if HAS_Z_PROBE_PIN
+      #define PROBE_STOWED() (READ(Z_PROBE_PIN) != endstops.isLogic(Z_PROBE))
+    #else
+      #define PROBE_STOWED() (READ(Z_MIN_PIN) != endstops.isLogic(Z_MIN))
+    #endif
 
-      if (!deploy) endstops.setProbeEnabled(false);             // Switch off triggered when stowed probes early
-                                                                // otherwise an Allen-Key probe can't be stowed.
-  #endif
+    // Only deploy/stow if needed
+    if (PROBE_STOWED() == deploy) {
+      if (!deploy) endstops.setProbeEnabled(false); // Switch off triggered when stowed probes early
+                                                    // otherwise an Allen-Key probe can't be stowed.
+      specific_action(deploy);
+    }
 
-      #if ENABLED(Z_PROBE_SLED)
-        dock_sled(!deploy);
-      #elif ENABLED(BLTOUCH) && MECH(DELTA)
-        if (set_bltouch_deployed(deploy)) return true;
-      #elif HAS_Z_SERVO_PROBE && DISABLED(BLTOUCH)
-        MOVE_SERVO(Z_PROBE_SERVO_NR, servo[Z_PROBE_SERVO_NR].angle[(deploy ? 0 : 1)]);
-      #elif ENABLED(Z_PROBE_ALLEN_KEY)
-        deploy ? run_deploy_moves_script() : run_stow_moves_script();
-      #endif
-
-  #if ENABLED(_TRIGGERED_WHEN_STOWED_TEST)
-    } // _TRIGGERED_WHEN_STOWED_TEST == deploy
-
-    if (_TRIGGERED_WHEN_STOWED_TEST == deploy) {
-
+    if (PROBE_STOWED() == deploy) {
       if (printer.isRunning()) {
         SERIAL_LM(ER, "Z-Probe failed");
         LCD_ALERTMESSAGEPGM("Err: ZPROBE");
+        sound.feedback(false);
       }
-      printer.Stop();
+      printer.stop();
       return true;
+    }
 
-    } // _TRIGGERED_WHEN_STOWED_TEST == deploy
+  #else
+
+    specific_action(deploy);
 
   #endif
 
-  mechanics.do_blocking_move_to(oldXpos, oldYpos, mechanics.current_position[Z_AXIS]); // return to position before deploy
+  mechanics.do_blocking_move_to(mechanics.stored_position[1][X_AXIS], mechanics.stored_position[1][Y_AXIS], mechanics.current_position[Z_AXIS]); // return to position before deploy
   endstops.setProbeEnabled(deploy);
   return false;
 }
@@ -151,27 +142,25 @@ bool Probe::set_deployed(const bool deploy) {
    * - Return the probed Z position
    */
 
-  float Probe::check_pt(const float &rx, const float &ry, const ProbePtRaise raise_after/*=PROBE_PT_NONE*/, const uint8_t verbose_level/*=0*/, const bool probe_relative/*=true*/) {
+  float Probe::check_pt(const float &rx, const float &ry, const ProbePtRaiseEnum raise_after/*=PROBE_PT_NONE*/, const uint8_t verbose_level/*=0*/, const bool probe_relative/*=true*/) {
 
     #if HAS_BED_PROBE
 
-      #if ENABLED(DEBUG_FEATURE)
-        if (printer.debugFeature()) {
-          SERIAL_MV(">>> check_pt(", LOGICAL_X_POSITION(rx));
-          SERIAL_MV(", ", LOGICAL_Y_POSITION(ry));
-          SERIAL_MT(", ", raise_after == PROBE_PT_RAISE ? "raise" : raise_after == PROBE_PT_STOW ? "stow" : "none");
-          SERIAL_MV(", ", int(verbose_level));
-          SERIAL_MT(", ", probe_relative ? "probe" : "nozzle");
-          SERIAL_EM("_relative)");
-          DEBUG_POS("", mechanics.current_position);
-        }
-      #endif
+      if (printer.debugFeature()) {
+        DEBUG_MV(">>> check_pt(", LOGICAL_X_POSITION(rx));
+        DEBUG_MV(", ", LOGICAL_Y_POSITION(ry));
+        DEBUG_MT(", ", raise_after == PROBE_PT_RAISE ? "raise" : raise_after == PROBE_PT_STOW ? "stow" : "none");
+        DEBUG_MV(", ", int(verbose_level));
+        DEBUG_MT(", ", probe_relative ? "probe" : "nozzle");
+        DEBUG_EM("_relative)");
+        DEBUG_POS("", mechanics.current_position);
+      }
 
       float nx = rx, ny = ry;
       if (probe_relative) {
         if (!mechanics.position_is_reachable_by_probe(rx, ry)) return NAN;
-        nx -= offset[X_AXIS];
-        ny -= offset[Y_AXIS];
+        nx -= data.offset[X_AXIS];
+        ny -= data.offset[Y_AXIS];
       }
       else if (!mechanics.position_is_reachable(nx, ny)) return NAN;
 
@@ -192,16 +181,16 @@ bool Probe::set_deployed(const bool deploy) {
 
       float measured_z = NAN;
       if (!set_deployed(true)) {
-        measured_z = run_probing() + offset[Z_AXIS];
+        measured_z = run_probing() + data.offset[Z_AXIS];
 
         if (raise_after == PROBE_PT_RAISE)
-          mechanics.do_blocking_move_to_z(mechanics.current_position[Z_AXIS] + Z_PROBE_BETWEEN_HEIGHT, MMM_TO_MMS(Z_PROBE_SPEED_FAST));
+          mechanics.do_blocking_move_to_z(mechanics.current_position[Z_AXIS] + Z_PROBE_BETWEEN_HEIGHT, MMM_TO_MMS(data.speed_fast));
         else if (raise_after == PROBE_PT_STOW)
           if (set_deployed(false)) measured_z = NAN;
       }
 
       if (verbose_level > 2) {
-        SERIAL_MV(MSG_BED_LEVELING_Z, FIXFLOAT(measured_z), 3);
+        SERIAL_MV(MSG_BED_LEVELING_Z, measured_z, 3);
         SERIAL_MV(MSG_BED_LEVELING_X, LOGICAL_X_POSITION(rx), 3);
         SERIAL_MV(MSG_BED_LEVELING_Y, LOGICAL_Y_POSITION(ry), 3);
         SERIAL_EOL();
@@ -210,13 +199,12 @@ bool Probe::set_deployed(const bool deploy) {
       mechanics.feedrate_mm_s = old_feedrate_mm_s;
 
       if (isnan(measured_z)) {
-        LCD_MESSAGEPGM(MSG_ERR_PROBING_FAILED);
         SERIAL_LM(ER, MSG_ERR_PROBING_FAILED);
+        LCD_MESSAGEPGM(MSG_ERR_PROBING_FAILED);
+        sound.feedback(false);
       }
 
-      #if ENABLED(DEBUG_FEATURE)
-        if (printer.debugFeature()) SERIAL_EM("<<< check_pt");
-      #endif
+      if (printer.debugFeature()) DEBUG_EM("<<< check_pt");
 
       return measured_z;
 
@@ -263,42 +251,6 @@ bool Probe::set_deployed(const bool deploy) {
 
 #endif // QUIET_PROBING
 
-#if ENABLED(BLTOUCH)
-
-  void Probe::bltouch_command(const int angle) {
-    MOVE_SERVO(Z_PROBE_SERVO_NR, angle);  // Give the BL-Touch the command and wait
-    printer.safe_delay(BLTOUCH_DELAY);
-  }
-
-  bool Probe::set_bltouch_deployed(const bool deploy) {
-    if (deploy && TEST_BLTOUCH()) {      // If BL-Touch says it's triggered
-      bltouch_command(BLTOUCH_RESET);    // try to reset it.
-      bltouch_command(BLTOUCH_DEPLOY);   // Also needs to deploy and stow to
-      bltouch_command(BLTOUCH_STOW);     // clear the triggered condition.
-      printer.safe_delay(1500);          // wait for internal self test to complete
-                                         //   measured completion time was 0.65 seconds
-                                         //   after reset, deploy & stow sequence
-      if (TEST_BLTOUCH()) {              // If it still claims to be triggered...
-        SERIAL_LM(ER, MSG_STOP_BLTOUCH);
-        printer.Stop();
-        return true;
-      }
-    }
-
-    bltouch_command(deploy ? BLTOUCH_DEPLOY : BLTOUCH_STOW);
-
-    #if ENABLED(DEBUG_FEATURE)
-      if (printer.debugFeature()) {
-        SERIAL_MV("set_bltouch_deployed(", deploy);
-        SERIAL_CHR(')'); SERIAL_EOL();
-      }
-    #endif
-
-    return false;
-  }
-
-#endif
-
 void Probe::servo_test() {
 
   #if !(NUM_SERVOS >= 1 && HAS_SERVO_0)
@@ -309,73 +261,51 @@ void Probe::servo_test() {
 
     SERIAL_LM(ER, "Z_PROBE_SERVO_NR not setup");
 
-  #else // HAS_Z_SERVO_PROBE
+  #elif DISABLED(BLTOUCH)// HAS_Z_SERVO_PROBE
 
     const uint8_t probe_index = parser.seen('P') ? parser.value_byte() : Z_PROBE_SERVO_NR;
 
-    #if ENABLED(BLTOUCH)
-      SERIAL_EM("BLTouch test");
-    #else
-      SERIAL_EM("Servo probe test");
-    #endif
+    SERIAL_EM("Servo probe test.");
     SERIAL_EMV(".  Using index:  ", probe_index);
     SERIAL_EMV(".  Deploy angle: ", servo[probe_index].angle[0]);
     SERIAL_EMV(".  Stow angle:   ", servo[probe_index].angle[1]);
 
-    bool probe_logic;
+    bool probe_logic, deploy_state, stow_state;
 
     #if HAS_Z_PROBE_PIN
 
       #define PROBE_TEST_PIN Z_PROBE_PIN
-
-      SERIAL_EMV("Probe uses Z_MIN_PROBE_PIN: ", PROBE_TEST_PIN);
-      SERIAL_EM(".  Uses Z_PROBE_ENDSTOP_LOGIC (ignores Z_MIN_ENDSTOP_LOGIC)");
-      SERIAL_MSG(".  Z_PROBE_ENDSTOP_LOGIC: ");
-
-      if (endstops.isLogic(Z_PROBE))
-        SERIAL_EM("true");
-      else
-        SERIAL_EM("false");
-
       probe_logic = endstops.isLogic(Z_PROBE);
+      SERIAL_EMV(". Probe uses Z_MIN_PROBE_PIN: ", PROBE_TEST_PIN);
+      SERIAL_EM(". Uses Z_PROBE_ENDSTOP_LOGIC (ignores Z_MIN_ENDSTOP_LOGIC)");
+      SERIAL_ELOGIC(". Z_MIN_ENDSTOP_LOGIC:", probe_logic);
 
     #elif HAS_Z_MIN
 
       #define PROBE_TEST_PIN Z_MIN_PIN
-
-      SERIAL_EMV("Probe uses Z_MIN pin: ", PROBE_TEST_PIN);
-      SERIAL_EM(".  Uses Z_MIN_ENDSTOP_LOGIC (ignores Z_PROBE_ENDSTOP_LOGIC)");
-      SERIAL_MSG(".  Z_MIN_ENDSTOP_LOGIC: ");
-
-      if (endstops.isLogic(Z_MIN))
-        SERIAL_EM("true");
-      else
-        SERIAL_EM("false");
-
       probe_logic = endstops.isLogic(Z_MIN);
+      SERIAL_EMV(". Probe uses Z_MIN pin: ", PROBE_TEST_PIN);
+      SERIAL_EM(". Uses Z_MIN_ENDSTOP_LOGIC (ignores Z_PROBE_ENDSTOP_LOGIC)");
+      SERIAL_ELOGIC(". Z_MIN_ENDSTOP_LOGIC:", probe_logic);
 
     #endif
 
-    SERIAL_EM("Deploy & stow 4 times");
-    SET_INPUT_PULLUP(PROBE_TEST_PIN);
+    // DEPLOY and STOW 4 times and see if the signal follows
+    // Then it is a mechanical switch
     uint8_t i = 0;
-    bool deploy_state, stow_state;
-
+    SERIAL_EM(". Deploy & stow 4 times");
     do {
-      MOVE_SERVO(probe_index, servo[probe_index].angle[0]); // deploy
+      MOVE_SERVO(probe_index, servo[probe_index].angle[0]); // Deploy
       printer.safe_delay(500);
       deploy_state = HAL::digitalRead(PROBE_TEST_PIN);
-      MOVE_SERVO(probe_index, servo[probe_index].angle[1]); // stow
+      MOVE_SERVO(probe_index, servo[probe_index].angle[1]); // Stow
       printer.safe_delay(500);
       stow_state = HAL::digitalRead(PROBE_TEST_PIN);
     } while (++i < 4);
 
-    if (probe_logic != deploy_state) SERIAL_EM("WARNING - INVERTING setting probably backwards");
-
-    printer.move_watch.start();
+    if (probe_logic != deploy_state) SERIAL_EM("WARNING: INVERTING setting probably backwards.");
 
     if (deploy_state != stow_state) {
-      SERIAL_EM("BLTouch clone detected");
       if (deploy_state) {
         SERIAL_EM(".  DEPLOYED state: HIGH (logic 1)");
         SERIAL_EM(".  STOWED (triggered) state: LOW (logic 0)");
@@ -384,72 +314,115 @@ void Probe::servo_test() {
         SERIAL_EM(".  DEPLOYED state: LOW (logic 0)");
         SERIAL_EM(".  STOWED (triggered) state: HIGH (logic 1)");
       }
-      #if ENABLED(BLTOUCH)
-        SERIAL_EM("ERROR: BLTOUCH enabled - set this device up as a Z Servo Probe with inverting as true.");
-      #endif
+      return;
     }
-    else {    // measure active signal length
-      MOVE_SERVO(probe_index, servo[probe_index].angle[0]); // deploy
-      printer.safe_delay(500);
-      SERIAL_EM("please trigger probe");
-      uint16_t probe_counter = 0;
 
-      // Allow 30 seconds max for operator to trigger probe
-      for (uint16_t j = 0; j < 500 * 30 && probe_counter == 0 ; j++) {
+    // Ask the user for a trigger event and measure the pulse width.
+    // Since it could be a real servo or a BLTouch (any kind) or clone
+    // use only "common" functions - i.e. SERVO_MOVE. No bltouch.xxxx stuff.
+    MOVE_SERVO(probe_index, servo[probe_index].angle[0]); // Deploy
+    printer.safe_delay(500);
+    SERIAL_EM("** Please trigger probe within 30 sec **");
+    uint16_t probe_counter = 0;
 
-        printer.safe_delay(2);
+    // Wait 30 seconds for user to trigger probe
+    for (uint16_t j = 0; j < 500 * 30 && probe_counter == 0 ; j++) {
 
-        if (0 == j % (500 * 1)) // keep cmd_timeout happy
-          printer.move_watch.start();
+      printer.safe_delay(2);
 
-        if (deploy_state != HAL::digitalRead(PROBE_TEST_PIN)) { // probe triggered
+      if (0 == j % (500 * 1)) printer.reset_move_ms();          // Keep steppers powered
 
-          for (probe_counter = 1; probe_counter < 50 && (deploy_state != HAL::digitalRead(PROBE_TEST_PIN)); probe_counter ++)
-            printer.safe_delay(2);
+      if (deploy_state != HAL::digitalRead(PROBE_TEST_PIN)) {   // probe triggered
 
-          if (probe_counter == 50)
-            SERIAL_EM("Z Servo Probe detected");   // >= 100mS active time
-          else if (probe_counter >= 2 )
-            SERIAL_EMV("BLTouch original probe detected - pulse width (+/- 4mS): ", probe_counter * 2 );   // allow 4 - 100mS pulse
-          else
-            SERIAL_EM("noise detected - please re-run test");   // less than 2mS pulse
+        for (probe_counter = 1; probe_counter < 15 && deploy_state != HAL::digitalRead(PROBE_TEST_PIN); ++probe_counter)
+          printer.safe_delay(2);
 
-          MOVE_SERVO(probe_index, servo[probe_index].angle[1]); // stow
+        SERIAL_EMV(". Pulse width (+/- 4mS): ", probe_counter * 2);
 
-        } // pulse detected
+        if (probe_counter >= 4) SERIAL_MSG("= Z Servo Probe detected.");
+        else SERIAL_EM("FAIL: Noise detected - please re-run test");
 
-      } // for loop waiting for trigger
+        MOVE_SERVO(probe_index, servo[probe_index].angle[1]); // Stow
 
-      if (probe_counter == 0) SERIAL_EM("trigger not detected");
+        return;
 
-    } // measure active signal length
+      }  // pulse detected
+
+    } // for loop waiting for trigger
+
+    if (probe_counter == 0) SERIAL_LM(ER, " Trigger not detected");
 
   #endif // HAS_Z_SERVO_PROBE
 
 } // servo_probe_test
 
 /** Private Function */
+// returns false for ok and true for failure
+void Probe::specific_action(const bool deploy) {
 
-/**
- * @brief Used by run_probing to do a single Z probe move.
- *
- * @param  z        Z destination
- * @param  fr_mm_s  Feedrate in mm/s
- * @return true to indicate an error
- */
-bool Probe::move_to_z(const float z, const float fr_mm_s) {
-  #if ENABLED(DEBUG_FEATURE)
-    if (printer.debugFeature()) DEBUG_POS(">>> probe.move_to_z", mechanics.current_position);
+  #if ENABLED(PAUSE_BEFORE_DEPLOY_STOW)
+
+    sound.feedback();
+
+    PGM_P const ds_str = deploy ? PSTR(MSG_MANUAL_DEPLOY) : PSTR(MSG_MANUAL_STOW);
+    lcdui.set_status_P(ds_str);
+    SERIAL_STR(ds_str);
+    SERIAL_EOL();
+
+    printer.setWaitForUser(true);
+    printer.keepalive(PausedforUser);
+    while (printer.isWaitForUser()) printer.idle();
+    lcdui.reset_status();
+    printer.keepalive(InHandler);
+
+  #endif // PAUSE_BEFORE_DEPLOY_STOW
+
+  #if ENABLED(Z_PROBE_SLED)
+    dock_sled(!deploy);
+  #elif ENABLED(BLTOUCH) && ENABLED(BLTOUCH_HIGH_SPEED_MODE)
+    if (deploy) bltouch.cmd_deploy(); else bltouch.cmd_stow();
+  #elif HAS_Z_SERVO_PROBE && DISABLED(BLTOUCH)
+    MOVE_SERVO(Z_PROBE_SERVO_NR, servo[Z_PROBE_SERVO_NR].angle[(deploy ? 0 : 1)]);
+  #elif ENABLED(Z_PROBE_ALLEN_KEY)
+    deploy ? run_deploy_moves_script() : run_stow_moves_script();
   #endif
 
+}
+
+/**
+ * Used by run_probing to do a single Z probe move.
+ *
+ * z        Z destination
+ * fr_mm_s  Feedrate in mm/s
+ *
+ * return true to indicate an error
+ */
+bool Probe::move_to_z(const float z, const float fr_mm_s) {
+
+  if (printer.debugFeature()) DEBUG_POS(">>> probe.move_to_z", mechanics.current_position);
+
   // Deploy BLTouch at the start of any probe
-  #if ENABLED(BLTOUCH) && NOMECH(DELTA)
-     if (set_bltouch_deployed(true)) return true;
+  #if ENABLED(BLTOUCH) && DISABLED(BLTOUCH_HIGH_SPEED_MODE)
+     if (bltouch.deploy()) return true;
+  #endif
+
+  // Disable stealthChop if used. Enable diag1 pin on driver.
+  #if ENABLED(Z_PROBE_SENSORLESS)
+    sensorless_t stealth_states;
+    #if MECH(DELTA)
+      stealth_states.x = tmc.enable_stallguard(stepperX);
+      stealth_states.y = tmc.enable_stallguard(stepperY);
+      stealth_states.z = tmc.enable_stallguard(stepperZ);
+    #else
+      stealth_states.z = tmc.enable_stallguard(stepperZ);
+    #endif
   #endif
 
   #if QUIET_PROBING
     probing_pause(true);
   #endif
+
+  endstops.setEnabled(true);
 
   #if MECH(DELTA)
     const float z_start = mechanics.current_position[Z_AXIS];
@@ -464,21 +437,38 @@ bool Probe::move_to_z(const float z, const float fr_mm_s) {
   mechanics.do_blocking_move_to_z(z, fr_mm_s);
 
   // Check to see if the probe was triggered
-  const bool probe_triggered = TEST(endstops.trigger_state(),
-    #if HAS_Z_PROBE_PIN
-      Z_PROBE
+  const bool probe_triggered =
+    #if MECH(DELTA) && ENABLED(Z_PROBE_SENSORLESS)
+      endstops.trigger_state() & (_BV(X_MIN) | _BV(Y_MIN) | _BV(Z_MIN))
     #else
-      Z_MIN
+      TEST(endstops.trigger_state(),
+        #if HAS_Z_PROBE_PIN
+          Z_PROBE
+        #else
+          Z_MIN
+        #endif
+      )
     #endif
-  );
+  ;
 
   #if QUIET_PROBING
     probing_pause(false);
   #endif
 
   // Retract BLTouch immediately after a probe if it was triggered
-  #if ENABLED(BLTOUCH) && NOMECH(DELTA)
-    if (probe_triggered && set_bltouch_deployed(false)) return true;
+  #if ENABLED(BLTOUCH) && DISABLED(BLTOUCH_HIGH_SPEED_MODE)
+    if (probe_triggered && bltouch.stow()) return true;
+  #endif
+
+  // Re-enable stealthChop if used. Disable diag1 pin on driver.
+  #if ENABLED(Z_PROBE_SENSORLESS)
+    #if MECH(DELTA)
+      tmc.disable_stallguard(stepperX, stealth_states.x);
+      tmc.disable_stallguard(stepperY, stealth_states.y);
+      tmc.disable_stallguard(stepperZ, stealth_states.z);
+    #else
+      tmc.disable_stallguard(stepperZ, stealth_states.z);
+    #endif
   #endif
 
   // Clear endstop flags
@@ -488,7 +478,7 @@ bool Probe::move_to_z(const float z, const float fr_mm_s) {
   #if MECH(DELTA)
     float z_dist = 0.0;
     LOOP_ABC(i)
-      z_dist += ABS(steps_start[i] - stepper.position((AxisEnum)i)) / mechanics.axis_steps_per_mm[i];
+      z_dist += ABS(steps_start[i] - stepper.position((AxisEnum)i)) / mechanics.data.axis_steps_per_mm[i];
 
     mechanics.current_position[Z_AXIS] = z_start - (z_dist / ABC);
   #else
@@ -496,11 +486,9 @@ bool Probe::move_to_z(const float z, const float fr_mm_s) {
   #endif
 
   // Tell the planner where we actually are
-  mechanics.sync_plan_position_mech_specific();
+  mechanics.sync_plan_position();
 
-  #if ENABLED(DEBUG_FEATURE)
-    if (printer.debugFeature()) DEBUG_POS("<<< probe.move_to_z", mechanics.current_position);
-  #endif
+  if (printer.debugFeature()) DEBUG_POS("<<< probe.move_to_z", mechanics.current_position);
 
   return !probe_triggered;
 }
@@ -509,76 +497,68 @@ bool Probe::move_to_z(const float z, const float fr_mm_s) {
  * Raise Z to a minimum height to make room for a probe to move
  */
 void Probe::do_raise(const float z_raise) {
-  #if ENABLED(DEBUG_FEATURE)
-    if (printer.debugFeature()) {
-      SERIAL_MV("probe.do_raise(", z_raise);
-      SERIAL_CHR(')');
-      SERIAL_EOL();
-    }
-  #endif
+
+  if (printer.debugFeature()) {
+    DEBUG_MV("probe.do_raise(", z_raise);
+    DEBUG_CHR(')');
+    DEBUG_EOL();
+  }
 
   float z_dest = z_raise;
-  if (offset[Z_AXIS] < 0) z_dest -= offset[Z_AXIS];
+  if (data.offset[Z_AXIS] < 0) z_dest -= data.offset[Z_AXIS];
 
-  NOMORE(z_dest, Z_MAX_POS);
+  NOMORE(z_dest, Z_MAX_BED);
 
   if (z_dest > mechanics.current_position[Z_AXIS])
     mechanics.do_blocking_move_to_z(z_dest);
 }
 
 /**
- * @details Used by check_pt to do a single Z probe at the current position.
- *          Leaves current_position[Z_AXIS] at the height where the probe triggered.
+ * Used by check_pt to do a single Z probe at the current position.
+ * Leaves current_position[Z_AXIS] at the height where the probe triggered.
  *
- * @return The raw Z position where the probe was triggered
+ * return The raw Z position where the probe was triggered
  */
 float Probe::run_probing() {
 
   float probe_z = 0.0;
 
   // Stop the probe before it goes too low to prevent damage.
-  #define Z_PROBE_LOW_POINT (-2 - offset[Z_AXIS])
+  // If Z isn't known then probe to -10mm.
+  const float z_probe_low_point = mechanics.isAxisHomed(Z_AXIS) ? Z_PROBE_LOW_POINT - data.offset[Z_AXIS] : -10.0;
 
-  #if ENABLED(DEBUG_FEATURE)
-    if (printer.debugFeature()) DEBUG_POS(">>> probe.run_probing", mechanics.current_position);
-  #endif
+  if (printer.debugFeature()) DEBUG_POS(">>> probe.run_probing", mechanics.current_position);
 
   // If the nozzle is well over the travel height then
   // move down quickly before doing the slow probe
   float z = Z_PROBE_DEPLOY_HEIGHT + 5.0;
-  if (offset[Z_AXIS] < 0) z -= offset[Z_AXIS];
+  if (data.offset[Z_AXIS] < 0) z -= data.offset[Z_AXIS];
 
   if (mechanics.current_position[Z_AXIS] > z) {
-    if (!move_to_z(z, MMM_TO_MMS(Z_PROBE_SPEED_FAST)))
-      mechanics.do_blocking_move_to_z(z + Z_PROBE_BETWEEN_HEIGHT, MMM_TO_MMS(Z_PROBE_SPEED_FAST));
+    if (!move_to_z(z, MMM_TO_MMS(data.speed_fast)))
+      mechanics.do_blocking_move_to_z(z + Z_PROBE_BETWEEN_HEIGHT, MMM_TO_MMS(data.speed_fast));
   }
 
-  for (uint8_t r = Z_PROBE_REPETITIONS + 1; --r;) {
+  for (uint8_t r = data.repetitions + 1; --r;) {
 
     // move down slowly to find bed
-    if (move_to_z(Z_PROBE_LOW_POINT, MMM_TO_MMS(Z_PROBE_SPEED_SLOW))) {
-      #if ENABLED(DEBUG_FEATURE)
-        if (printer.debugFeature()) {
-          SERIAL_EM("SLOW Probe fail!");
-          DEBUG_POS("<<< probe.run_probing", mechanics.current_position);
-        }
-      #endif
+    if (move_to_z(z_probe_low_point, MMM_TO_MMS(data.speed_slow))) {
+      if (printer.debugFeature()) {
+        DEBUG_EM("SLOW Probe fail!");
+        DEBUG_POS("<<< probe.run_probing", mechanics.current_position);
+      }
       return NAN;
     }
 
     probe_z += mechanics.current_position[Z_AXIS];
-    if (r > 1) mechanics.do_blocking_move_to_z(mechanics.current_position[Z_AXIS] + Z_PROBE_BETWEEN_HEIGHT, MMM_TO_MMS(Z_PROBE_SPEED_FAST));
+    if (r > 1) mechanics.do_blocking_move_to_z(mechanics.current_position[Z_AXIS] + Z_PROBE_BETWEEN_HEIGHT, MMM_TO_MMS(data.speed_fast));
 
   }
 
-  return probe_z * (1.0 / (Z_PROBE_REPETITIONS));
+  return probe_z / (float)data.repetitions;
 }
 
 #if ENABLED(Z_PROBE_ALLEN_KEY)
-
-  FORCE_INLINE void do_blocking_move_to(const float raw[XYZ], const float &fr_mm_s/*=0.0*/) {
-    mechanics.do_blocking_move_to(raw[X_AXIS], raw[Y_AXIS], raw[Z_AXIS], fr_mm_s);
-  }
 
   void Probe::run_deploy_moves_script() {
 
@@ -586,13 +566,13 @@ float Probe::run_probing() {
                 z_probe_deploy_end_location[]    = Z_PROBE_DEPLOY_END_LOCATION;
 
     // Move to the start position to initiate deployment
-    do_blocking_move_to(z_probe_deploy_start_location, mechanics.homing_feedrate_mm_s[Z_AXIS]);
+    mechanics.do_blocking_move_to(z_probe_deploy_start_location, mechanics.homing_feedrate_mm_s[Z_AXIS]);
 
     // Move to engage deployment
-    do_blocking_move_to(z_probe_deploy_end_location, mechanics.homing_feedrate_mm_s[Z_AXIS] / 10);
+    mechanics.do_blocking_move_to(z_probe_deploy_end_location, mechanics.homing_feedrate_mm_s[Z_AXIS] / 10);
 
     // Move to trigger deployment
-    do_blocking_move_to(z_probe_deploy_start_location, mechanics.homing_feedrate_mm_s[Z_AXIS]);
+    mechanics.do_blocking_move_to(z_probe_deploy_start_location, mechanics.homing_feedrate_mm_s[Z_AXIS]);
   }
   void Probe::run_stow_moves_script() {
 
@@ -600,13 +580,13 @@ float Probe::run_probing() {
                 z_probe_retract_end_location[] = Z_PROBE_RETRACT_END_LOCATION;
 
     // Move to the start position to initiate retraction
-    do_blocking_move_to(z_probe_retract_start_location, mechanics.homing_feedrate_mm_s[Z_AXIS]);
+    mechanics.do_blocking_move_to(z_probe_retract_start_location, mechanics.homing_feedrate_mm_s[Z_AXIS]);
 
     // Move the nozzle down to push the Z probe into retracted position
-    do_blocking_move_to(z_probe_retract_end_location, mechanics.homing_feedrate_mm_s[Z_AXIS] / 10);
+    mechanics.do_blocking_move_to(z_probe_retract_end_location, mechanics.homing_feedrate_mm_s[Z_AXIS] / 10);
 
     // Move up for safety
-    do_blocking_move_to(z_probe_retract_start_location, mechanics.homing_feedrate_mm_s[Z_AXIS]);
+    mechanics.do_blocking_move_to(z_probe_retract_start_location, mechanics.homing_feedrate_mm_s[Z_AXIS]);
   }
 
 #endif
@@ -624,15 +604,13 @@ float Probe::run_probing() {
    *              If true, move to MAX_X and release the solenoid
    */
   void Probe::dock_sled(bool stow) {
-    #if ENABLED(DEBUG_FEATURE)
-      if (printer.debugFeature()) {
-        SERIAL_MV("dock_sled(", stow);
-        SERIAL_CHR(')'); SERIAL_EOL();
-      }
-    #endif
+    if (printer.debugFeature()) {
+      DEBUG_MV("dock_sled(", stow);
+      DEBUG_CHR(')'); DEBUG_EOL();
+    }
 
     // Dock sled a bit closer to ensure proper capturing
-    mechanics.do_blocking_move_to_x(X_MAX_POS + SLED_DOCKING_OFFSET - ((stow) ? 1 : 0));
+    mechanics.do_blocking_move_to_x(X_MAX_BED + SLED_DOCKING_OFFSET - ((stow) ? 1 : 0));
     WRITE(SLED_PIN, !stow); // switch solenoid
   }
 
