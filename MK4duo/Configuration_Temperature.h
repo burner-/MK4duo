@@ -431,7 +431,7 @@
  *                                                                     *
  ***********************************************************************/
 #define PREVENT_COLD_EXTRUSION
-#define EXTRUDE_MINTEMP 170                 // Degree Celsius
+#define EXTRUDE_MINTEMP 190                 // Degree Celsius
 
 // Prevent a single extrusion longer than EXTRUDE MAXLENGTH.
 // Note: For Bowden Extruders make this large enough to allow load/unload.
