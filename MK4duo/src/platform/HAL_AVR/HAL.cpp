@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,11 +73,10 @@
 // Public Variables
 // --------------------------------------------------------------------------
 
-uint16_t  HAL_min_pulse_cycle     = 0,
-          HAL_min_pulse_tick      = 0,
-          HAL_add_pulse_ticks     = 0;
-
-uint32_t  HAL_frequency_limit[8]  = { 0 };
+hal_timer_t HAL_min_pulse_cycle     = 0,
+            HAL_pulse_high_tick     = 0,
+            HAL_pulse_low_tick      = 0;
+uint32_t    HAL_frequency_limit[8]  = { 0 };
 
 // --------------------------------------------------------------------------
 // Private Variables
@@ -94,6 +93,23 @@ uint32_t  HAL_frequency_limit[8]  = { 0 };
 // --------------------------------------------------------------------------
 // Public functions
 // --------------------------------------------------------------------------
+
+extern "C" {
+  extern char __bss_end;
+  extern char __heap_start;
+  extern void* __brkval;
+
+  int freeMemory() {
+    int free_memory;
+    if ((int)__brkval == 0)
+      free_memory = ((int)&free_memory) - ((int)&__bss_end);
+    else
+      free_memory = ((int)&free_memory) - ((int)__brkval);
+    return free_memory;
+  }
+}
+
+void(* resetFunc) (void) = 0; // declare reset function @ address 0
 
 #if ANALOG_INPUTS > 0
   int32_t AnalogInputRead[ANALOG_INPUTS];
@@ -114,13 +130,11 @@ HAL::~HAL() {
   // dtor
 }
 
-void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) {
-
-  UNUSED(frequency);
+void HAL_timer_start(const uint8_t timer_num) {
 
   switch (timer_num) {
 
-    case STEPPER_TIMER:
+    case STEPPER_TIMER_NUM:
       // waveform generation = 0100 = CTC
       SET_WGM(1, CTC_OCRnA);
 
@@ -139,10 +153,10 @@ void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) {
       TCNT1 = 0;
       break;
 
-    case TEMP_TIMER:
+    case TEMP_TIMER_NUM:
       // Use timer0 for temperature measurement
       // Interleave temperature interrupt with millies interrupt
-      TEMP_OCR  = 256;
+      TEMP_OCR = 128;
       break;
   }
 }
@@ -151,10 +165,29 @@ uint32_t HAL_isr_execuiton_cycle(const uint32_t rate) {
   return (ISR_BASE_CYCLES + ISR_BEZIER_CYCLES + (ISR_LOOP_CYCLES) * rate + ISR_LA_BASE_CYCLES + ISR_LA_LOOP_CYCLES) / rate;
 }
 
+hal_timer_t HAL_ns_to_pulse_tick(const hal_timer_t ns) {
+  return (STEPPER_TIMER_TICKS_PER_US) * ns / 1000UL;
+}
+
 void HAL_calc_pulse_cycle() {
-  HAL_min_pulse_cycle = MAX((uint32_t)((F_CPU) / stepper.maximum_rate), ((F_CPU) / 500000UL) * MAX((uint32_t)stepper.minimum_pulse, 1UL));
-  HAL_min_pulse_tick  = uint32_t(stepper.minimum_pulse) * (STEPPER_TIMER_TICKS_PER_US);
-  HAL_add_pulse_ticks = (HAL_min_pulse_cycle / (PULSE_TIMER_PRESCALE)) - HAL_min_pulse_tick;
+
+  const hal_timer_t HAL_min_step_period_ns = 1000000000UL / stepper.data.maximum_rate;
+  hal_timer_t       HAL_min_pulse_high_ns,
+                    HAL_min_pulse_low_ns;
+
+  HAL_min_pulse_cycle = MAX((hal_timer_t)((F_CPU) / stepper.data.maximum_rate), ((F_CPU) / 500000UL) * MAX((hal_timer_t)stepper.data.minimum_pulse, 1UL));
+
+  if (stepper.data.minimum_pulse) {
+    HAL_min_pulse_high_ns = hal_timer_t(stepper.data.minimum_pulse) * 1000UL;
+    HAL_min_pulse_low_ns  = MAX((HAL_min_step_period_ns - MIN(HAL_min_step_period_ns, HAL_min_pulse_high_ns)), HAL_min_pulse_high_ns);
+  }
+  else {
+    HAL_min_pulse_high_ns = 500000000UL / stepper.data.maximum_rate;
+    HAL_min_pulse_low_ns  = HAL_min_pulse_high_ns;
+  }
+
+  HAL_pulse_high_tick = HAL_ns_to_pulse_tick(HAL_min_pulse_high_ns - MIN(HAL_min_pulse_high_ns, (TIMER_SETUP_NS)));
+  HAL_pulse_low_tick  = HAL_ns_to_pulse_tick(HAL_min_pulse_low_ns - MIN(HAL_min_pulse_low_ns, (TIMER_SETUP_NS)));
 
   // The stepping frequency limits for each multistepping rate
   HAL_frequency_limit[0] = ((F_CPU) / HAL_isr_execuiton_cycle(1))       ;
@@ -167,37 +200,16 @@ void HAL_calc_pulse_cycle() {
   HAL_frequency_limit[7] = ((F_CPU) / HAL_isr_execuiton_cycle(128)) >> 7;
 }
 
-// Return available memory
-extern "C" {
-  extern char __bss_end;
-  extern char __heap_start;
-  extern void* __brkval;
-
-  int HAL::getFreeRam() {
-    int free_memory;
-    if ((int)__brkval == 0)
-      free_memory = ((int)&free_memory) - ((int)&__bss_end);
-    else
-      free_memory = ((int)&free_memory) - ((int)__brkval);
-    return free_memory;
-  }
-}
-
-void(* resetFunc) (void) = 0; // declare reset function @ address 0
-
 // Reset peripherals and cpu
 void HAL::resetHardware() { resetFunc(); }
 
 void HAL::showStartReason() {
-
-  // Check startup - does nothing if bootloader sets MCUSR to 0
   const uint8_t mcu = MCUSR;
-  if (mcu & 1)  SERIAL_EM(MSG_POWERUP);
-  if (mcu & 2)  SERIAL_EM(MSG_EXTERNAL_RESET);
-  if (mcu & 4)  SERIAL_EM(MSG_BROWNOUT_RESET);
-  if (mcu & 8)  SERIAL_EM(MSG_WATCHDOG_RESET);
-  if (mcu & 32) SERIAL_EM(MSG_SOFTWARE_RESET);
-
+  if (mcu &  1) SERIAL_EM(MSG_HOST_POWERUP);
+  if (mcu &  2) SERIAL_EM(MSG_HOST_EXTERNAL_RESET);
+  if (mcu &  4) SERIAL_EM(MSG_HOST_BROWNOUT_RESET);
+  if (mcu &  8) SERIAL_EM(MSG_HOST_WATCHDOG_RESET);
+  if (mcu & 32) SERIAL_EM(MSG_HOST_SOFTWARE_RESET);
   MCUSR = 0;
 }
 
@@ -240,8 +252,7 @@ void HAL::showStartReason() {
 
     // Use timer for temperature measurement
     // Interleave temperature interrupt with millies interrupt
-    HAL_timer_start(TEMP_TIMER, TEMP_TIMER_FREQUENCY);
-
+    HAL_timer_start(TEMP_TIMER_NUM);
     ENABLE_TEMP_INTERRUPT();
 
   }
@@ -320,85 +331,91 @@ void HAL::setPwmFrequency(const pin_t pin, uint8_t val) {
   }
 }
 
-void HAL::analogWrite(const pin_t pin, const uint8_t uValue, const uint16_t freq/*=1000U*/, const bool hwpwm/*=true*/) {
+void HAL::analogWrite(const pin_t pin, const uint8_t uValue, const uint16_t freq/*=1000u*/) {
   UNUSED(freq);
-  UNUSED(hwpwm);
-  softpwm.set(pin, uValue);
+  ::analogWrite(pin, uValue);
 }
 
 void HAL::Tick() {
 
-  static millis_s cycle_100_ms  = millis();
-  static uint8_t  channel       = 0;
+  static short_timer_t  cycle_1s_timer(millis()),
+                        cycle_100_timer(millis());
+
+  static uint8_t channel = 0;
+
+  if (printer.isStopped()) return;
 
   // Heaters set output PWM
-  #if HOTENDS > 0
-    LOOP_HOTEND() hotends[h].set_output_pwm();
-  #endif
-  #if BEDS > 0
-    LOOP_BED() beds[h].set_output_pwm();
-  #endif
-  #if CHAMBERS > 0
-    LOOP_CHAMBER() chambers[h].set_output_pwm();
-  #endif
+  tempManager.set_output_pwm();
 
   // Fans set output PWM
-  #if FAN_COUNT > 0
-    LOOP_FAN() fans[f].set_output_pwm();
-  #endif
+  fanManager.set_output_pwm();
 
-  // Software PWM modulation
-  softpwm.spin();
+  // Event 100 ms
+  if (cycle_100_timer.expired(100)) tempManager.spin();
 
-  // Calculation cycle approximate a 100ms
-  if (expired(&cycle_100_ms, 100U)) {
-    // Temperature Spin
-    thermalManager.spin();
-    #if ENABLED(FAN_KICKSTART_TIME) && FAN_COUNT > 0
-      LOOP_FAN() {
-        if (fans[f].kickstart) fans[f].kickstart--;
+  // Event 1.0 Second
+  if (cycle_1s_timer.expired(1000)) printer.check_periodical_actions();
+
+  if ((ADCSRA & _BV(ADSC)) == 0) {  // Conversion finished?
+    channel = pgm_read_byte(&AnalogInputChannels[adcSamplePos]);
+    AnalogInputRead[adcSamplePos] += ADCW;
+    if (++adcCounter[adcSamplePos] >= (OVERSAMPLENR)) {
+
+      // update temperatures
+      AnalogInputValues[channel] = AnalogInputRead[adcSamplePos] / (OVERSAMPLENR);
+
+      AnalogInputRead[adcSamplePos] = 0;
+      adcCounter[adcSamplePos] = 0;
+
+      // Start next conversion
+      if (++adcSamplePos >= ANALOG_INPUTS) {
+        adcSamplePos = 0;
+        Analog_is_ready = true;
       }
-    #endif
+      channel = pgm_read_byte(&AnalogInputChannels[adcSamplePos]);
+      #if ENABLED(ADCSRB) && ENABLED(MUX5)
+        if (channel & 8)  // Reading channel 0-7 or 8-15?
+          ADCSRB |= _BV(MUX5);
+        else
+          ADCSRB &= ~_BV(MUX5);
+      #endif
+      ADMUX = (ADMUX & ~(0x1F)) | (channel & 7);
+    }
+    ADCSRA |= _BV(ADSC);  // start next conversion
   }
 
-  // read analog values
-  #if ANALOG_INPUTS > 0
-
-    if ((ADCSRA & _BV(ADSC)) == 0) {  // Conversion finished?
-      channel = pgm_read_byte(&AnalogInputChannels[adcSamplePos]);
-      AnalogInputRead[adcSamplePos] += ADCW;
-      if (++adcCounter[adcSamplePos] >= (OVERSAMPLENR)) {
-
-        // update temperatures
-        HAL::AnalogInputValues[channel] = AnalogInputRead[adcSamplePos] / (OVERSAMPLENR);
-
-        AnalogInputRead[adcSamplePos] = 0;
-        adcCounter[adcSamplePos] = 0;
-
-        // Start next conversion
-        if (++adcSamplePos >= ANALOG_INPUTS) {
-          adcSamplePos = 0;
-          HAL::Analog_is_ready = true;
-        }
-        channel = pgm_read_byte(&AnalogInputChannels[adcSamplePos]);
-        #if ENABLED(ADCSRB) && ENABLED(MUX5)
-          if (channel & 8)  // Reading channel 0-7 or 8-15?
-            ADCSRB |= _BV(MUX5);
-          else
-            ADCSRB &= ~_BV(MUX5);
-        #endif
-        ADMUX = (ADMUX & ~(0x1F)) | (channel & 7);
-      }
-      ADCSRA |= _BV(ADSC);  // start next conversion
-    }
-
-    // Update the raw values if they've been read. Else we could be updating them during reading.
-    if (HAL::Analog_is_ready) thermalManager.set_current_temp_raw();
-
-  #endif
+  // Update the raw values if they've been read. Else we could be updating them during reading.
+  if (Analog_is_ready) set_current_temp_raw();
 
   // Tick endstops state, if required
   endstops.Tick();
+
+}
+
+/** Private Function */
+void HAL::set_current_temp_raw() {
+
+  #if HAS_HOTENDS
+    LOOP_HOTEND() hotends[h]->data.sensor.adc_raw = AnalogInputValues[hotends[h]->data.sensor.pin];
+  #endif
+  #if HAS_BEDS
+    LOOP_BED() beds[h]->data.sensor.adc_raw = AnalogInputValues[beds[h]->data.sensor.pin];
+  #endif
+  #if HAS_CHAMBERS
+    LOOP_CHAMBER() chambers[h]->data.sensor.adc_raw = AnalogInputValues[chambers[h]->data.sensor.pin];
+  #endif
+  #if HAS_COOLERS
+    LOOP_COOLER() coolers[h]->data.sensor.adc_raw = AnalogInputValues[coolers[h]->data.sensor.pin];
+  #endif
+
+  #if HAS_POWER_CONSUMPTION_SENSOR
+    powerManager.current_raw_powconsumption = AnalogInputValues[POWER_CONSUMPTION_PIN];
+  #endif
+
+  #if ENABLED(FILAMENT_WIDTH_SENSOR)
+    current_raw_filwidth = AnalogInputValues[FILWIDTH_PIN];
+  #endif
 
 }
 
@@ -415,7 +432,6 @@ void HAL::Tick() {
  */
 HAL_TEMP_TIMER_ISR {
   if (printer.isStopped()) return;
-  TEMP_OCR += 256;
   HAL::Tick();
 }
 

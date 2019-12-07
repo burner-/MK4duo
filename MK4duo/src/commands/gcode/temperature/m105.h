@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,31 +23,37 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M105
 
 /**
- * M105: Read hot end and bed temperature
+ * M105: Read heater temperature
  */
-inline void gcode_M105(void) {
+inline void gcode_M105() {
 
-  const bool showRaw = parser.boolval('X');
+  SERIAL_STR(OK);
 
-  #if HEATER_COUNT > 0
-    SERIAL_STR(OK);
-    thermalManager.report_temperatures(showRaw);
-    #if ENABLED(FLOWMETER_SENSOR)
-      flowmeter.print_flowrate();
-    #endif
-    #if ENABLED(CNCROUTER) && ENABLED(FAST_PWM_CNCROUTER)
-      cnc.print_Speed();
-      SERIAL_MV(" fr:", MMS_TO_MMM(mechanics.feedrate_mm_s));
-    #endif
+  #if HAS_HEATER
+    tempManager.report_temperatures(parser.boolval('X'));
   #else
-    SERIAL_LM(ER, MSG_ERR_NO_THERMISTORS);
+    SERIAL_MSG(" T:0");
+  #endif
+
+  #if HAS_FAN
+    fanManager.report_speed();
+  #endif
+
+  #if ENABLED(FLOWMETER_SENSOR)
+    flowmeter.print_flowrate();
+  #endif
+
+  #if ENABLED(CNCROUTER) && ENABLED(FAST_PWM_CNCROUTER)
+    cnc.print_Speed();
+    SERIAL_MV(" fr:", MMS_TO_MMM(mechanics.feedrate_mm_s));
   #endif
 
   SERIAL_EOL();
+
 }

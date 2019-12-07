@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M31
@@ -31,11 +31,9 @@
 /**
  * M31: Get the time since the start of SD Print
  */
-inline void gcode_M31(void) {
+inline void gcode_M31() {
   char buffer[21];
-  duration_t elapsed = print_job_counter.duration();
-  elapsed.toString(buffer);
+  duration_t(print_job_counter.duration()).toString(buffer);
   lcdui.set_status(buffer);
-
-  SERIAL_LMT(ECHO, MSG_PRINT_TIME, buffer);
+  SERIAL_LMT(ECHO, "Print time: ", buffer);
 }

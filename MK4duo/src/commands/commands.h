@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 /**
  * commands.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "parser.h"
@@ -61,7 +61,7 @@ class Commands {
      * sending commands to MK4duo, and lines will be checked for sequentiality.
      * M110 N<int> sets the current line number.
      */
-    static long gcode_LastN;
+    static long gcode_last_N;
 
   private: /** Private Parameters */
 
@@ -70,13 +70,13 @@ class Commands {
     static int serial_count[NUM_SERIAL];
 
     /**
-     * Next Injected Command pointer. NULL if no commands are being injected.
+     * Next Injected Command pointer. Nullptr if no commands are being injected.
      * Used by MK4duo internally to ensure that commands initiated from within
      * are enqueued ahead of any pending serial or sd card
      */
     static PGM_P injected_commands_P;
 
-    static millis_s last_command_ms;
+    static short_timer_t last_command_timer;
 
   public: /** Public Function */
 
@@ -105,33 +105,28 @@ class Commands {
     static void clear_queue();
 
     /**
-     * Record one or many commands to run from program memory.
+     * Enqueue one or many commands to run from program memory.
      * Aborts the current queue, if any.
-     * Note: drain_injected_P() must be called repeatedly to drain the commands afterwards
+     * Note: process_injected() will process them.
      */
-    static void enqueue_and_echo_P(PGM_P const pgcode);
-
-    /**
-     * Enqueue with Serial Echo
-     */
-    static bool enqueue_and_echo(const char * cmd);
-
-    /**
-     * Enqueue from program memory and return only when commands are actually enqueued
-     */
-    static void enqueue_and_echo_now_P(PGM_P const cmd);
+    static void inject_P(PGM_P const pgcode);
 
     /**
      * Enqueue and return only when commands are actually enqueued
      */
-    static void enqueue_and_echo_now(const char * cmd);
+    static void enqueue_one_now(const char * cmd);
+
+    /**
+     * Enqueue from program memory and return only when commands are actually enqueued
+     */
+    static void enqueue_now_P(PGM_P const pgcode);
 
     /**
      * Run a series of commands, bypassing the command queue to allow
      * G-code "macros" to be called from within other G-code handlers.
      */
-    static void process_now_P(PGM_P pgcode);
     static void process_now(char * gcode);
+    static void process_now_P(PGM_P pgcode);
 
     /**
      * Set XYZE mechanics.destination and mechanics.feedrate_mm_s from the current GCode command
@@ -150,29 +145,18 @@ class Commands {
     static bool get_target_tool(const uint16_t code);
 
     /**
+     * Set target driver from the T parameter or the active_driver
+     *
+     * Returns TRUE if the target is invalid
+     */
+    static bool get_target_driver(const uint16_t code);
+
+    /**
      * Set target heather from the H parameter
      *
      * Returns NULL if the target is invalid
      */
     static Heater* get_target_heater();
-
-    #if ENABLED(COLOR_MIXING_EXTRUDER)
-      /**
-       * Set target driver from the T parameter or the active_driver
-       *
-       * Returns TRUE if the target is invalid
-       */
-      static bool get_target_driver(const uint16_t code);
-    #endif
-
-    #if FAN_COUNT > 0
-      /**
-       * Set target fan from the P parameter
-       *
-       * Returns TRUE if the target is invalid
-       */
-      static bool get_target_fan(uint8_t &f);
-    #endif
 
   private: /** Private Function */
 
@@ -214,6 +198,12 @@ class Commands {
     static void gcode_line_error(PGM_P err, const int8_t tmp_port);
 
     /**
+     * Enqueue with Serial Echo
+     * Return true on success
+     */
+    static bool enqueue_one(const char * cmd);
+
+    /**
      * Copy a command from RAM into the main command buffer.
      * Return true if the command was successfully added.
      * Return false for a full buffer, or if the 'command' is a comment.
@@ -221,10 +211,9 @@ class Commands {
     static bool enqueue(const char * cmd, bool say_ok=false, int8_t port=-2);
 
     /**
-     * Inject the next "immediate" command, when possible, onto the front of the buffer_ring.
-     * Return true if any immediate commands remain to inject.
+     * Process the next "immediate" command
      */
-    static bool drain_injected_P();
+    static bool process_injected();
 
     /**
      * Process parsed gcode and execute command

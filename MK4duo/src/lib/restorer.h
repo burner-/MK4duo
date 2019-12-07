@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,5 +47,5 @@ class restorer {
 
 };
 
-#define REMEMBER(NAME,X,...)  restorer<typeof(X)> restorer_##NAME(X, ##__VA_ARGS__)
-#define RESTORE(NAME)         restorer_##NAME.restore()
+#define REMEMBER(N,X,V...)  restorer<typeof(X)> restorer_##N(X, ##V)
+#define RESTORE(N)          restorer_##N.restore()

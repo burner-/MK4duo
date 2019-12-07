@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,30 +23,35 @@
 /**
  * bltouch.cpp
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "../../../MK4duo.h"
+#include "sanitycheck.h"
 
-#if ENABLED(BLTOUCH)
+#if HAS_BLTOUCH
 
 BLTouch bltouch;
 
+/** Public Parameters */
+bool BLTouch::last_mode = false;
+
 /** Public Function */
-void BLTouch::init() {
-  #if ENABLED(BLTOUCH_FORCE_5V_MODE)
-    // BLTOUCH < V3.0 and clones: This will be ignored
-    // BLTOUCH V3.0: SET_5V_MODE.
-    //               This mode will stay active until manual SET_OD_MODE or power cycle
-    // BLTOUCH V3.1: SET_5V_MODE. If not the probe will default to the eeprom settings configured by the user
-    deploy();
-    cmd_mode_5V();
-    cmd_mode_store();
-    cmd_mode_5V();
-    stow();
-  #endif
+// Init the class and device. Call from setup().
+void BLTouch::init(const bool set_voltage/*=false*/) {
   cmd_reset();
   cmd_stow();
+  #if ENABLED(BLTOUCH_FORCE_MODE)
+    if (set_voltage) mode_conv(BLTOUCH_MODE_5V);
+  #else
+    if (printer.debugFeature()) {
+      DEBUG_EMV("last_mode:", (int)last_mode);
+      DEBUG_MSG("Set BLTOUCH_MODE_");
+      DEBUG_L(BLTOUCH_MODE_5V ? PSTR("5V") : PSTR("OD"));
+    }
+    if (last_mode != BLTOUCH_MODE_5V && set_voltage)
+      mode_conv(BLTOUCH_MODE_5V);
+  #endif
 }
 
 void BLTouch::test() {
@@ -62,17 +67,15 @@ void BLTouch::test() {
 
     #define PROBE_TEST_PIN Z_PROBE_PIN
     probe_logic = endstops.isLogic(Z_PROBE);
-    SERIAL_EMV(". BLTouch uses Z_MIN_PROBE_PIN: ", PROBE_TEST_PIN);
-    SERIAL_EM(". Uses Z_PROBE_ENDSTOP_LOGIC (ignores Z_MIN_ENDSTOP_LOGIC)");
-    SERIAL_ELOGIC(". Z_MIN_ENDSTOP_LOGIC:", probe_logic);
+    SERIAL_EMV(".  BLTouch uses Z_MIN_PROBE_PIN: ", PROBE_TEST_PIN);
+    SERIAL_ELOGIC(".  Uses Z_PROBE_ENDSTOP_LOGIC (ignores Z_MIN_ENDSTOP_LOGIC)", probe_logic);
 
   #elif HAS_Z_MIN
 
     #define PROBE_TEST_PIN Z_MIN_PIN
     probe_logic = endstops.isLogic(Z_MIN);
-    SERIAL_EMV(". BLTouch uses Z_MIN pin: ", PROBE_TEST_PIN);
-    SERIAL_EM(". Uses Z_MIN_ENDSTOP_LOGIC (ignores Z_PROBE_ENDSTOP_LOGIC)");
-    SERIAL_ELOGIC(". Z_MIN_ENDSTOP_LOGIC:", probe_logic);
+    SERIAL_EMV(".  BLTouch uses Z_MIN pin: ", PROBE_TEST_PIN);
+    SERIAL_ELOGIC(".  Uses Z_MIN_ENDSTOP_LOGIC (ignores Z_PROBE_ENDSTOP_LOGIC)", probe_logic);
 
   #endif
 
@@ -113,16 +116,20 @@ void BLTouch::test() {
   // Wait 30 seconds for user to trigger probe
   for (uint16_t j = 0; j < 500 * 30 && probe_counter == 0 ; j++) {
 
-    printer.safe_delay(2);
+    HAL::delayMilliseconds(2);
 
-    if (0 == j % (500 * 1)) printer.reset_move_ms();          // Keep steppers powered
+    if (0 == j % (500 * 1)) printer.reset_move_timer();       // Keep steppers powered
 
     if (deploy_state != HAL::digitalRead(PROBE_TEST_PIN)) {   // probe triggered
 
-      for (probe_counter = 1; probe_counter < 15 && deploy_state != HAL::digitalRead(PROBE_TEST_PIN); ++probe_counter)
-        printer.safe_delay(2);
+      for (probe_counter = 0; probe_counter < 15 && deploy_state != HAL::digitalRead(PROBE_TEST_PIN); ++probe_counter)
+        HAL::delayMilliseconds(2);
 
-      SERIAL_EMV(". Pulse width (+/- 4mS): ", probe_counter * 2);
+      SERIAL_MSG(". Pulse width");
+      if (probe_counter == 15)
+        SERIAL_EM(": 30ms or more");
+      else
+        SERIAL_EMV(" (+/- 4ms): ", probe_counter * 2);
 
       if (probe_counter >= 4) {
         if (probe_counter == 15) SERIAL_MSG("= BLTouch V3.1");
@@ -139,15 +146,7 @@ void BLTouch::test() {
 
   } // for loop waiting for trigger
 
-  if (probe_counter == 0) SERIAL_LM(ER, " Trigger not detected");
-}
-
-bool BLTouch::triggered() {
-  #if HAS_Z_PROBE_PIN
-    return HAL::digitalRead(Z_PROBE_PIN) != endstops.isLogic(Z_PROBE);
-  #else
-    return HAL::digitalRead(Z_MIN_PIN) != endstops.isLogic(Z_MIN);
-  #endif
+  if (!probe_counter) SERIAL_EM("FAIL: No trigger detected");
 }
 
 bool BLTouch::deploy() {
@@ -166,12 +165,17 @@ bool BLTouch::deploy() {
       // The deploy might have failed or the probe is actually triggered (nozzle too low?) again
       if (printer.debugFeature()) DEBUG_EM("BLTouch Recovery Failed");
 
-      SERIAL_LM(ER, MSG_STOP_BLTOUCH);  // Tell the user something is wrong, needs action
+      SERIAL_LM(ER, MSG_HOST_STOP_BLTOUCH);  // Tell the user something is wrong, needs action
       printer.stop();                   // but it's not too bad, no need to kill, allow restart
 
       return true;                      // Tell our caller we goofed in case he cares to know
     }
   }
+
+  // One of the recommended ANTClabs ways to probe, using SW MODE
+  #if ENABLED(BLTOUCH_FORCE_SW_MODE)
+   cmd_mode_SW();
+  #endif
 
   // Now the probe is ready to issue a 10ms pulse when the pin goes up.
   // The trigger STOW (see motion.cpp for example) will pull up the probes pin as soon as the pulse
@@ -206,7 +210,7 @@ bool BLTouch::stow() {
 
       if (printer.debugFeature()) DEBUG_EM("BLTouch Recovery Failed");
 
-      SERIAL_LM(ER, MSG_STOP_BLTOUCH);  // Tell the user something is wrong, needs action
+      SERIAL_LM(ER, MSG_HOST_STOP_BLTOUCH);  // Tell the user something is wrong, needs action
       printer.stop();                   // but it's not too bad, no need to kill, allow restart
 
       return true;                      // Tell our caller we goofed in case he cares to know
@@ -216,20 +220,6 @@ bool BLTouch::stow() {
   if (printer.debugFeature()) DEBUG_EM("<<< bltouch.stow() end");
 
   return false; // report success to caller
-}
-
-bool BLTouch::status() {
-  // Return a TRUE for "YES, it is DEPLOYED"
-  // This function will ensure switch state is reset after execution
-  if (printer.debugFeature()) DEBUG_EM("BLTouch STATUS requested");
-
-  cmd_mode_SW();
-  const bool trig = triggered();        // If triggered in mode SW, the pin is up, it is STOWED
-
-  if (printer.debugFeature()) DEBUG_ELOGIC("BLTouch is ", trig);
-
-  if (trig) stow(); else deploy();      // Turn off mode SW, reset any trigger
-  return !trig;
 }
 
 /** Private Functions */
@@ -242,11 +232,32 @@ void BLTouch::clear() {
   stow();       // STOW to be ready for meaningful work. Could fail, don't care
 }
 
+void BLTouch::mode_conv(const bool M5V/*=false*/) {
+  if (printer.debugFeature()) {
+    DEBUG_MSG("Set BLTouch mode ");
+    DEBUG_L(M5V ? PSTR("5V") : PSTR("OD"));
+  }
+  cmd_deploy();
+  if (M5V) cmd_mode_5V(); else cmd_mode_OD();
+  cmd_mode_store();
+  if (M5V) cmd_mode_5V(); else cmd_mode_OD();
+  cmd_stow();
+  last_mode = M5V;
+}
+
 bool BLTouch::command(const BLTCommand cmd, const millis_s ms/*=BLTOUCH_DELAY*/) {
-  if (printer.debugFeature()) SERIAL_EMV("BLTouch Command :", cmd);
+  if (printer.debugFeature()) DEBUG_EMV("BLTouch Command :", cmd);
   MOVE_SERVO(Z_PROBE_SERVO_NR, cmd);
-  printer.safe_delay(MAX(ms, BLTOUCH_DELAY));
+  HAL::delayMilliseconds(MAX(ms, (uint32_t)BLTOUCH_DELAY));
   return triggered();
 }
 
-#endif // BLTOUCH
+bool BLTouch::triggered() {
+  #if HAS_Z_PROBE_PIN
+    return HAL::digitalRead(Z_PROBE_PIN) != endstops.isLogic(Z_PROBE);
+  #else
+    return HAL::digitalRead(Z_MIN_PIN) != endstops.isLogic(Z_MIN);
+  #endif
+}
+
+#endif // HAS_BLTOUCH

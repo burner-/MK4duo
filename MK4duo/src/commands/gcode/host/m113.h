@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(HOST_KEEPALIVE_FEATURE)
@@ -35,7 +35,7 @@
  *
  *   S<seconds> Optional. Set the keepalive interval.
  */
-inline void gcode_M113(void) {
+inline void gcode_M113() {
   if (parser.seenval('S'))
     printer.host_keepalive_time = parser.value_byte();
   else

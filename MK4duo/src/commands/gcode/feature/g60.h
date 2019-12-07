@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_G60
@@ -32,21 +32,21 @@
  * G60:  save current position
  *        S<slot> specifies memory slot # (0-based) to save into (default 0)
  */
-inline void gcode_G60(void) {
+inline void gcode_G60() {
 
   const uint8_t slot = parser.byteval('S');
 
   if (slot >= NUM_POSITON_SLOTS) {
-    SERIAL_LMV(ER, MSG_INVALID_POS_SLOT, NUM_POSITON_SLOTS);
+    SERIAL_LMV(ER, MSG_HOST_INVALID_POS_SLOT, NUM_POSITON_SLOTS);
     return;
   } 
-  COPY_ARRAY(mechanics.stored_position[slot], mechanics.current_position);
+  mechanics.stored_position[slot] = mechanics.current_position;
   printer.setPosSaved(true);
 
-  SERIAL_MSG(MSG_SAVED_POS);
+  SERIAL_MSG(MSG_HOST_SAVED_POS);
   SERIAL_MV(" S", slot);
-  SERIAL_MV("<-X:", mechanics.stored_position[slot][X_AXIS]);
-  SERIAL_MV(" Y:", mechanics.stored_position[slot][Y_AXIS]);
-  SERIAL_MV(" Z:", mechanics.stored_position[slot][Z_AXIS]);
-  SERIAL_EMV(" E:", mechanics.stored_position[slot][E_AXIS]);
+  SERIAL_MV("<-X:", mechanics.stored_position[slot].x);
+  SERIAL_MV(" Y:", mechanics.stored_position[slot].y);
+  SERIAL_MV(" Z:", mechanics.stored_position[slot].z);
+  SERIAL_EMV(" E:", mechanics.stored_position[slot].e);
 }

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,54 +21,54 @@
  */
 
 #include "../../../MK4duo.h"
+#include "sanitycheck.h"
 
 #if HAS_CASE_LIGHT
 
-  CaseLight caselight;
+CaseLight caselight;
 
-  uint8_t CaseLight::brightness = CASE_LIGHT_DEFAULT_BRIGHTNESS;
-  bool    CaseLight::status     = CASE_LIGHT_DEFAULT_ON;
+uint8_t CaseLight::brightness = CASE_LIGHT_DEFAULT_BRIGHTNESS;
+bool    CaseLight::status     = CASE_LIGHT_DEFAULT_ON;
+
+#if ENABLED(CASE_LIGHT_USE_NEOPIXEL)
+  LEDColor case_light_color = CASE_LIGHT_NEOPIXEL_COLOR;
+#endif
+
+void CaseLight::update() {
 
   #if ENABLED(CASE_LIGHT_USE_NEOPIXEL)
-    LEDColor case_light_color = CASE_LIGHT_NEOPIXEL_COLOR;
-  #endif
 
-  void CaseLight::update() {
+    if (status) {
+      leds.set_color(
+        MakeLEDColor(case_light_color.r, case_light_color.g, case_light_color.b, case_light_color.w, brightness),
+        false
+      );
+    }
+    else {
+      leds.set_color(
+        MakeLEDColor(0, 0, 0, 0, brightness),
+        false
+      );
+    }
+
+  #else // !CASE_LIGHT_USE_NEOPIXEL
 
     const uint8_t onoff     = status ? brightness : 0,
                   intensity = INVERT_CASE_LIGHT ? 255 - onoff : onoff;
+    HAL::analogWrite(CASE_LIGHT_PIN, intensity);
 
-    #if ENABLED(CASE_LIGHT_USE_NEOPIXEL)
+  #endif // !CASE_LIGHT_USE_NEOPIXEL
+}
 
-      if (status) {
-        leds.set_color(
-          MakeLEDColor(case_light_color.r, case_light_color.g, case_light_color.b, case_light_color.w, brightness),
-          false
-        );
-      }
-      else {
-        leds.set_color(
-          MakeLEDColor(0, 0, 0, 0, brightness),
-          false
-        );
-      }
+void CaseLight::report() {
 
-    #else // !CASE_LIGHT_USE_NEOPIXEL
+  SERIAL_SM(ECHO, "Case light:");
 
-      HAL::analogWrite(CASE_LIGHT_PIN, intensity);
-
-    #endif // !CASE_LIGHT_USE_NEOPIXEL
+  if (status) {
+    if (USEABLE_HARDWARE_PWM(CASE_LIGHT_PIN)) SERIAL_EV((int) brightness);
+    else SERIAL_EM("on");
   }
-
-  void CaseLight::report() {
-
-    SERIAL_SM(ECHO, "Case light:");
-
-    if (status) {
-      if (USEABLE_HARDWARE_PWM(CASE_LIGHT_PIN)) SERIAL_EV((int) brightness);
-      else SERIAL_EM("on");
-    }
-    else SERIAL_EM("off");
-  }
+  else SERIAL_EM("off");
+}
 
 #endif // HAS_CASE_LIGHT

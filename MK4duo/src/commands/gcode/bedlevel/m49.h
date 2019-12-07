@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,14 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(G26_MESH_VALIDATION)
 
 #define CODE_M49
 
-inline void gcode_M49(void) {
+inline void gcode_M49() {
   bedlevel.flag.g26_debug ^= true;
   SERIAL_MSG("G26 Debug ");
   SERIAL_STR(bedlevel.flag.g26_debug ? PSTR("on.") : PSTR("off."));

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,11 +37,11 @@
     for (uint8_t x = 0; x < GRID_MAX_POINTS_X; x++) {
       for (uint8_t y = 0;  y < GRID_MAX_POINTS_Y; y++) {
         if (!isnan(z_values[x][y])) {
-          SERIAL_SMV(ECHO, "  M421 I", x);
-          SERIAL_MV(" J", y);
-          SERIAL_MV(" Z", z_values[x][y], 2);
+          SERIAL_SMV(ECHO, "  M421 I", int(x));
+          SERIAL_MV(" J", int(y));
+          SERIAL_MV(" Z", z_values[x][y], 4);
           SERIAL_EOL();
-          printer.safe_delay(75);
+          HAL::delayMilliseconds(75);
         }
       }
     }
@@ -52,7 +52,7 @@
     SERIAL_MSG(" System v" UBL_VERSION " ");
     if (!bedlevel.flag.leveling_active) SERIAL_MSG("in");
     SERIAL_EM("active.");
-    printer.safe_delay(50);
+    HAL::delayMilliseconds(50);
   }
 
   #if ENABLED(UBL_DEVEL_DEBUGGING)
@@ -61,7 +61,7 @@
       if (mechanics.current_position[axis] == mechanics.destination[axis])
         SERIAL_MSG("-------------");
       else
-        SERIAL_VAL(mechanics.destination[X_AXIS], 6);
+        SERIAL_VAL(mechanics.destination.x, 6);
     }
 
     void debug_current_and_destination(PGM_P title) {
@@ -70,12 +70,12 @@
       // ignore the status of the bedlevel.flag.g26_debug
       if (*title != '!' && !bedlevel.flag.g26_debug) return;
 
-      const float de = mechanics.destination[E_AXIS] - mechanics.current_position[E_AXIS];
+      const float de = mechanics.destination.e - mechanics.current_position.e;
 
       if (de == 0.0) return; // Printing moves only
 
-      const float dx = mechanics.destination[X_AXIS] - mechanics.current_position[X_AXIS],
-                  dy = mechanics.destination[Y_AXIS] - mechanics.current_position[Y_AXIS],
+      const float dx = mechanics.destination.x - mechanics.current_position.x,
+                  dy = mechanics.destination.y - mechanics.current_position.y,
                   xy_dist = HYPOT(dx, dy);
 
       if (xy_dist == 0.0) return;
@@ -83,10 +83,10 @@
       const float fpmm = de / xy_dist;
       SERIAL_MV("   fpmm=", fpmm, 6);
 
-      SERIAL_MV("    current=( ", mechanics.current_position[X_AXIS], 6);
-      SERIAL_MV(", ", mechanics.current_position[Y_AXIS], 6);
-      SERIAL_MV(", ", mechanics.current_position[Z_AXIS], 6);
-      SERIAL_MV(", ", mechanics.current_position[E_AXIS], 6);
+      SERIAL_MV("    current=( ", mechanics.current_position.x, 6);
+      SERIAL_MV(", ", mechanics.current_position.y, 6);
+      SERIAL_MV(", ", mechanics.current_position.z, 6);
+      SERIAL_MV(", ", mechanics.current_position.e, 6);
       SERIAL_MSG(" )   destination=( ");
       debug_echo_axis(X_AXIS); SERIAL_MSG(", ");
       debug_echo_axis(Y_AXIS); SERIAL_MSG(", ");
@@ -101,7 +101,7 @@
 
   int8_t unified_bed_leveling::storage_slot;
 
-  float unified_bed_leveling::z_values[GRID_MAX_POINTS_X][GRID_MAX_POINTS_Y];
+  bed_mesh_t unified_bed_leveling::z_values;
 
   #if HAS_LCD_MENU
     bool unified_bed_leveling::lcd_map_control = false;
@@ -117,9 +117,6 @@
     const bool was_enabled = bedlevel.flag.leveling_active;
     bedlevel.set_bed_leveling_enabled(false);
     storage_slot = -1;
-    #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
-      bedlevel.set_z_fade_height(10.0);
-    #endif
     ZERO(z_values);
     if (was_enabled) mechanics.report_current_position();
   }
@@ -146,7 +143,7 @@
     if (y < 100) { SERIAL_CHR(' '); if (y < 10) SERIAL_CHR(' '); }
     SERIAL_VAL(y);
     SERIAL_CHR(')');
-    printer.safe_delay(5);
+    HAL::delayMilliseconds(5);
   }
 
   static void serial_echo_column_labels(const uint8_t sp) {
@@ -156,7 +153,7 @@
       SERIAL_VAL(i);
       SERIAL_SP(sp);
     }
-    printer.safe_delay(10);
+    HAL::delayMilliseconds(10);
   }
 
   /**
@@ -190,8 +187,7 @@
     // Add XY_PROBE_OFFSET_FROM_EXTRUDER because probe_pt() subtracts these when
     // moving to the xy position to be measured. This ensures better agreement between
     // the current Z position after G28 and the mesh values.
-    const float current_xi = find_closest_x_index(mechanics.current_position[X_AXIS] + probe.data.offset[X_AXIS]),
-                current_yi = find_closest_y_index(mechanics.current_position[Y_AXIS] + probe.data.offset[Y_AXIS]);
+    const xy_int8_t curr = closest_indexes(xy_pos_t(mechanics.current_position) + xy_pos_t(probe.data.offset));
 
     if (!lcd) SERIAL_EOL();
     for (int8_t j = GRID_MAX_POINTS_Y - 1; j >= 0; j--) {
@@ -207,7 +203,7 @@
       for (uint8_t i = 0; i < GRID_MAX_POINTS_X; i++) {
 
         // Opening Brace or Space
-        const bool is_current = i == current_xi && j == current_yi;
+        const bool is_current = i == curr.x && j == curr.y;
         if (human) SERIAL_CHR(is_current ? '[' : ' ');
 
         // Z Value at current I, J

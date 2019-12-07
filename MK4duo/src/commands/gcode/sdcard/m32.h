@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_SD_SUPPORT
@@ -33,10 +33,10 @@
 /**
  * M32: Select file and start SD print
  */
-inline void gcode_M32(void) {
+inline void gcode_M32() {
   if (IS_SD_PRINTING()) planner.synchronize();
 
-  if (card.isDetected()) {
+  if (card.isMounted()) {
     card.closeFile();
 
     char* namestartpos = parser.string_arg ; // default name position

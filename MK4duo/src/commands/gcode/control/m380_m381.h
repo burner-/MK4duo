@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(EXT_SOLENOID)
@@ -34,11 +34,11 @@
   /**
    * M380: Enable solenoid on the active extruder
    */
-  inline void gcode_M380(void) { tools.enable_solenoid_on_active_extruder(); }
+  inline void gcode_M380() { toolManager.enable_solenoid_on_active_extruder(); }
 
   /**
    * M381: Disable all solenoids
    */
-  inline void gcode_M381(void) { tools.disable_all_solenoids(); }
+  inline void gcode_M381() { toolManager.disable_all_solenoids(); }
 
 #endif // ENABLED(EXT_SOLENOID)

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(FWRETRACT)
@@ -40,7 +40,7 @@
    *   F[units/min] data.retract_feedrate_mm_s
    *   Z[units]     data.retract_zlift
    */
-  inline void gcode_M207(void) {
+  inline void gcode_M207() {
     if (parser.seenval('S')) fwretract.data.retract_length = parser.value_axis_units(E_AXIS);
     if (parser.seenval('F')) fwretract.data.retract_feedrate_mm_s = MMM_TO_MMS(parser.value_axis_units(E_AXIS));
     if (parser.seenval('Z')) fwretract.data.retract_zlift = parser.value_linear_units();
@@ -55,7 +55,7 @@
    *   F[units/min] data.retract_recover_feedrate_mm_s
    *   R[units/min] data.swap_retract_recover_feedrate_mm_s
    */
-  inline void gcode_M208(void) {
+  inline void gcode_M208() {
     if (parser.seen('S')) fwretract.data.retract_recover_length = parser.value_axis_units(E_AXIS);
     if (parser.seen('F')) fwretract.data.retract_recover_feedrate_mm_s = MMM_TO_MMS(parser.value_axis_units(E_AXIS));
     if (parser.seen('R')) fwretract.data.swap_retract_recover_feedrate_mm_s = MMM_TO_MMS(parser.value_axis_units(E_AXIS));
@@ -67,7 +67,7 @@
    *   For slicers that don't support G10/11, reversed extrude-only
    *   moves will be classified as retraction.
    */
-  inline void gcode_M209(void) {
+  inline void gcode_M209() {
     if (MIN_AUTORETRACT <= MAX_AUTORETRACT) {
       if (parser.seen('S')) {
         fwretract.autoretract_enabled = parser.value_bool();

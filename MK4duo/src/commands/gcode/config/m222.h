@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,26 +23,22 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if EXTRUDERS > 0
+#define CODE_M222
 
-  #define CODE_M222
+/**
+ * M222: Set density extrusion percentage (M222 T0 S95)
+ */
+inline void gcode_M222() {
 
-  /**
-   * M222: Set density extrusion percentage (M222 T0 S95)
-   */
-  inline void gcode_M222(void) {
+  if (commands.get_target_tool(222)) return;
 
-    if (commands.get_target_tool(222)) return;
-
-    if (parser.seenval('S')) {
-      tools.density_percentage[TARGET_EXTRUDER] = parser.value_int();
-      #if ENABLED(RFID_MODULE)
-        rfid522.RfidData[TARGET_EXTRUDER].data.density = tools.density_percentage[TARGET_EXTRUDER];
-      #endif
-    }
+  if (parser.seenval('S')) {
+    extruders[toolManager.extruder.target]->density_percentage = parser.value_int();
+    #if ENABLED(RFID_MODULE)
+      rfid522.data[toolManager.extruder.target].data.density = extruders[toolManager.extruder.target]->density_percentage;
+    #endif
   }
-
-#endif // EXTRUDERS > 0
+}

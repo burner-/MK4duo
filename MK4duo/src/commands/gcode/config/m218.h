@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,33 +23,42 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
+
+#if MAX_HOTEND > 1
 
 #define CODE_M218
 
 /**
- * M218 - set hotend offset (in linear units)
+ * M218 - Set hotend offset (in linear units)
  *
  *   T<tools>
  *   X<xoffset>
  *   Y<yoffset>
  *   Z<zoffset>
  */
-inline void gcode_M218(void) {
+inline void gcode_M218() {
 
-  if (!commands.get_target_tool(218)) return;
+  if (commands.get_target_tool(218)) return;
 
   #if DISABLED(DISABLE_M503)
     // No arguments? Show M218 report.
-    if (!parser.seen("XYZ")) {
-      tools.print_M218(tools.target_extruder);
+    if (parser.seen_any()) {
+      nozzle.print_M218();
       return;
     }
   #endif
 
-  if (parser.seenval('X')) tools.hotend_offset[X_AXIS][tools.target_extruder] = parser.value_linear_units();
-  if (parser.seenval('Y')) tools.hotend_offset[Y_AXIS][tools.target_extruder] = parser.value_linear_units();
-  if (parser.seenval('Z')) tools.hotend_offset[Z_AXIS][tools.target_extruder] = parser.value_linear_units();
+  if (toolManager.target_hotend() == 0) {
+    SERIAL_LM(ECHO, "Hotend 0 can't have offset");
+    return;
+  }
+
+  if (parser.seenval('X')) nozzle.data.hotend_offset[toolManager.target_hotend()].x = parser.value_linear_units();
+  if (parser.seenval('Y')) nozzle.data.hotend_offset[toolManager.target_hotend()].y = parser.value_linear_units();
+  if (parser.seenval('Z')) nozzle.data.hotend_offset[toolManager.target_hotend()].z = parser.value_linear_units();
 
 }
+
+#endif // MAX_HOTEND > 1

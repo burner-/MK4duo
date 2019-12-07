@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_G28
@@ -36,16 +36,20 @@
  *  None  Home to all axes with no parameters.
  *        With QUICK_HOME enabled XY will home together, then Z.
  *
- *  O   Home only if position is unknown
+ *  O     Home only if position is unknown
+ *
+ *  B     Back, after home return to back position.
+ *
+ *  Rn    Raise by n mm/inches before homing
  *
  * Cartesian parameters
  *
- *  X   Home to the X endstop
- *  Y   Home to the Y endstop
- *  Z   Home to the Z endstop
+ *  X     Home to the X endstop
+ *  Y     Home to the Y endstop
+ *  Z     Home to the Z endstop
  *
  */
-inline void gcode_G28(void) { 
+inline void gcode_G28() { 
 
   if (printer.debugFeature()) {
     DEBUG_EM(">>> G28");
@@ -59,21 +63,24 @@ inline void gcode_G28(void) {
 
   #if IS_KINEMATIC
 
-    (void)mechanics.home();
+    mechanics.home();
 
   #else
 
     #if ENABLED(FORCE_HOME_XY_BEFORE_Z)
-      const bool  homeZ = parser.seen('Z'),
-                  homeX = homeZ || parser.seen('X'),
-                  homeY = homeZ || parser.seen('Y');
+      const bool    homeZ = parser.seen('Z');
+      const uint8_t axis_bit =
+                      (homeZ ?  HOME_Z : 0)
+                    | (homeZ || parser.seen('X') ? HOME_X : 0)
+                    | (homeZ || parser.seen('Y') ? HOME_Y : 0);
     #else
-      const bool  homeX = parser.seen('X'),
-                  homeY = parser.seen('Y'),
-                  homeZ = parser.seen('Z');
+      const uint8_t axis_bit =
+                      (parser.seen('X') ? HOME_X : 0)
+                    | (parser.seen('Y') ? HOME_Y : 0)
+                    | (parser.seen('Z') ? HOME_Z : 0);
     #endif
 
-    (void)mechanics.home(homeX, homeY, homeZ);
+    mechanics.home(axis_bit);
 
   #endif
 

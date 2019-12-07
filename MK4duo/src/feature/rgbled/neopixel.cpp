@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * neopixel.cpp
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "../../../MK4duo.h"
@@ -51,13 +51,13 @@ void Neopixel::setup() {
   strip.show(); // initialize to all off
 
   #if ENABLED(NEOPIXEL_STARTUP_TEST)
-    printer.safe_delay(1000);
+    HAL::delayMilliseconds(1000);
     set_color(strip.Color(255, 0, 0, 0));  // red
-    printer.safe_delay(1000);
+    HAL::delayMilliseconds(1000);
     set_color(strip.Color(0, 255, 0, 0));  // green
-    printer.safe_delay(1000);
+    HAL::delayMilliseconds(1000);
     set_color(strip.Color(0, 0, 255, 0));  // blue
-    printer.safe_delay(1000);
+    HAL::delayMilliseconds(1000);
   #endif
   set_color(strip.Color(NEO_BLACK));       // black
 }

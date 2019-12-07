@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,20 +23,20 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(TEMPERATURE_UNITS_SUPPORT)
 
-  #define CODE_M149
+#define CODE_M149
 
-  /**
-   * M149: Set temperature units
-   */
-  inline void gcode_M149(void) {
-         if (parser.seenval('C')) parser.set_input_temp_units(TEMPUNIT_C);
-    else if (parser.seenval('K')) parser.set_input_temp_units(TEMPUNIT_K);
-    else if (parser.seenval('F')) parser.set_input_temp_units(TEMPUNIT_F);
-  }
+/**
+ * M149: Set temperature units
+ */
+inline void gcode_M149() {
+       if (parser.seenval('C')) parser.set_input_temp_units(TEMPUNIT_C);
+  else if (parser.seenval('K')) parser.set_input_temp_units(TEMPUNIT_K);
+  else if (parser.seenval('F')) parser.set_input_temp_units(TEMPUNIT_F);
+}
 
 #endif

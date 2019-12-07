@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,20 +23,28 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M851
 
-inline void gcode_M851(void) {
+inline void gcode_M851() {
 
-  probe.data.offset[X_AXIS] = parser.linearval('X', probe.data.offset[X_AXIS]);
-  probe.data.offset[Y_AXIS] = parser.linearval('Y', probe.data.offset[Y_AXIS]);
+  #if DISABLED(DISABLE_M503)
+    // No arguments? Show M851 report.
+    if (parser.seen_any()) {
+      probe.print_M851();
+      return;
+    }
+  #endif
+
+  probe.data.offset.x = parser.linearval('X', probe.data.offset.x);
+  probe.data.offset.y = parser.linearval('Y', probe.data.offset.y);
 
   if (parser.seen('Z')) {
     const float value = parser.value_linear_units();
     if (WITHIN(value, Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX)) {
-      probe.data.offset[Z_AXIS] = value;
+      probe.data.offset.z = value;
     }
     else {
       SERIAL_LM(ER, "?Z out of range (" STRINGIFY(Z_PROBE_OFFSET_RANGE_MIN) " to " STRINGIFY(Z_PROBE_OFFSET_RANGE_MAX));
@@ -52,12 +60,4 @@ inline void gcode_M851(void) {
   NOLESS(probe.data.speed_slow, 60);
   NOLESS(probe.data.repetitions, 1);
 
-  SERIAL_LM(ECHO, "Probe Offset XYZ, speed [F]ast and speed [S]low [mm/min], [R]epetitions");
-  SERIAL_SMV(ECHO, " X:", probe.data.offset[X_AXIS], 3);
-  SERIAL_MV(" Y:", probe.data.offset[Y_AXIS], 3);
-  SERIAL_MV(" Z:", probe.data.offset[Z_AXIS], 3);
-  SERIAL_MV(" F:", probe.data.speed_fast);
-  SERIAL_MV(" S:", probe.data.speed_slow);
-  SERIAL_MV(" R:", probe.data.repetitions);
-  SERIAL_EOL();
 }

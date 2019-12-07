@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * sanitycheck.h
@@ -29,9 +30,6 @@
 /**
  * Filament Runout needs a pin and M600 command
  */
-#ifndef _FIL_RUNOUT_SANITYCHECK_H_
-#define _FIL_RUNOUT_SANITYCHECK_H_
-
 #if HAS_FILAMENT_SENSOR
   #if !PIN_EXISTS(FIL_RUNOUT_0)
     #error "DEPENDENCY ERROR: You have to set FIL_RUNOUT_0_PIN to a valid pin if you enable FILAMENT_RUNOUT_SENSOR."
@@ -51,6 +49,3 @@
     #error "DEPENDENCY ERROR: FILAMENT_RUNOUT_SENSOR is require to use FILAMENT_RUNOUT_DAV_SYSTEM"
   #endif
 #endif
-
-
-#endif /* _FIL_RUNOUT_SANITYCHECK_H_ */

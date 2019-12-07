@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,8 +41,18 @@
  * along with Grbl. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "stepper_indirection.h"
+#include "tmc/tmc.h"
+#include "driver/driver.h"
 
+// Struct Stepper data
+struct stepper_data_t {
+  uint32_t  maximum_rate    : 32,
+            direction_delay : 32;
+  uint8_t   minimum_pulse   :  8,
+            drivers_e       :  3;
+  bool      quad_stepping   :  1;
+};
+  
 class Stepper {
 
   public: /** Constructor */
@@ -51,16 +61,11 @@ class Stepper {
 
   public: /** Public Parameters */
 
-    static uint16_t direction_flag; // Driver Stepper direction flag
+    static stepper_data_t data;
 
     #if HAS_MULTI_ENDSTOP || ENABLED(Z_STEPPER_AUTO_ALIGN)
       static bool   separate_multi_axis;
     #endif
-
-    static bool     quad_stepping;
-    static uint8_t  minimum_pulse;
-    static uint32_t maximum_rate,
-                    direction_delay;
 
   private: /** Private Parameters */
 
@@ -94,21 +99,17 @@ class Stepper {
     static uint8_t  steps_per_isr;                        // Count of steps to perform per Stepper ISR call
 
     // Delta error variables for the Bresenham line tracer
-    static int32_t  delta_error[XYZE];
-    static uint32_t advance_dividend[XYZE],
-                    advance_divisor,
-                    step_events_completed,  // The number of step events executed in the current block
-                    accelerate_until,       // The point from where we need to stop data.acceleration
-                    decelerate_after,       // The point from where we need to start decelerating
-                    step_event_count;       // The total event count for the current block
+    static xyze_long_t  delta_error;
+    static xyze_ulong_t advance_dividend;
+    static xyze_bool_t  step_needed;
+    static uint32_t     advance_divisor,
+                        step_events_completed,  // The number of step events executed in the current block
+                        accelerate_until,       // The point from where we need to stop data.acceleration
+                        decelerate_after,       // The point from where we need to start decelerating
+                        step_event_count;       // The total event count for the current block
 
-    #if EXTRUDERS > 1 || ENABLED(COLOR_MIXING_EXTRUDER)
-      static uint8_t  active_extruder,        // Active extruder
-                      active_extruder_driver; // Active extruder driver
-    #else
-      static constexpr uint8_t  active_extruder = 0,
-                                active_extruder_driver = 0;
-    #endif
+    static uint8_t      active_extruder,        // Active extruder
+                        active_extruder_driver; // Active extruder driver
 
     #if ENABLED(BEZIER_JERK_CONTROL)
       static int32_t  bezier_A,     // A coefficient in Bézier speed curve
@@ -135,17 +136,17 @@ class Stepper {
       static uint32_t acc_step_rate; // needed for deceleration start point
     #endif
 
-    static volatile int32_t endstops_trigsteps[XYZ];
+    static xyz_long_t endstops_trigsteps;
 
     /**
      * Positions of stepper motors, in step units
      */
-    static volatile int32_t count_position[NUM_AXIS];
+    static xyze_long_t count_position;
 
     /**
      * Current direction of stepper motors (+1 or -1)
      */
-    static int8_t count_direction[NUM_AXIS];
+    static xyze_int8_t count_direction;
 
     #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
       #ifndef PWM_MOTOR_CURRENT
@@ -162,6 +163,26 @@ class Stepper {
     #endif
 
   public: /** Public Function */
+
+    /**
+     * Create all Driver
+     */
+    static void create_driver();
+
+    /**
+     * Create xyz Driver
+     */
+    static void create_xyz_driver();
+
+    /**
+     * Create extruder Driver
+     */
+    static void create_ext_driver();
+
+    /**
+     * Change number Driver
+     */
+    static void change_number_driver(const uint8_t drv);
 
     /**
      * Initialize stepper hardware
@@ -194,6 +215,11 @@ class Stepper {
     static void report_positions();
 
     /**
+     * Called by eeprom.load / eeprom.reset
+     */
+    static void reset_drivers();
+
+    /**
      * Set direction bits for all steppers
      */
     static void set_directions();
@@ -215,38 +241,15 @@ class Stepper {
     static void disable_Z();
     static void enable_E();
     static void disable_E();
-    static void disable_E(const uint8_t e);
     static void enable_all();
     static void disable_all();
+    static void enable_E(const uint8_t e);
+    static void disable_E(const uint8_t e);
 
     /**
-     * Enabled or Disable Extruder Stepper Driver
+     * Read motor is enable for fan or power
      */
-    static void enable_E0();
-    static void disable_E0();
-    #if ENABLED(COLOR_MIXING_EXTRUDER)
-      FORCE_INLINE static void enable_E1() { /* nada */ }
-      FORCE_INLINE static void enable_E2() { /* nada */ }
-      FORCE_INLINE static void enable_E3() { /* nada */ }
-      FORCE_INLINE static void enable_E4() { /* nada */ }
-      FORCE_INLINE static void enable_E5() { /* nada */ }
-      FORCE_INLINE static void disable_E1() { /* nada */ }
-      FORCE_INLINE static void disable_E2() { /* nada */ }
-      FORCE_INLINE static void disable_E3() { /* nada */ }
-      FORCE_INLINE static void disable_E4() { /* nada */ }
-      FORCE_INLINE static void disable_E5() { /* nada */ }
-    #else
-      static void enable_E1();
-      static void disable_E1();
-      static void enable_E2();
-      static void disable_E2();
-      static void enable_E3();
-      static void disable_E3();
-      static void enable_E4();
-      static void disable_E4();
-      static void enable_E5();
-      static void disable_E5();
-    #endif
+    static bool driver_is_enable();
 
     /**
      * Quickly stop all steppers and clear the blocks queue
@@ -324,13 +327,10 @@ class Stepper {
     static void set_position(const int32_t &a, const int32_t &b, const int32_t &c, const int32_t &e);
     static void set_position(const AxisEnum a, const int32_t &v);
 
-    /**
-     * Flag Stepper direction function
-     */
-    FORCE_INLINE static void setStepDir(const AxisEnum axis, const bool onoff) {
-      SET_BIT(direction_flag, axis, onoff);
-    }
-    FORCE_INLINE static bool isStepDir(const AxisEnum axis) { return TEST(direction_flag, axis); }
+    #if DISABLED(DISABLE_M503)
+      void print_M352();
+      void print_M569();
+    #endif
 
     #if ENABLED(BABYSTEPPING)
       static void babystep(const AxisEnum axis, const bool direction); // perform a short step with a single stepper motor, outside of any convention
@@ -344,6 +344,11 @@ class Stepper {
   private: /** Private Function */
 
     /**
+     * Driver Factory parameters
+     */
+    static void driver_factory_parameters(Driver* act, const uint8_t index);
+
+    /**
      * Pulse phase Step
      */
     static void pulse_phase_step();
@@ -354,37 +359,56 @@ class Stepper {
     static uint32_t block_phase_step();
 
     /**
+     * Pulse tick prepare
+     */
+    FORCE_INLINE static void pulse_tick_prepare();
+
+    /**
      * Pulse tick Start
      */
-    static void pulse_tick_start();
+    FORCE_INLINE static void pulse_tick_start();
 
     /**
      * Pulse tick Stop
      */
-    static void pulse_tick_stop();
+     FORCE_INLINE static void pulse_tick_stop();
 
     /**
      * Start step X Y Z
      */
-    static void start_X_step();
-    static void start_Y_step();
-    static void start_Z_step();
+    FORCE_INLINE static void start_X_step();
+    FORCE_INLINE static void start_Y_step();
+    FORCE_INLINE static void start_Z_step();
 
     /**
      * Stop step X Y Z
      */
-    static void stop_X_step();
-    static void stop_Y_step();
-    static void stop_Z_step();
+    FORCE_INLINE static void stop_X_step();
+    FORCE_INLINE static void stop_Y_step();
+    FORCE_INLINE static void stop_Z_step();
 
     /**
      * Set X Y Z direction
      */
-    static void set_X_dir(const bool dir);
-    static void set_Y_dir(const bool dir);
-    static void set_Z_dir(const bool dir);
-    static void set_nor_E_dir(const uint8_t e=0);
-    static void set_rev_E_dir(const uint8_t e=0);
+    FORCE_INLINE static void set_X_dir(const bool dir);
+    FORCE_INLINE static void set_Y_dir(const bool dir);
+    FORCE_INLINE static void set_Z_dir(const bool dir);
+    FORCE_INLINE static void set_nor_E_dir(const uint8_t e=0);
+    FORCE_INLINE static void set_rev_E_dir(const uint8_t e=0);
+
+    /**
+     * Extruder Step for the single E axis
+     */
+    FORCE_INLINE static void e_step_write(const uint8_t e, const bool state) {
+      #if ENABLED(DUAL_X_CARRIAGE)
+        if (mechanics.extruder_duplication_enabled) {
+          driver.e[0]->step_write(state);
+          driver.e[1]->step_write(state);
+        }
+        else
+      #endif
+      driver.e[e]->step_write(state);
+    }
 
     /**
      * Set current position in steps
@@ -433,7 +457,7 @@ class Stepper {
       // Scale the frequency, as requested by the caller
       step_rate <<= scale;
 
-      if (quad_stepping) {
+      if (data.quad_stepping) {
         // Select the proper multistepping
         uint8_t idx = 0;
         while (idx < 7 && step_rate > HAL_frequency_limit[idx]) {

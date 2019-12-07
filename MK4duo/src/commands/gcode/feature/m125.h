@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(PARK_HEAD_ON_PAUSE)
@@ -45,7 +45,7 @@
  *    Y = override Y
  *    Z = override Z raise
  */
-inline void gcode_M125(void) {
+inline void gcode_M125() {
 
   // Initial retract before move to pause park position
   const float retract = -ABS(parser.seen('L') ? parser.value_axis_units(E_AXIS) : 0
@@ -54,7 +54,7 @@ inline void gcode_M125(void) {
     #endif
   );
 
-  point_t park_point = NOZZLE_PARK_POINT;
+  xyz_pos_t park_point = nozzle.data.park_point;
 
   // Move XY axes to filament change position or given position
   if (parser.seenval('X')) park_point.x = NATIVE_X_POSITION(parser.linearval('X'));
@@ -63,9 +63,8 @@ inline void gcode_M125(void) {
   // Lift Z axis
   if (parser.seenval('Z')) park_point.z = parser.linearval('Z');
 
-  #if HOTENDS > 1 && DISABLED(DUAL_X_CARRIAGE) && NOMECH(DELTA)
-    park_point.x += tools.hotend_offset[X_AXIS][tools.active_extruder];
-    park_point.y += tools.hotend_offset[Y_AXIS][tools.active_extruder];
+  #if DISABLED(DUAL_X_CARRIAGE) && NOMECH(DELTA)
+    if (tempManager.heater.hotends > 1) park_point += nozzle.data.hotend_offset[toolManager.active_hotend()];
   #endif
 
   #if HAS_LCD_MENU

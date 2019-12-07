@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,15 @@
 
 #define TONE_QUEUE_LENGTH 4
 
-struct tone_t {
+// Struct Sound data
+typedef struct {
+  SoundModeEnum mode;
+} sound_data_t;
+
+typedef struct {
   uint16_t duration;
   uint16_t frequency;
-};
+} tone_t;
 
 class Sound {
 
@@ -41,11 +46,11 @@ class Sound {
 
   public: /** Public Parameters */
 
-    static SoundModeEnum mode;
+    static sound_data_t data;
 
   private: /** Private Parameters */
 
-    static millis_s tone_ms;
+    static short_timer_t tone_timer;
 
   protected: /** Protected Parameters */
 
@@ -63,10 +68,12 @@ class Sound {
 
     static inline void reset() {
       off();
-      tone_ms = 0;
+      tone_timer.stop();
     }
 
   public: /** Public Function */
+
+    static void factory_parameters();
 
     static void playtone(const uint16_t duration, const uint16_t freq);
     static void spin();

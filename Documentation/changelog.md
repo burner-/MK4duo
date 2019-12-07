@@ -1,16 +1,90 @@
+### Version 4.4.0
+*
+* Revision 07-12-2019
+*
+* Version EEPROM MKV78
+*
+* Version Nextion 1_3_0
+*
+* Add Nextion 7" Intelligent
+*
+* Start development for STM32 on board Rumba32
+*   Hardware Timer for stepper  OK
+*   Systick for temp            OK
+*   PWM Hardware                OK
+*   SD                          OK
+*   Serial                      OK
+*   EEPROM on FLASH             OK
+*   Display Nextion             OK
+*   DHT                         OK
+*   SERVO                       OK
+*   BLTOUCH                     OK
+*   DISPLAY 20x4                No Test
+*   DISPLAY Graphics            No Test
+*   Neopixel                    Not function
+*
+* M353: Set total number Extruder, Hotend, Bed, Chamber, Fan
+*    D[int] Set number driver extruder
+*    E[int] Set number extruder
+*    H[int] Set number hotend
+*    B[int] Set number bed
+*    C[int] Set number chamber
+*    F[int] Set number fan
+*
+* M563: Set Tools heater assignment
+*   T[tools]  - Set Tool
+*   D[int]    - Set Driver for tool
+*   H[bool]   - Set Hotend for tool
+*
+* M890: Run User GCode
+*   S[int]    - Run 1 - 5 user gcode
+*
+* Add multiple Language, max 5, for lcd..
+*
+* Rename DELTA_SEGMENTS_PER_SECOND in DELTA_SEGMENTS_PER_SECOND_PRINT for delta print
+* Add DELTA_SEGMENTS_PER_SECOND_MOVE for delta move
+* Add Linear advanced K-Factor for Extruder
+*
+* Fix JUNCTION_DEVIATION
+* Fix BABYSTEPPING
+*
+* Fix and clear code
+
 ### Version 4.3.9
+* EEROM Version MKV72
+* New graphic for Nextion 4.3, 5.0 or 7.0 Normal and Enanched
 * Add support 6 Hotends, 4 Hot Beds, 4 Hot Chambers and 1 water Cooler
+* Add Support for TMC2130 - TMC2208 - TMC2660 - TMC2160 - TMC5130 - TMC5160 motor driver
 * Add command M228 for setting axis limit min/max
+* Add Tool change Park
+* Add Tool change filament swap
 * Add Prompt support for host
-* Rewrite filament runout
-* Add BLTouch V3.0
+* Add support for BLTouch V3.0/V3.1
 * Add Prusa MMU2 Support
-* Add support thermocouples for bed and hotend.
-* Add menu axis limit to menu advanced.
-* Add Double-Quad Stepping to command M569 Q and save it into EEPROM.
+* Add support thermocouples for hotend and bed
+* Add menu axis limit to menu advanced
+* Add Double-Quad Stepping to command M569 Q and save it into EEPROM
 * Add Option for Safety Timer in configuration_temperature.h
+* Add Game menu
+* Add DHT menu
+* Add DHT disply Dew Point
+* Add SPI Endstop with TMC2130
+* Add Slow Homing
 * Add G34 and M422 Z Steppers Auto-Alignment (Cartesian and CORE)
+* Add G34 I[iterations] [accuracy] A[amplification]
 * Add M86 M[min] set safety timer expiration time in minute. M86 M0 will disable safety timer
+* Add M16 Expected printer check
+* Add M504 - Validate EEPROM Contents
+* Add M505 - Clear EEPROM and RESET Printer
+* Add M575 - Change serial baud rate
+* Add M217 - Set Park position and tool change parameters
+*   S[linear]   Swap length
+*   E[linear]   Purge length
+*   P[linear/m] Purge speed
+*   R[linear/m] Retract speed
+*   X[linear]   Park X (Requires NOZZLE_PARK_FEATURE)
+*   Y[linear]   Park Y (Requires NOZZLE_PARK_FEATURE)
+*   Z[linear]   Park Z Raise
 * M301 - Set PID parameters P I D and C.
 *   H[heaters] 0-5 Hotend, -1 BED, -2 CHAMBER, -3 COOLER
 *   T[int] 0-3 For Select Beds or Chambers (default 0)
@@ -30,14 +104,23 @@
 * M306 - Set Heaters parameters.
 *   H[heaters] 0-5 Hotend, -1 BED, -2 CHAMBER, -3 COOLER
 *   T[int] 0-3 For Select Beds or Chambers (default 0)
-*   A[int] Pid Drive Min, B[int] Pid Drive Max, C[int] Pid Max,
+*   A[int] Power Drive Min, B[int] Power Drive Max, C[int] Power Max,
 *   L[int] Min temperature, O[int] Max temperature, U[bool] Use Pid/bang bang,
 *   I[bool] Hardware Inverted, T[bool] Thermal Protection, P[int] Pin
-* G34 I[iterations] [accuracy] A[amplification]
-* Add Game menu
-* Add DHT menu
-* Add DHT disply Dew Point
+* M352 - Set Driver pins and logic
+*    X    E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
+*   X2    E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
+*    Y    E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
+*   Y2    E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
+*    Z    E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
+*   Z2    E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
+*   Z3    E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
+*   T0-5  E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
 * Fix MBL
+* Rewrite filament runout
+* Rewrite Restart reduce size memory cost
+* Rewrite all driver, now are object
+* Driver pins now save in eeprom
 * Fix and clear code
 
 ### Version 4.3.8

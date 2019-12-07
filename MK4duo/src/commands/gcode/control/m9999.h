@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,16 +23,32 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(ARDUINO_ARCH_SAM)
 
-  #define CODE_M9999
+#define CODE_M9999
 
-  /**
-   * M9999: Banzai code for erase bootloader on DUE
-   */
-  inline void gcode_M9999(void) { initiateReset(1000); }
+/**
+ * M9999: Banzai code for erase bootloader on DUE
+ */
+inline void gcode_M9999() { initiateReset(1000); }
+
+#elif ENABLED(ARDUINO_ARCH_STM32)
+
+#define CODE_M9999
+
+#include <bootloader.h>
+#include <backup.h>
+
+/**
+ * M9999: DFU mode software in STM32
+ */
+inline void gcode_M9999() {
+  enableBackupDomain();
+  setBackupRegister(LL_RTC_BKP_DR2, 0x515B);
+  NVIC_SystemReset();
+}
 
 #endif

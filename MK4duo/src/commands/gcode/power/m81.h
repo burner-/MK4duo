@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M81
@@ -31,17 +31,17 @@
 /**
  * M81: Turn off Power, including Power Supply, if there is one.
  *
- *      This code should ALWAYS be available for EMERGENCY SHUTDOWN!
+ *      This code should ALWAYS be available for FULL SHUTDOWN!
  */
-inline void gcode_M81(void) {
-  thermalManager.disable_all_heaters();
+inline void gcode_M81() {
+  tempManager.disable_all_heaters();
   planner.finish_and_disable();
 
-  #if FAN_COUNT > 0
+  #if HAS_FAN
     LOOP_FAN() {
-      fans[f].speed = 0;
-      fans[f].paused_speed = 0;
-      fans[f].setIdle(false);
+      fans[f]->speed = 0;
+      fans[f]->paused_speed = 0;
+      fans[f]->setIdle(false);
     }
   #endif
 
@@ -56,7 +56,7 @@ inline void gcode_M81(void) {
     cnc.disable_router();
   #endif
 
-  printer.safe_delay(1000); // Wait 1 second before switching off
+  HAL::delayMilliseconds(1000); // Wait 1 second before switching off
 
   #if HAS_SUICIDE
     printer.suicide();
@@ -64,6 +64,6 @@ inline void gcode_M81(void) {
     powerManager.power_off();
   #endif
 
-  LCD_MESSAGEPGM(MACHINE_NAME " " MSG_OFF ".");
+  LCD_MESSAGEPGM_P(PSTR(MACHINE_NAME " " MSG_HOST_OFF "."));
 
 }

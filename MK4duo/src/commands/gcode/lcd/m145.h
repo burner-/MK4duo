@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if HAS_LCD_MENU && HEATER_COUNT > 0
+#if HAS_LCD_MENU && HAS_HEATER
 
 #define CODE_M145
 
@@ -38,32 +38,32 @@
  *   C<chamber temp>
  *   F<fan speed>
  */
-inline void gcode_M145(void) {
+inline void gcode_M145() {
   uint8_t material = (uint8_t)parser.intval('S');
   if (material >= COUNT(lcdui.preheat_hotend_temp)) {
-    SERIAL_LM(ER, MSG_ERR_MATERIAL_INDEX);
+    SERIAL_LM(ER, MSG_HOST_ERR_MATERIAL_INDEX);
   }
   else {
     int v;
-    #if HOTENDS > 0
+    #if HAS_HOTENDS
       if (parser.seenval('H')) {
         v = parser.value_int();
-        lcdui.preheat_hotend_temp[material] = constrain(v, thermalManager.hotend_mintemp_all(), thermalManager.hotend_maxtemp_all());
+        lcdui.preheat_hotend_temp[material] = constrain(v, tempManager.hotend_mintemp_all(), tempManager.hotend_maxtemp_all());
       }
     #endif
-    #if BEDS > 0
+    #if HAS_BEDS
       if (parser.seenval('B')) {
         v = parser.value_int();
-        lcdui.preheat_bed_temp[material] = constrain(v, thermalManager.bed_mintemp_all(), thermalManager.bed_maxtemp_all());
+        lcdui.preheat_bed_temp[material] = constrain(v, tempManager.bed_mintemp_all(), tempManager.bed_maxtemp_all());
       }
     #endif
     #if CHAMBER > 0
       if (parser.seenval('C')) {
         v = parser.value_int();
-        lcdui.preheat_chamber_temp[material] = constrain(v, thermalManager.chamber_mintemp_all(), thermalManager.chamber_maxtemp_all());
+        lcdui.preheat_chamber_temp[material] = constrain(v, tempManager.chamber_mintemp_all(), tempManager.chamber_maxtemp_all());
       }
     #endif
-    #if FAN_COUNT > 0
+    #if HAS_FAN
       if (parser.seenval('F')) {
         v = parser.value_int();
         lcdui.preheat_fan_speed[material] = constrain(v, 0, 255);
@@ -72,4 +72,4 @@ inline void gcode_M145(void) {
   }
 }
 
-#endif
+#endif // HAS_LCD_MENU && HAS_HEATER

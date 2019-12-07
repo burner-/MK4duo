@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * MFRC522 Serial
  * Designed for module MFRC522 with UART
  *
- * Copyright (C) 2019 Alberto Cotronei MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
  */
 
 #include "../../../MK4duo.h"
+#include "sanitycheck.h"
 
 #if ENABLED(RFID_MODULE)
 
@@ -91,94 +92,39 @@ bool MFRC522::init() {
 void MFRC522::print_info(const uint8_t e) {
   char lung[30];
   SERIAL_EMV(MSG_RFID_SPOOL, e);
-  SERIAL_EMT(MSG_RFID_BRAND, RfidData[e].data.brand);
-  SERIAL_EMT(MSG_RFID_TYPE, RfidData[e].data.type);
-  SERIAL_EMT(MSG_RFID_COLOR, RfidData[e].data.color);
-  SERIAL_EMV(MSG_RFID_SIZE, RfidData[e].data.size, 2);
-  SERIAL_MV(MSG_RFID_TEMP_HOTEND, RfidData[e].data.temphotendmin);
-  SERIAL_EMV(" - ", RfidData[e].data.temphotendmax);
-  SERIAL_MV(MSG_RFID_TEMP_BED, RfidData[e].data.tempbedmin);
-  SERIAL_EMV(" - ", RfidData[e].data.tempbedmax);
-  SERIAL_EMV(MSG_RFID_TEMP_USER_HOTEND, RfidData[e].data.temphotend);
-  SERIAL_EMV(MSG_RFID_TEMP_USER_BED, RfidData[e].data.tempbed);
-  SERIAL_MV(MSG_RFID_DENSITY, RfidData[e].data.density); SERIAL_EM("%");
-  unsigned int  kmeter = (long)RfidData[e].data.lenght / 1000 / 1000,
-                meter = ((long)RfidData[e].data.lenght / 1000) % 1000,
-                centimeter = ((long)RfidData[e].data.lenght / 10) % 100,
-                millimeter = ((long)RfidData[e].data.lenght) % 10;
+  SERIAL_EMT(MSG_RFID_BRAND, data[e].data.brand);
+  SERIAL_EMT(MSG_RFID_TYPE, data[e].data.type);
+  SERIAL_EMT(MSG_RFID_COLOR, data[e].data.color);
+  SERIAL_EMV(MSG_RFID_SIZE, data[e].data.size, 2);
+  SERIAL_MV(MSG_RFID_TEMP_HOTEND, data[e].data.temphotendmin);
+  SERIAL_EMV(" - ", data[e].data.temphotendmax);
+  SERIAL_MV(MSG_RFID_TEMP_BED, data[e].data.tempbedmin);
+  SERIAL_EMV(" - ", data[e].data.tempbedmax);
+  SERIAL_EMV(MSG_RFID_TEMP_USER_HOTEND, data[e].data.temphotend);
+  SERIAL_EMV(MSG_RFID_TEMP_USER_BED, data[e].data.tempbed);
+  SERIAL_MV(MSG_RFID_DENSITY, data[e].data.density); SERIAL_EM("%");
+  unsigned int  kmeter = (long)data[e].data.lenght / 1000 / 1000,
+                meter = ((long)data[e].data.lenght / 1000) % 1000,
+                centimeter = ((long)data[e].data.lenght / 10) % 100,
+                millimeter = ((long)data[e].data.lenght) % 10;
   sprintf_P(lung, PSTR("%i Km %i m %i cm %i mm"), kmeter, meter, centimeter, millimeter);
   SERIAL_EMT(MSG_RFID_SPOOL_LENGHT, lung);
-  
-  #if HAS_NEXTION_LCD
-    char titolo[30], message[250];
-    char* temp;
-    ZERO(titolo);
-    ZERO(message);
-
-    strcat(titolo, MSG_RFID_SPOOL);
-    temp = i8tostr3(e);
-    strcat(titolo, temp);
-    strcat(message, PSTR(MSG_RFID_BRAND));
-    strcat(message, RfidData[e].data.brand);
-    strcat(message, "\r\n");
-    strcat(message, MSG_RFID_TYPE);
-    strcat(message, RfidData[e].data.type);
-    strcat(message, "\r\n");
-    strcat(message, MSG_RFID_COLOR);
-    strcat(message, RfidData[e].data.color);
-    strcat(message, "\r\n");
-    strcat(message, MSG_RFID_SIZE);
-    temp = ftostr12ns(RfidData[e].data.size);
-    strcat(message, temp);
-    strcat(message, "\r\n");
-    strcat(message, MSG_RFID_TEMP_HOTEND);
-    itoa(RfidData[e].data.temphotendmin, temp, 10);
-    strcat(message, temp);
-    strcat(message, " - ");
-    itoa(RfidData[e].data.temphotendmax, temp, 10);
-    strcat(message, temp);
-    strcat(message, "\r\n");
-    strcat(message, MSG_RFID_TEMP_BED);
-    itoa(RfidData[e].data.tempbedmin, temp, 10);
-    strcat(message, temp);
-    strcat(message, " - ");
-    itoa(RfidData[e].data.tempbedmax, temp, 10);
-    strcat(message, temp);
-    strcat(message, "\r\n");
-    strcat(message, MSG_RFID_TEMP_USER_HOTEND);
-    itoa(RfidData[e].data.temphotend, temp, 10);
-    strcat(message, temp);
-    strcat(message, "\r\n");
-    strcat(message, MSG_RFID_TEMP_USER_BED);
-    itoa(RfidData[e].data.tempbed, temp, 10);
-    strcat(message, temp);
-    strcat(message, "\r\n");
-    strcat(message, MSG_RFID_DENSITY);
-    itoa(RfidData[e].data.density, temp, 10);
-    strcat(message, temp);
-    strcat(message, "%\r\n");
-    strcat(message, MSG_RFID_SPOOL_LENGHT);
-    strcat(message, "\r\n");
-    strcat(message, lung);
-
-    lcd_scrollinfo(titolo, message);
-  #endif
 }
 
 void MFRC522::spin() {
   LOOP_EXTRUDER() {
     if (Spool_must_read[e]) {
       if (getID(e)) {
-        Spool_ID[e] = RfidDataID[e].Spool_ID;
+        Spool_ID[e] = data_id[e].Spool_ID;
         HAL::delayMilliseconds(200);
         if (readBlock(e)) {
           Spool_must_read[e] = false;
-          tools.density_percentage[e] = rfid522.RfidData[e].data.density;
+          extruders[e]->density_percentage = rfid522.data[e].data.density;
           #if ENABLED(VOLUMETRIC_EXTRUSION)
-            tools.filament_size[e] = rfid522.RfidData[e].data.size;
-            tools.calculate_volumetric_multipliers();
+            extruders[e]->data.filament_size = rfid522.data[e].data.size;
+            toolManager.calculate_volumetric_multipliers();
           #endif
-          tools.refresh_e_factor(e);
+          extruders[e]->refresh_e_factor();
           print_info(e);
         }
       }
@@ -186,7 +132,7 @@ void MFRC522::spin() {
 
     if (Spool_must_write[e]) {
       if (getID(e)) {
-        if (Spool_ID[e] == RfidDataID[e].Spool_ID) {
+        if (Spool_ID[e] == data_id[e].Spool_ID) {
           HAL::delayMilliseconds(200);
           if (writeBlock(e)) {
             Spool_must_write[e] = false;
@@ -204,7 +150,7 @@ void MFRC522::spin() {
 bool MFRC522::getID(const uint8_t e) {
   if (communicate(0x02, COMMAND_READ_ID)) {
     for (int i = 0; i < 4; i++)
-      RfidDataID[e].RfidPacketID[i] = MFRC522Data[i];
+      data_id[e].packet[i] = MFRC522Data[i];
     return true;
   }
   return false;
@@ -227,7 +173,7 @@ bool MFRC522::readBlock(const uint8_t e) {
       sendData            // sendData
       )) {
         for (int8_t i = 0; i < 16; i++)
-          RfidData[e].RfidPacket[i + Packetdata] = MFRC522Data[i];
+          data[e].RfidPacket[i + Packetdata] = MFRC522Data[i];
       }
     else {
       return false;
@@ -250,7 +196,7 @@ bool MFRC522::writeBlock(const uint8_t e) {
   for (uint8_t sector = BLOCK_START; sector < BLOCK_TOTAL; sector += 4) {
     sendData[0] = sector;
     for (int8_t i = 0; i < 16; i++) {
-      sendData[i + 8] = RfidData[e].RfidPacket[i + Packetdata];
+      sendData[i + 8] = data[e].RfidPacket[i + Packetdata];
     }
 
     if (!(communicate(

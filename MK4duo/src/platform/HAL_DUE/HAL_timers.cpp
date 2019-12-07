@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,14 +50,12 @@
  * ARDUINO_ARCH_SAM
  */
 
-#include "../../../MK4duo.h"
-
-#if ENABLED(ARDUINO_ARCH_SAM)
+#ifdef ARDUINO_ARCH_SAM
 
 // --------------------------------------------------------------------------
 // Includes
 // --------------------------------------------------------------------------
-
+#include "../../../MK4duo.h"
 #include "HAL_timers.h"
 
 // --------------------------------------------------------------------------
@@ -88,10 +86,10 @@ const tTimerConfig TimerConfig [NUM_HARDWARE_TIMERS] = {
   { TC2, 2, TC8_IRQn, 0 },  // 8 - Pin TC 11 - 12
 };
 
-uint32_t  HAL_min_pulse_cycle     = 0,
-          HAL_min_pulse_tick      = 0,
-          HAL_add_pulse_ticks     = 0,
-          HAL_frequency_limit[8]  = { 0 };
+hal_timer_t HAL_min_pulse_cycle     = 0,
+            HAL_pulse_high_tick     = 0,
+            HAL_pulse_low_tick      = 0,
+            HAL_frequency_limit[8]  = { 0 };
 
 // --------------------------------------------------------------------------
 // Private Variables
@@ -116,7 +114,7 @@ uint32_t  HAL_min_pulse_cycle     = 0,
   Timer_clock4: Prescaler 128 -> 656.25kHz
 */
 
-void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) {
+void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency/*=100*/) {
 
   Tc *tc = TimerConfig[timer_num].pTimerRegs;
   IRQn_Type IRQn = TimerConfig[timer_num].IRQ_Id;
@@ -158,14 +156,33 @@ void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) {
 
 }
 
-uint32_t HAL_isr_execuiton_cycle(const uint32_t rate) {
+hal_timer_t HAL_isr_execuiton_cycle(const hal_timer_t rate) {
   return (ISR_BASE_CYCLES + ISR_BEZIER_CYCLES + (ISR_LOOP_CYCLES) * rate + ISR_LA_BASE_CYCLES + ISR_LA_LOOP_CYCLES) / rate;
 }
 
+hal_timer_t HAL_ns_to_pulse_tick(const hal_timer_t ns) {
+  return (STEPPER_TIMER_TICKS_PER_US) * ns / 1000UL;
+}
+
 void HAL_calc_pulse_cycle() {
-  HAL_min_pulse_cycle = MAX((uint32_t)((F_CPU) / stepper.maximum_rate), ((F_CPU) / 500000UL) * MAX((uint32_t)stepper.minimum_pulse, 1UL));
-  HAL_min_pulse_tick  = uint32_t(stepper.minimum_pulse) * (STEPPER_TIMER_TICKS_PER_US);
-  HAL_add_pulse_ticks = (HAL_min_pulse_cycle / (PULSE_TIMER_PRESCALE)) - HAL_min_pulse_tick;
+
+  const hal_timer_t HAL_min_step_period_ns = 1000000000UL / stepper.data.maximum_rate;
+  hal_timer_t       HAL_min_pulse_high_ns,
+                    HAL_min_pulse_low_ns;
+
+  HAL_min_pulse_cycle = MAX((hal_timer_t)((F_CPU) / stepper.data.maximum_rate), ((F_CPU) / 500000UL) * MAX((hal_timer_t)stepper.data.minimum_pulse, 1UL));
+
+  if (stepper.data.minimum_pulse) {
+    HAL_min_pulse_high_ns = hal_timer_t(stepper.data.minimum_pulse) * 1000UL;
+    HAL_min_pulse_low_ns  = MAX((HAL_min_step_period_ns - MIN(HAL_min_step_period_ns, HAL_min_pulse_high_ns)), HAL_min_pulse_high_ns);
+  }
+  else {
+    HAL_min_pulse_high_ns = 500000000UL / stepper.data.maximum_rate;
+    HAL_min_pulse_low_ns  = HAL_min_pulse_high_ns;
+  }
+
+  HAL_pulse_high_tick = HAL_ns_to_pulse_tick(HAL_min_pulse_high_ns - MIN(HAL_min_pulse_high_ns, (TIMER_SETUP_NS)));
+  HAL_pulse_low_tick  = HAL_ns_to_pulse_tick(HAL_min_pulse_low_ns - MIN(HAL_min_pulse_low_ns, (TIMER_SETUP_NS)));
 
   // The stepping frequency limits for each multistepping rate
   HAL_frequency_limit[0] = ((F_CPU) / HAL_isr_execuiton_cycle(1))       ;
@@ -176,17 +193,6 @@ void HAL_calc_pulse_cycle() {
   HAL_frequency_limit[5] = ((F_CPU) / HAL_isr_execuiton_cycle(32))  >> 5;
   HAL_frequency_limit[6] = ((F_CPU) / HAL_isr_execuiton_cycle(64))  >> 6;
   HAL_frequency_limit[7] = ((F_CPU) / HAL_isr_execuiton_cycle(128)) >> 7;
-}
-
-/**
- * Interrupt Service Routines
- */
-STEPPER_TIMER_ISR() {
-
-  HAL_timer_isr_prologue(STEPPER_TIMER);
-
-  // Call the Step
-  stepper.Step();
 
 }
 

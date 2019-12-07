@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,20 +23,20 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(NOZZLE_PARK_FEATURE)
 
-  #define CODE_G27
+#define CODE_G27
 
-  /**
-   * G27: Park the nozzle
-   */
-  inline void gcode_G27(void) {
-    // Don't allow nozzle parking without homing first
-    if (mechanics.axis_unhomed_error()) { return; }
-    Nozzle::park(parser.ushortval('P'));
-  }
+/**
+ * G27: Park the nozzle
+ */
+inline void gcode_G27() {
+  // Don't allow nozzle parking without homing first
+  if (mechanics.axis_unhomed_error()) { return; }
+  nozzle.park(parser.ushortval('P'));
+}
 
 #endif // NOZZLE_PARK_FEATURE

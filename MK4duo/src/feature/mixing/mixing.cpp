@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,11 @@
 /**
  * mixing.cpp
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "../../../MK4duo.h"
+#include "sanitycheck.h"
 
 #if ENABLED(COLOR_MIXING_EXTRUDER)
 
@@ -167,7 +168,7 @@ void Mixer::refresh_collector(const float proportion/*=1.0*/, const uint8_t t/*=
   }
 
   void Mixer::update_gradient_for_planner_z() {
-    update_gradient_for_z(mechanics.current_position[Z_AXIS]);
+    update_gradient_for_z(mechanics.current_position.z);
   }
 
 #endif

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,15 +24,10 @@
 /**
  * advanced_pause.h - Advanced_Pause feature
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(ADVANCED_PAUSE_FEATURE)
-
-typedef struct {
-  float unload_length,
-        load_length;
-} advanced_pause_data_t;
 
 #if ENABLED(DUAL_X_CARRIAGE)
   #define DXC_PARAMS , const int8_t DXC_ext=-1
@@ -56,20 +51,18 @@ class AdvancedPause {
 
     static PauseMenuResponseEnum menu_response;
 
-    static advanced_pause_data_t data[EXTRUDERS];
-
     static uint8_t did_pause_print;
 
   public: /** Public Function */
 
-    static void do_pause_e_move(const float &length, const float &fr_mm_s);
+    static void do_pause_e_move(const float &length, const feedrate_t &fr_mm_s);
 
-    static bool pause_print(const float &retract, const point_t &park_point, const float &unload_length=0, const bool show_lcd=false DXC_PARAMS);
+    static bool pause_print(const float &retract, const xyz_pos_t &park_point, const float &unload_length=0, const bool show_lcd=false DXC_PARAMS);
 
     static void wait_for_confirmation(const bool is_reload=false, const int8_t max_beep_count=0 DXC_PARAMS);
 
     static void resume_print( const float &slow_load_length=0, const float &fast_load_length=0,
-                              const float &purge_length=PAUSE_PARK_EXTRUDE_LENGTH, const int8_t max_beep_count=0 DXC_PARAMS);
+                              const float &purge_length=PAUSE_PARK_PURGE_LENGTH, const int8_t max_beep_count=0 DXC_PARAMS);
 
     static bool load_filament(const float &slow_load_length=0, const float &fast_load_length=0,
                               const float &purge_length=0, const int8_t max_beep_count=0, const bool show_lcd=false,

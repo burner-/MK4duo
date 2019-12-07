@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if MECH(DELTA)
@@ -33,11 +33,11 @@
   /**
    * G34: Set Delta Height calculated from toolhead position (only DELTA)
    */
-  inline void gcode_G34(void) {
+  inline void gcode_G34() {
 
     if (mechanics.axis_unhomed_error()) return;
 
-    mechanics.data.height -= mechanics.current_position[Z_AXIS];
+    mechanics.data.height -= mechanics.current_position.z;
     mechanics.recalc_delta_settings();
     SERIAL_EMV("  New delta height:", mechanics.data.height, 3);
     sound.feedback();

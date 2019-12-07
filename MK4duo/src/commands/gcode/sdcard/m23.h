@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_SD_SUPPORT
@@ -33,10 +33,7 @@
 /**
  * M23: Select a file
  */
-inline void gcode_M23(void) {
-  #if HAS_SD_RESTART
-    card.delete_restart_file();
-  #endif
+inline void gcode_M23() {
   // Simplify3D includes the size, so zero out all spaces (#7227)
   // Questa funzione blocca il nome al primo spazio quindi file con spazio nei nomi non funziona da rivedere
   //for (char *fn = parser.string_arg; *fn; ++fn) if (*fn == ' ') *fn = '\0';

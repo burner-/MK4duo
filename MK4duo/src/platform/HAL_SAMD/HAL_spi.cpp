@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 /**
  * Software SPI functions originally from Arduino Sd2Card Library
- * Copyright (C) 2009 by William Greiman
+ * Copyright (c) 2009 by William Greiman
  *
  * Completely rewritten and tuned by Eduardo José Tagle in 2017/2018
  * in ARM thumb2 inline assembler and tuned for maximum speed and performance
@@ -82,7 +82,7 @@
     return b;
   }
 
-  void HAL::spiBegin(void) {
+  void HAL::spiBegin() {
     SET_OUTPUT(SS_PIN);
     WRITE(SS_PIN, HIGH);
     SET_OUTPUT(SCK_PIN);
@@ -97,7 +97,7 @@
     WRITE(SCK_PIN, LOW);
   }
 
-  uint8_t HAL::spiReceive(void) {
+  uint8_t HAL::spiReceive() {
     WRITE(SS_PIN, LOW);
     uint8_t b = spiTransfer(0xFF);
     WRITE(SS_PIN, HIGH);
@@ -179,7 +179,7 @@
   void HAL::spiSend(uint32_t chan, const uint8_t* buf, size_t n) { }
 
   // Read single byte from SPI
-  uint8_t HAL::spiReceive(void) {
+  uint8_t HAL::spiReceive() {
     return  SPI.transfer(0xFF);
   }
 

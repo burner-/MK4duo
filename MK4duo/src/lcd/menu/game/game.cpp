@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,8 @@ int LcdGame::score;
 uint8_t LcdGame::game_state;
 millis_l LcdGame::next_frame;
 
+game_data_t game_data;
+
 bool LcdGame::game_frame() {
   static int8_t slew;
   if (lcdui.first_page) slew = 2;
@@ -50,17 +52,13 @@ void LcdGame::draw_game_over() {
     u8g.setColorIndex(0);
     u8g.drawBox(lx - 1, ly - gohigh - 1, gowide + 2, gohigh + 2);
     u8g.setColorIndex(1);
-    if (lcdui.get_blink()) {
-      lcd_moveto(lx, ly);
-      lcd_put_u8str_P(PSTR("GAME OVER"));
-    }
+    if (lcdui.get_blink()) lcd_put_u8str_P(lx, ly, PSTR("GAME OVER"));
   }
 }
 
 void LcdGame::init_game(const uint8_t init_state, const screenFunc_t screen) {
   score = 0;
   game_state = init_state;
-  lcdui.encoder_direction_normal();
   lcdui.goto_screen(screen);
   lcdui.defer_status_screen();
 }

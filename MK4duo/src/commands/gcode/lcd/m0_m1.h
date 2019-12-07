@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_RESUME_CONTINUE
@@ -35,7 +35,7 @@
  * M0: Unconditional stop - Wait for user button press on LCD
  * M1: Same as M0
  */
-inline void gcode_M0_M1(void) {
+inline void gcode_M0_M1() {
 
   PGM_P const args = parser.string_arg;
   millis_s ms = 0;
@@ -71,7 +71,7 @@ inline void gcode_M0_M1(void) {
 
   #endif
 
-  printer.keepalive(PausedforUser);
+  PRINTER_KEEPALIVE(PausedforUser);
   printer.setWaitForUser(true);
 
   #if HAS_NEXTION_LCD
@@ -80,16 +80,10 @@ inline void gcode_M0_M1(void) {
 
   if (ms > 0) {
     ms += millis();
-    while ((millis_s(millis()) - ms < 0) && printer.isWaitForUser()) {
-      printer.keepalive(InProcess);
-      printer.idle();
-    }
+    while ((millis_s(millis()) - ms < 0) && printer.isWaitForUser()) printer.idle();
   }
   else {
-    while (printer.isWaitForUser()) {
-      printer.keepalive(InProcess);
-      printer.idle();
-    }
+    while (printer.isWaitForUser()) printer.idle();
   }
 
   #if HAS_NEXTION_LCD
@@ -101,7 +95,6 @@ inline void gcode_M0_M1(void) {
   #endif
 
   printer.setWaitForUser(false);
-  printer.keepalive(InHandler);
 }
 
 #endif // HAS_RESUME_CONTINUE

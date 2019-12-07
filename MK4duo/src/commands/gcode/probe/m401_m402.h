@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_BED_PROBE
@@ -34,12 +34,12 @@
   /**
    * M401: Engage Z Servo endstop if available
    */
-  inline void gcode_M401(void) { DEPLOY_PROBE(); }
+  inline void gcode_M401() { DEPLOY_PROBE(); }
 
   /**
    * M402: Retract Z Servo endstop if enabled
    */
-  inline void gcode_M402(void) {
+  inline void gcode_M402() {
     STOW_PROBE();
     #if Z_PROBE_AFTER_PROBING > 0
       probe.move_z_after_probing();

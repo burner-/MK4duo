@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,24 +29,33 @@
  *  - X_HEAD, Y_HEAD, and Z_HEAD should be used for Steppers on Core kinematics
  */
 enum AxisEnum : uint8_t {
-  X_AXIS  = 0,
-  A_AXIS  = 0,
-  Y_AXIS  = 1,
-  B_AXIS  = 1,
-  Z_AXIS  = 2,
-  C_AXIS  = 2,
-  E_AXIS  = 3,
-  X_HEAD  = 4,
-  Y_HEAD  = 5,
-  Z_HEAD  = 6,
-  E0_AXIS = 3,
-  E1_AXIS = 4,
-  E2_AXIS = 5,
-  E3_AXIS = 6,
-  E4_AXIS = 7,
-  E5_AXIS = 8,
-  ALL_AXES  = 0xFE,
-  NO_AXIS   = 0xFF
+  X_AXIS   = 0, A_AXIS = 0,
+  Y_AXIS   = 1, B_AXIS = 1,
+  Z_AXIS   = 2, C_AXIS = 2,
+  E_AXIS   = 3,
+  X_HEAD   = 4, Y_HEAD = 5, Z_HEAD = 6,
+  E0_AXIS  = 3,
+  E1_AXIS  = 4,
+  E2_AXIS  = 5,
+  E3_AXIS  = 6,
+  E4_AXIS  = 7,
+  E5_AXIS  = 8,
+  ALL_AXES = 0xFE, NO_AXIS = 0xFF
+};
+
+/**
+ * Driver indices as enumerated constants
+ */
+enum DriverEnum : uint8_t {
+  X_DRV   = 0, X2_DRV = 0,
+  Y_DRV   = 1, Y2_DRV = 1,
+  Z_DRV   = 2, Z2_DRV = 2, Z3_DRV = 2,
+  E0_DRV  = 0,
+  E1_DRV  = 1,
+  E2_DRV  = 2,
+  E3_DRV  = 3,
+  E4_DRV  = 4,
+  E5_DRV  = 5
 };
 
 /**
@@ -61,10 +70,6 @@ enum PrinterModeEnum : uint8_t {
   PRINTER_MODE_PLOTTER,
   PRINTER_MODE_COUNT
 };
-enum InterruptEventEnum : uint8_t {
-  INTERRUPT_EVENT_NONE,
-  INTERRUPT_EVENT_FIL_RUNOUT
-};
 
 /**
  * States for managing MK4duo and host communication
@@ -74,7 +79,6 @@ enum BusyStateEnum : uint8_t {
   NotBusy,          // Not in a handler
   InHandler,        // Processing a GCode
   InProcess,        // Known to be blocking command input (as in G29)
-  WaitHeater,       // Wait heater
   PausedforUser,    // Blocking pending any input
   PausedforInput,   // Blocking pending text input
   DoorOpen          // Door open
@@ -108,7 +112,7 @@ enum EmergencyStateEnum : uint8_t {
  * Prompt Reason
  *  For M876 command
  */
-enum HostPromptEnum : char {
+enum HostPromptEnum : uint8_t {
   PROMPT_NOT_DEFINED,
   PROMPT_FILAMENT_RUNOUT,
   PROMPT_FILAMENT_RUNOUT_REHEAT,
@@ -177,7 +181,7 @@ enum EndstopEnum : uint8_t {
   Z2_MAX,       // Bit 12
   Z3_MIN,       // Bit 13
   Z3_MAX,       // Bit 14
-  DOOR_OPEN,    // Bit 15
+  DOOR_OPEN     // Bit 15
 };
 
 /**
@@ -264,6 +268,7 @@ enum SoundModeEnum : uint8_t {
 enum PauseModeEnum : uint8_t {
   PAUSE_MODE_SAME,
   PAUSE_MODE_PAUSE_PRINT,
+  PAUSE_MODE_CHANGE_FILAMENT,
   PAUSE_MODE_LOAD_FILAMENT,
   PAUSE_MODE_UNLOAD_FILAMENT
 };

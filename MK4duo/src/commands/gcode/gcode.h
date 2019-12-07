@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 // Bedlevel Commands
@@ -54,6 +54,7 @@
 #include "config/m204.h"
 #include "config/m205.h"
 #include "config/m207_m209.h"             // FW RETRACT
+#include "config/m217.h"                  // Set Park position and tool change parameters
 #include "config/m218.h"                  // Set a tool offset
 #include "config/m220.h"                  // Set speed percentage
 #include "config/m221.h"                  // Set extrusion percentage
@@ -64,6 +65,10 @@
 #include "config/m302.h"                  // Allow cold extrudes
 #include "config/m305.h"                  // Set thermistor and ADC parameters
 #include "config/m306.h"                  // Set Heaters
+#include "config/m352.h"                  // Set Driver pins and logic
+#include "config/m353.h"                  // Set Number total driver extruder
+#include "config/m563.h"                  // Set Tools heater assignment
+#include "config/m575.h"                  // Change serial baud rate
 #include "config/m595.h"                  // Set AD595 offset & Gain
 #include "config/m569.h"                  // Set Stepper Direction
 #include "config/m900.h"                  // Set and/or Get advance K factor
@@ -72,8 +77,7 @@
 #include "config/m908.h"                  // Control digital trimpot directly
 
 // Control Commands
-#include "control/m17.h"
-#include "control/m18_m84.h"
+#include "control/m17_m18_m84.h"
 #include "control/m42.h"
 #include "control/m85.h"
 #include "control/m86.h"
@@ -105,7 +109,7 @@
 #include "delta/m666.h"                   // Set delta parameters
 
 // EEPROM Commands
-#include "eeprom/m500_m503.h"             // Eeprom read write and print
+#include "eeprom/m500_m505.h"             // Eeprom read, write, print, validate and clear
 
 // Feature Commands
 #include "feature/g12.h"
@@ -135,6 +139,7 @@
 #include "geometry/m428.h"                // Set the home_offset
 
 // Host Commands
+#include "host/m16.h"                     // Expected printer check
 #include "host/m110.h"
 #include "host/m111.h"
 #include "host/m113.h"
@@ -147,6 +152,7 @@
 #include "host/m531.h"                    // Define filename being printed
 #include "host/m532_m73.h"                // Update current print state progress
 #include "host/m876.h"                    // Host Prompt Response
+#include "host/m890.h"                    // Run User Gcode
 
 // LCD Commands
 #include "lcd/m0_m1.h"
@@ -184,6 +190,7 @@
 
 // Nextion Commands
 #include "nextion/m35.h"                  // Upload firmware to Nextion from SD
+#include "nextion/m36.h"                  // Print pause, resume and stop from Nextion
 #include "nextion/m995_m996.h"            // Setting GFX for Nextion
 
 // Power Commands

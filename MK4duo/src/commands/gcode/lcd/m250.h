@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_LCD_CONTRAST
@@ -33,7 +33,7 @@
   /**
    * M250: Read and optionally set the LCD contrast
    */
-  inline void gcode_M250(void) {
+  inline void gcode_M250() {
     if (parser.seenval('C')) lcdui.set_contrast(parser.value_int());
     SERIAL_EMV("lcd contrast value: ", lcdui.contrast);
   }

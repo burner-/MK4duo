@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if HEATER_COUNT > 0
+#if HAS_HEATER
 
 #define CODE_M305
 
@@ -37,10 +37,10 @@
  *
  *    T[int]      0-3 For Select Beds or Chambers
  *
- *    A[float]  Thermistor resistance at 25°C
- *    B[float]  BetaK
- *    C[float]  Steinhart-Hart C coefficien
- *    R[float]  Pullup resistor value
+ *    A[ohms]   Thermistor resistance at 25°C
+ *    B[beta]   Thermistor betaK value
+ *    C[coeff]  Steinhart-Hart C coefficient
+ *    R[ohms]   Pullup resistor value
  *    L[int]    ADC low offset correction
  *    O[int]    ADC high offset correction
  *    P[int]    Sensor Pin
@@ -51,9 +51,9 @@
  *    P[int]    Sensor Pin
  *
  */
-inline void gcode_M305(void) {
+inline void gcode_M305() {
 
-  #if ENABLED(DHT_SENSOR)
+  #if HAS_DHT
     if (parser.seen('D')) {
       #if DISABLED(DISABLE_M503)
         // No arguments? Show M305 report.
@@ -70,7 +70,7 @@ inline void gcode_M305(void) {
     }
   #endif
 
-  Heater *act = commands.get_target_heater();
+  Heater * const act = commands.get_target_heater();
 
   if (!act) return;
 
@@ -82,28 +82,58 @@ inline void gcode_M305(void) {
     }
   #endif
 
-  act->sensor.r25           = parser.floatval('A', act->sensor.r25);
-  act->sensor.beta          = parser.floatval('B', act->sensor.beta);
-  act->sensor.shC           = parser.floatval('C', act->sensor.shC);
-  act->sensor.pullupR       = parser.floatval('R', act->sensor.pullupR);
-  act->sensor.adcLowOffset  = parser.intval('L', act->sensor.adcLowOffset);
-  act->sensor.adcHighOffset = parser.intval('O', act->sensor.adcHighOffset);
-  act->sensor.type          = parser.intval('S', act->sensor.type);
+  // Resistance at 25C// Resistance at 25C
+  if (parser.seen('A')) {
+    if (!act->data.sensor.set_res_25(parser.value_float()))
+      SERIAL_EM("!Invalid 25C resistance. (0 < T < 10000000)");
+  }
+
+  // Beta value
+  if (parser.seen('B')) {
+    if (!act->data.sensor.set_beta(parser.value_float()))
+      SERIAL_EM("!Invalid beta. (0 < B < 1000000)");
+  }
+
+  // Steinhart-Hart C coefficient
+  if (parser.seen('C')) {
+    if (!act->data.sensor.set_shC(parser.value_float()))
+      SERIAL_EM("!Invalid Steinhart-Hart C coeff. (-0.01 < C < +0.01)");
+  }
+
+  // Pullup resistor value
+  if (parser.seen('R')) {
+    if (!act->data.sensor.set_pullup_res(parser.value_float()))
+      SERIAL_EM("!Invalid series resistance. (0 < R < 1000000)");
+  }
+
+  // Adc Low offset
+  if (parser.seen('L')) {
+    if (!act->data.sensor.set_LowOffset(parser.value_int()))
+      SERIAL_EM("!Invalid Low Offset. (-1000 < L < 1000)");
+  }
+
+  // Adc Low offset
+  if (parser.seen('O')) {
+    if (!act->data.sensor.set_HighOffset(parser.value_int()))
+      SERIAL_EM("!Invalid High Offset. (-1000 < O < 1000)");
+  }
+
+  act->data.sensor.type = parser.intval('S', act->data.sensor.type);
 
   if (parser.seen('P')) {
     // Put off the heaters
-    act->setTarget(0);
+    act->set_target_temp(0);
 
     const pin_t new_pin = parser.analog_value_pin();
     if (new_pin != NoPin) {
-      const pin_t old_pin = act->sensor.pin;
-      act->sensor.pin = new_pin;
-      HAL::AdcChangePin(old_pin, act->sensor.pin);
+      const pin_t old_pin = act->data.sensor.pin;
+      act->data.sensor.pin = new_pin;
+      HAL::AdcChangePin(old_pin, act->data.sensor.pin);
     }
   }
 
-  act->sensor.CalcDerivedParameters();
+  act->data.sensor.CalcDerivedParameters();
 
 }
 
-#endif // HEATER_COUNT > 0
+#endif // HAS_HEATER

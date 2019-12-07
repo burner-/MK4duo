@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if HEATER_COUNT > 0
+#if HAS_HEATER
 
 #define CODE_M301
 
@@ -46,9 +46,9 @@
  *    C[float]    Kc term
  *    L[int]      LPQ length
  */
-inline void gcode_M301(void) {
+inline void gcode_M301() {
 
-  Heater *act = commands.get_target_heater();
+  Heater * const act = commands.get_target_heater();
 
   if (!act) return;
 
@@ -60,20 +60,21 @@ inline void gcode_M301(void) {
     }
   #endif
 
-  if (parser.seen('P')) act->pid.Kp = parser.value_float();
-  if (parser.seen('I')) act->pid.Ki = parser.value_float();
-  if (parser.seen('D')) act->pid.Kd = parser.value_float();
+  if (parser.seen('P')) act->data.pid.Kp = parser.value_float();
+  if (parser.seen('I')) act->data.pid.Ki = parser.value_float();
+  if (parser.seen('D')) act->data.pid.Kd = parser.value_float();
   #if ENABLED(PID_ADD_EXTRUSION_RATE)
-    if (parser.seen('C')) act->pid.Kc = parser.value_float();
-    if (parser.seen('L')) tools.lpq_len = parser.value_int();
-    NOMORE(tools.lpq_len, LPQ_MAX_LEN);
-    NOLESS(tools.lpq_len, 0);
+    if (act->type == IS_HOTEND) {
+      if (parser.seen('C')) act->data.pid.Kc = parser.value_float();
+      if (parser.seen('L')) tempManager.heater.lpq_len = parser.value_int();
+      if (tempManager.heater.lpq_len > LPQ_MAX_LEN) tempManager.heater.lpq_len = LPQ_MAX_LEN;
+      if (tempManager.heater.lpq_len < 0) tempManager.heater.lpq_len = 0;
+    }
   #endif
 
-  act->pid.update();
   act->setPidTuned(true);
   act->ResetFault();
 
 }
 
-#endif // HEATER_COUNT > 0
+#endif // HAS_HEATER

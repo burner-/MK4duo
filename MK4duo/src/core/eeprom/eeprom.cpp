@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@
  */
 
 #include "../../../MK4duo.h"
+#include "sanitycheck.h"
 
 #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
   float new_z_fade_height;
@@ -50,13 +51,28 @@
  * Keep this data structure up to date so
  * EEPROM size is known at compile time!
  */
-#define EEPROM_VERSION "MKV65"
+#define EEPROM_VERSION "MKV78"
 #define EEPROM_OFFSET 100
+
+// Check the integrity of data offsets.
+// Can be disabled for production build.
+//#define DEBUG_EEPROM_READWRITE
 
 typedef struct EepromDataStruct {
 
-  char      version[6];                                 // MKVnn\0
-  uint16_t  crc;                                        // Data Checksum
+  char      version[6];   // MKVnn\0
+  uint16_t  crc;          // Data Checksum
+
+  //
+  // ToolManager data
+  //
+  tool_data_t       tool_data;
+  extruder_data_t   extruder_data[MAX_EXTRUDER];
+
+  //
+  // TempManager data
+  //
+  temp_data_t       temp_data;
 
   //
   // Mechanics data
@@ -64,42 +80,72 @@ typedef struct EepromDataStruct {
   mechanics_data_t  mechanics_data;
 
   //
-  // Hotend offset
+  // Stepper data
   //
-  float             hotend_offset[XYZ][HOTENDS];
+  stepper_data_t    stepper_data;
 
   //
-  // Endstop
+  // Driver
   //
-  uint16_t          endstop_logic_flag,
-                    endstop_pullup_flag;
-
-  #if ENABLED(X_TWO_ENDSTOPS)
-    float           x2_endstop_adj;
-  #endif
-  #if ENABLED(Y_TWO_ENDSTOPS)
-    float           y2_endstop_adj;
-  #endif
-  #if ENABLED(Z_TWO_ENDSTOPS)
-    float           z2_endstop_adj;
-  #endif
-  #if ENABLED(Z_THREE_ENDSTOPS)
-    float           z3_endstop_adj;
-  #endif
+  driver_data_t     driver_data[XYZ];
+  driver_data_t     driver_e_data[MAX_DRIVER_E];
 
   //
-  // Filament Runout
+  // Endstop data
   //
-  #if HAS_FIL_RUNOUT_0
-    uint8_t         filrunout_logic_flag,
-                    filrunout_pullup_flag;
+  endstop_data_t    endstop_data;
+
+  //
+  // Nozzle data
+  //
+  nozzle_data_t     nozzle_data;
+
+  //
+  // Sound data
+  //
+  sound_data_t      sound_data;
+
+  //
+  // Heaters data
+  //
+  #if HAS_HOTENDS
+    heater_data_t   hotend_data[MAX_HOTEND];
+  #endif
+  #if HAS_BEDS
+    heater_data_t   bed_data[MAX_BED];
+  #endif
+  #if HAS_CHAMBERS
+    heater_data_t   chamber_data[MAX_CHAMBER];
+  #endif
+  #if HAS_COOLERS
+    heater_data_t   cooler_data[MAX_COOLER];
   #endif
 
   //
-  // Power Check
+  // Fans data
+  //
+  fans_data_t     fans_data;
+  fan_data_t      fan_data[MAX_FAN];
+
+  //
+  // DHT sensor data
+  //
+  #if HAS_DHT
+    dht_data_t      dht_data;
+  #endif
+
+  //
+  // Filament Runout data
+  //
+  #if HAS_FILAMENT_SENSOR
+    filament_data_t filrunout_data;
+  #endif
+
+  //
+  // Power Check data
   //
   #if HAS_POWER_CHECK
-    flagpower_t     power_flag;
+    power_data_t    power_data;
   #endif
 
   //
@@ -113,10 +159,7 @@ typedef struct EepromDataStruct {
   // MESH_BED_LEVELING
   //
   #if ENABLED(MESH_BED_LEVELING)
-    float           mbl_z_offset;
-    uint8_t         mesh_num_x,
-                    mesh_num_y;
-    float           mbl_z_values[GRID_MAX_POINTS_X][GRID_MAX_POINTS_Y];
+    mbl_data_t      mbl_data;
   #endif
 
   //
@@ -132,8 +175,8 @@ typedef struct EepromDataStruct {
   #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
     uint8_t         grid_max_x,
                     grid_max_y;
-    int             bilinear_grid_spacing[2],
-                    bilinear_start[2];
+    xy_pos_t        bilinear_grid_spacing,
+                    bilinear_start;
     float           z_values[GRID_MAX_POINTS_X][GRID_MAX_POINTS_Y];
   #endif
 
@@ -146,75 +189,34 @@ typedef struct EepromDataStruct {
   #endif
 
   //
-  // Probe offset
+  // Probe data
   //
   #if HAS_BED_PROBE
     probe_data_t    probe_data;
   #endif
 
   //
-  // Ultipanel
+  // LCD Language
+  //
+  #if HAS_LCD
+    uint8_t lang;
+  #endif
+
+  //
+  // LCD menu
   //
   #if HAS_LCD_MENU
-    #if HOTENDS > 0
+    #if HAS_HOTENDS
       int16_t       lcdui_preheat_hotend_temp[3];
     #endif
-    #if BEDS > 0  
+    #if HAS_BEDS  
       int16_t       lcdui_preheat_bed_temp[3];
     #endif
-    #if CHAMBERS > 0
+    #if HAS_CHAMBERS
       int16_t       lcdui_preheat_chamber_temp[3];
     #endif
-    #if FAN_COUNT > 0
-      int16_t       lcdui_preheat_fan_speed[3];
-    #endif
-  #endif
-
-  //
-  // Heaters
-  //
-  #if HOTENDS > 0
-    heater_data_t   hotend_data[HOTENDS];
-    pid_data_t      hotend_pid_data[HOTENDS];
-    sensor_data_t   hotend_sensor_data[HOTENDS];
-  #endif
-  #if BEDS > 0
-    heater_data_t   bed_data[BEDS];
-    pid_data_t      bed_pid_data[BEDS];
-    sensor_data_t   bed_sensor_data[BEDS];
-  #endif
-  #if CHAMBERS > 0
-    heater_data_t   chamber_data[CHAMBERS];
-    pid_data_t      chamber_pid_data[CHAMBERS];
-    sensor_data_t   chamber_sensor_data[CHAMBERS];
-  #endif
-  #if COOLERS > 0
-    heater_data_t   cooler_data[COOLERS];
-    pid_data_t      cooler_pid_data[COOLERS];
-    sensor_data_t   cooler_sensor_data[COOLERS];
-  #endif
-
-  //
-  // PID add extrusion rate
-  //
-  #if ENABLED(PID_ADD_EXTRUSION_RATE)
-    int16_t         lpq_len;
-  #endif
-
-  //
-  // DHT sensor
-  //
-  #if ENABLED(DHT_SENSOR)
-    dht_data_t      dht_data;
-  #endif
-
-  //
-  // Fans
-  //
-  #if FAN_COUNT > 0
-    fan_data_t      fans_data[FAN_COUNT];
-    #if ENABLED(TACHOMETRIC)
-      tacho_data_t  tacho_data[FAN_COUNT];
+    #if HAS_FAN
+      uint8_t       lcdui_preheat_fan_speed[3];
     #endif
   #endif
 
@@ -240,6 +242,13 @@ typedef struct EepromDataStruct {
   #endif
 
   //
+  // BLTOUCH
+  //
+  #if HAS_BLTOUCH
+    bool              bltouch_last_mode;
+  #endif
+
+  //
   // FWRETRACT
   //
   #if ENABLED(FWRETRACT)
@@ -252,7 +261,6 @@ typedef struct EepromDataStruct {
   //
   #if ENABLED(VOLUMETRIC_EXTRUSION)
     bool            volumetric_enabled;
-    float           filament_size[EXTRUDERS];
   #endif
 
   //
@@ -263,75 +271,35 @@ typedef struct EepromDataStruct {
   #endif
 
   //
-  // Stepper
-  //
-  uint16_t          stepper_direction_flag;
-  uint32_t          stepper_direction_delay,
-                    stepper_maximum_rate;
-  uint8_t           stepper_minimum_pulse;
-  bool              stepper_quad_stepping;
-
-  //
-  // Sound
-  //
-  SoundModeEnum     sound_mode;
-
-  //
-  // External DAC
-  //
-  #if MB(ALLIGATOR_R2) || MB(ALLIGATOR_R3)
-    uint16_t        motor_current[3 + DRIVER_EXTRUDERS];
-  #endif
-
-  //
-  // Linear Advance
-  //
-  #if ENABLED(LIN_ADVANCE)
-    float           planner_extruder_advance_K;
-  #endif
-
-  //
   // Hysteresis Feature
   //
   #if ENABLED(HYSTERESIS_FEATURE)
-    float           hysteresis_mm[XYZ],
-                    hysteresis_correction;
-  #endif
-
-  //
-  // Filament Change
-  //
-  #if ENABLED(ADVANCED_PAUSE_FEATURE)
-    advanced_pause_data_t advanced_pause_data[EXTRUDERS];
+    hysteresis_data_t hysteresis_data;
   #endif
 
   //
   // Trinamic
   //
   #if HAS_TRINAMIC
-    uint16_t  tmc_stepper_current[TMC_AXIS],
-              tmc_stepper_microstep[TMC_AXIS];
-    uint32_t  tmc_hybrid_threshold[TMC_AXIS];
+    uint16_t  tmc_stepper_current[MAX_DRIVER],
+              tmc_stepper_microstep[MAX_DRIVER];
+    uint32_t  tmc_hybrid_threshold[MAX_DRIVER];
+    bool      tmc_stealth_enabled[MAX_DRIVER];
     int16_t   tmc_sgt[XYZ];
-    bool      tmc_stealth_enabled[TMC_AXIS];
   #endif
 
-} eepromData;
+} eepromDataStruct;
 
 EEPROM eeprom;
 
-uint16_t EEPROM::datasize() { return sizeof(eepromData); }
+uint16_t EEPROM::datasize() { return sizeof(eepromDataStruct); }
 
 /**
  * Post-process after Retrieve or Reset
  */
 void EEPROM::post_process() {
 
-  const float oldpos[] = {
-    mechanics.current_position[X_AXIS],
-    mechanics.current_position[Y_AXIS],
-    mechanics.current_position[Z_AXIS]
-  };
+  mechanics.stored_position[0] = mechanics.current_position;
 
   // Recalculate pulse cycle
   HAL_calc_pulse_cycle();
@@ -345,43 +313,18 @@ void EEPROM::post_process() {
     mechanics.recalc_delta_settings();
   #endif
 
-  #if HEATER_COUNT > 0
-    LOOP_HOTEND() {
-      hotends[h].init();
-      hotends[h].pid.update();
-    }
-    LOOP_BED() {
-      beds[h].init();
-      beds[h].pid.update();
-    }
-    LOOP_CHAMBER() {
-      chambers[h].init();
-      chambers[h].pid.update();
-    }
-    LOOP_COOLER() {
-      coolers[h].init();
-      coolers[h].pid.update();
-    }
-  #endif
+  tempManager.init();
 
-  #if ENABLED(DHT_SENSOR)
+  fanManager.init();
+
+  #if HAS_DHT
     dhtsensor.init();
   #endif
 
-  #if FAN_COUNT > 0
-    LOOP_FAN() {
-      fans[f].init();
-      #if ENABLED(TACHOMETRIC)
-        fans[f].tacho.init(f);
-      #endif
-    }
-  #endif
-
   #if ENABLED(VOLUMETRIC_EXTRUSION)
-    tools.calculate_volumetric_multipliers();
+    toolManager.calculate_volumetric_multipliers();
   #else
-    for (uint8_t i = COUNT(tools.e_factor); i--;)
-      tools.refresh_e_factor(i);
+    LOOP_EXTRUDER() extruders[e]->refresh_e_factor();
   #endif
 
   // Software endstops depend on home_offset
@@ -420,7 +363,7 @@ void EEPROM::post_process() {
   // and init stepper.count[], planner.position[] with current_position
   planner.refresh_positioning();
 
-  if (memcmp(oldpos, mechanics.current_position, sizeof(oldpos)))
+  if (mechanics.stored_position[0] != mechanics.current_position)
     mechanics.report_current_position();
 
 }
@@ -430,23 +373,22 @@ void EEPROM::post_process() {
   #define EEPROM_SKIP(VAR)        eeprom_index += sizeof(VAR)
   #define EEPROM_WRITE(VAR)       memorystore.write_data(eeprom_index, (uint8_t*)&VAR, sizeof(VAR), &working_crc)
   #define EEPROM_READ_ALWAYS(VAR) memorystore.read_data(eeprom_index, (uint8_t*)&VAR, sizeof(VAR), &working_crc)
-  #define EEPROM_READ(VAR)        memorystore.read_data(eeprom_index, (uint8_t*)&VAR, sizeof(VAR), &working_crc, !validating)
+  #define EEPROM_READ(VAR)        memorystore.read_data(eeprom_index, (uint8_t*)&VAR, sizeof(VAR), &working_crc, !flag.validating)
 
-  #define EEPROM_ASSERT(TST,ERR) do{ if (!(TST)) { SERIAL_LM(ER, ERR); eeprom_error = true; } }while(0)
-  #define _FIELD_TEST(FIELD) \
-    EEPROM_ASSERT( \
-      eeprom_error || eeprom_index == offsetof(eepromData, FIELD) + EEPROM_OFFSET, \
-      "Field " STRINGIFY(FIELD) " mismatch." \
-    )
+  #if ENABLED(DEBUG_EEPROM_READWRITE)
+    #define EEPROM_ASSERT(TST,ERR) do{ if (!(TST)) { SERIAL_LM(ER, ERR); flag.error = true; } }while(0)
+    #define EEPROM_TEST(FIELD) \
+      EEPROM_ASSERT( \
+        flag.error || eeprom_index == offsetof(eepromDataStruct, FIELD) + EEPROM_OFFSET, \
+        "Field " STRINGIFY(FIELD) " mismatch." \
+      )
+  #else
+    #define EEPROM_TEST(FIELD)    NOOP
+  #endif
 
   const char version[6] = EEPROM_VERSION;
 
-  bool  EEPROM::eeprom_error  = false,
-        EEPROM::validating    = false;
-
-  #if ENABLED(AUTO_BED_LEVELING_UBL)
-    uint16_t EEPROM::meshes_begin = 0;
-  #endif
+  eeprom_flag_t EEPROM::flag;
 
   bool EEPROM::size_error(const uint16_t size) {
     if (size != datasize()) {
@@ -463,14 +405,26 @@ void EEPROM::post_process() {
    */
   bool EEPROM::store() {
 
-    float dummy = 0;
-    char ver[6] = "ERROR";
+    char ver[6]           = "ERROR";
+    uint16_t working_crc  = 0;
+    int eeprom_index      = EEPROM_OFFSET;
 
-    uint16_t working_crc = 0;
+    driver_data_t driver_data[XYZ]            = { { NoPin, NoPin, NoPin }, false };
+    driver_data_t driver_e_data[MAX_DRIVER_E] = { { NoPin, NoPin, NoPin }, false };
 
-    int eeprom_index = EEPROM_OFFSET;
+    extruder_data_t extruder_data[MAX_EXTRUDER];
+    heater_data_t   hotend_data[MAX_HOTEND];
+    heater_data_t   bed_data[MAX_BED];
+    heater_data_t   chamber_data[MAX_CHAMBER];
+    heater_data_t   cooler_data[MAX_COOLER];
+    fan_data_t      fan_data[MAX_FAN];
 
-    eeprom_error = false;
+    if (memorystore.access_start()) {
+      SERIAL_EM("No EEPROM.");
+      return false;
+    }
+
+    flag.error = false;
 
     #if HAS_EEPROM_FLASH
       EEPROM_SKIP(ver);       // Flash doesn't allow rewriting without erase
@@ -482,50 +436,105 @@ void EEPROM::post_process() {
     working_crc = 0; // clear before first "real data"
 
     //
+    // ToolManager data
+    //
+    EEPROM_TEST(tool_data);
+    EEPROM_WRITE(toolManager.extruder);
+    LOOP_EXTRUDER() if (extruders[e]) extruder_data[e] = extruders[e]->data;
+    EEPROM_WRITE(extruder_data);
+
+    //
+    // TempManager data
+    //
+    EEPROM_TEST(temp_data);
+    EEPROM_WRITE(tempManager.heater);
+
     // Mechanics data
     //
+    EEPROM_TEST(mechanics_data);
     EEPROM_WRITE(mechanics.data);
 
     //
-    // Hotend offset
+    // Stepper data
     //
-    EEPROM_WRITE(tools.hotend_offset);
+    EEPROM_TEST(stepper_data);
+    EEPROM_WRITE(stepper.data);
 
     //
-    // Endstops bit
+    // Driver data
     //
-    EEPROM_WRITE(endstops.logic_flag);
-    EEPROM_WRITE(endstops.pullup_flag);
+    EEPROM_TEST(driver_data);
+    LOOP_DRV_XYZ()  if (driver[d])    driver_data[d]    = driver[d]->data;
+    LOOP_DRV_EXT()  if (driver.e[d])  driver_e_data[d]  = driver.e[d]->data;
+    EEPROM_WRITE(driver_data);
+    EEPROM_WRITE(driver_e_data);
 
     //
-    // TWO or THREE Endstops adj
+    // Endstops data
     //
-    #if ENABLED(X_TWO_ENDSTOPS)
-      EEPROM_WRITE(endstops.x2_endstop_adj);
+    EEPROM_TEST(endstop_data);
+    EEPROM_WRITE(endstops.data);
+
+    //
+    // Nozzle data
+    //
+    EEPROM_TEST(nozzle_data);
+    EEPROM_WRITE(nozzle.data);
+
+    //
+    // Sound
+    //
+    EEPROM_TEST(sound_data);
+    EEPROM_WRITE(sound.data);
+
+    //
+    // Heaters data
+    //
+    #if HAS_HOTENDS
+      LOOP_HOTEND()   if (hotends[h])   hotend_data[h]  = hotends[h]->data;
+      EEPROM_WRITE(hotend_data);
     #endif
-    #if ENABLED(Y_TWO_ENDSTOPS)
-      EEPROM_WRITE(endstops.y2_endstop_adj);
+    #if HAS_BEDS
+      LOOP_BED()      if (beds[h])      bed_data[h]     = beds[h]->data;
+      EEPROM_WRITE(bed_data);
     #endif
-    #if ENABLED(Z_THREE_ENDSTOPS)
-      EEPROM_WRITE(endstops.z2_endstop_adj);
-      EEPROM_WRITE(endstops.z3_endstop_adj);
-    #elif ENABLED(Z_TWO_ENDSTOPS)
-      EEPROM_WRITE(endstops.z2_endstop_adj);
+    #if HAS_CHAMBERS
+      LOOP_CHAMBER()  if (chambers[h])  chamber_data[h] = chambers[h]->data;
+      EEPROM_WRITE(chamber_data);
+    #endif
+    #if HAS_COOLERS
+      LOOP_COOLER()   if (coolers[h])   cooler_data[h]  = coolers[h]->data;
+      EEPROM_WRITE(cooler_data);
     #endif
 
     //
-    // Filament Runout
+    // Fans data
+    //
+    EEPROM_TEST(fans_data);
+    LOOP_FAN() if (fans[f]) fan_data[f] = fans[f]->data;
+    EEPROM_WRITE(fanManager.data);
+    EEPROM_WRITE(fan_data);
+
+    //
+    // DHT sensor data
+    //
+    #if HAS_DHT
+      EEPROM_TEST(dht_data);
+      EEPROM_WRITE(dhtsensor.data);
+    #endif
+
+    //
+    // Filament Runout data
     //
     #if HAS_FILAMENT_SENSOR
-      EEPROM_WRITE(filamentrunout.sensor.logic_flag);
-      EEPROM_WRITE(filamentrunout.sensor.pullup_flag);
+      EEPROM_WRITE(filamentrunout.sensor.data);
     #endif
 
     //
-    // Power Check
+    // PowerManager data
     //
     #if HAS_POWER_CHECK
-      EEPROM_WRITE(powerManager.flag);
+      EEPROM_WRITE(powerManager.data);
     #endif
 
     //
@@ -540,14 +549,10 @@ void EEPROM::post_process() {
     //
     #if ENABLED(MESH_BED_LEVELING)
       static_assert(
-        sizeof(mbl.z_values) == GRID_MAX_POINTS * sizeof(mbl.z_values[0][0]),
+        sizeof(mbl.data.z_values) == GRID_MAX_POINTS * sizeof(mbl.data.z_values[0][0]),
         "MBL Z array is the wrong size."
       );
-      const uint8_t mesh_num_x = GRID_MAX_POINTS_X, mesh_num_y = GRID_MAX_POINTS_Y;
-      EEPROM_WRITE(mbl.z_offset);
-      EEPROM_WRITE(mesh_num_x);
-      EEPROM_WRITE(mesh_num_y);
-      EEPROM_WRITE(mbl.z_values);
+      EEPROM_WRITE(mbl.data);
     #endif // MESH_BED_LEVELING
 
     //
@@ -566,11 +571,11 @@ void EEPROM::post_process() {
         "Bilinear Z array is the wrong size."
       );
       const uint8_t grid_max_x = GRID_MAX_POINTS_X, grid_max_y = GRID_MAX_POINTS_Y;
-      EEPROM_WRITE(grid_max_x);                 // 1 byte
-      EEPROM_WRITE(grid_max_y);                 // 1 byte
-      EEPROM_WRITE(abl.bilinear_grid_spacing);  // 2 ints
-      EEPROM_WRITE(abl.bilinear_start);         // 2 ints
-      EEPROM_WRITE(abl.z_values);               // 9-256 floats
+      EEPROM_WRITE(grid_max_x);
+      EEPROM_WRITE(grid_max_y);
+      EEPROM_WRITE(abl.bilinear_grid_spacing);
+      EEPROM_WRITE(abl.bilinear_start);
+      EEPROM_WRITE(abl.z_values);
     #endif // AUTO_BED_LEVELING_BILINEAR
 
     //
@@ -586,77 +591,33 @@ void EEPROM::post_process() {
     // Probe data
     //
     #if HAS_BED_PROBE
+      EEPROM_TEST(probe_data);
       EEPROM_WRITE(probe.data);
     #endif
 
     //
-    // ULTIPANEL
+    // LCD Language
+    //
+    #if HAS_LCD
+      EEPROM_WRITE(lcdui.lang);
+    #endif
+
+    //
+    // LCD menu
     //
     #if HAS_LCD_MENU
-      #if HOTENDS > 0
+      #if HAS_HOTENDS
         EEPROM_WRITE(lcdui.preheat_hotend_temp);
       #endif
-      #if BEDS > 0
+      #if HAS_BEDS
         EEPROM_WRITE(lcdui.preheat_bed_temp);
       #endif
-      #if CHAMBERS > 0
+      #if HAS_CHAMBERS
         EEPROM_WRITE(lcdui.preheat_chamber_temp);
       #endif
-      #if FAN_COUNT > 0
+      #if HAS_FAN
         EEPROM_WRITE(lcdui.preheat_fan_speed);
       #endif
-    #endif
-
-    //
-    // Heaters
-    //
-    #if HEATER_COUNT > 0
-      LOOP_HOTEND() {
-        EEPROM_WRITE(hotends[h].data);
-        EEPROM_WRITE(hotends[h].pid);
-        EEPROM_WRITE(hotends[h].sensor);
-      }
-      LOOP_BED() {
-        EEPROM_WRITE(beds[h].data);
-        EEPROM_WRITE(beds[h].pid);
-        EEPROM_WRITE(beds[h].sensor);
-      }
-      LOOP_CHAMBER() {
-        EEPROM_WRITE(chambers[h].data);
-        EEPROM_WRITE(chambers[h].pid);
-        EEPROM_WRITE(chambers[h].sensor);
-      }
-      LOOP_COOLER() {
-        EEPROM_WRITE(coolers[h].data);
-        EEPROM_WRITE(coolers[h].pid);
-        EEPROM_WRITE(coolers[h].sensor);
-      }
-    #endif
-
-    //
-    // PID add extrusion rate
-    //
-    #if ENABLED(PID_ADD_EXTRUSION_RATE)
-      EEPROM_WRITE(tools.lpq_len);
-    #endif
-
-    //
-    // DHT sensor
-    //
-    #if ENABLED(DHT_SENSOR)
-      EEPROM_WRITE(dhtsensor.data);
-    #endif
-
-    //
-    // Fans
-    //
-    #if FAN_COUNT > 0
-      LOOP_FAN() {
-        EEPROM_WRITE(fans[f].data);
-        #if ENABLED(TACHOMETRIC)
-          EEPROM_WRITE(fans[f].tacho);
-        #endif
-      }
     #endif
 
     //
@@ -670,6 +631,7 @@ void EEPROM::post_process() {
     // SD Restart
     //
     #if HAS_SD_RESTART
+      EEPROM_TEST(restart_enabled);
       EEPROM_WRITE(restart.enabled);
     #endif
 
@@ -678,6 +640,14 @@ void EEPROM::post_process() {
     //
     #if HAS_SERVOS
       LOOP_SERVO() EEPROM_WRITE(servo[s].angle);
+    #endif
+
+    //
+    // BLTOUCH
+    //
+    #if HAS_BLTOUCH
+      EEPROM_TEST(bltouch_last_mode);
+      EEPROM_WRITE(bltouch.last_mode);
     #endif
 
     //
@@ -692,14 +662,8 @@ void EEPROM::post_process() {
     // Volumetric & Filament Size
     //
     #if ENABLED(VOLUMETRIC_EXTRUSION)
-
       const bool volumetric_enabled = printer.isVolumetric();
       EEPROM_WRITE(volumetric_enabled);
-
-      // Save filament sizes
-      LOOP_EXTRUDER()
-        EEPROM_WRITE(tools.filament_size[e]);
-
     #endif
 
     //
@@ -710,74 +674,45 @@ void EEPROM::post_process() {
     #endif
 
     //
-    // Stepper
-    //
-    EEPROM_WRITE(stepper.direction_flag);
-    EEPROM_WRITE(stepper.direction_delay);
-    EEPROM_WRITE(stepper.minimum_pulse);
-    EEPROM_WRITE(stepper.maximum_rate);
-    EEPROM_WRITE(stepper.quad_stepping);
-
-    //
-    // Sound
-    //
-    EEPROM_WRITE(sound.mode);
-
-    //
-    // Alligator board
-    //
-    #if MB(ALLIGATOR_R2) || MB(ALLIGATOR_R3)
-      EEPROM_WRITE(externaldac.motor_current);
-    #endif
-
-    //
-    // Linear Advance
-    //
-    #if ENABLED(LIN_ADVANCE)
-      EEPROM_WRITE(planner.extruder_advance_K);
-    #endif
-
-    //
     // Hysteresis Feature
     //
     #if ENABLED(HYSTERESIS_FEATURE)
-      EEPROM_WRITE(hysteresis.mm);
-      EEPROM_WRITE(hysteresis.correction);
+      EEPROM_WRITE(hysteresis.data);
     #endif
 
     //
-    // Advanced Pause
-    //
-    #if ENABLED(ADVANCED_PAUSE_FEATURE)
-      EEPROM_WRITE(advancedpause.data);
-    #endif
-
-    //
-    // Save TMC2130 or TMC2208 Configuration, and placeholder values
+    // Save Trinamic Driver Configuration, and placeholder values
     //
     #if HAS_TRINAMIC
 
-      uint16_t  tmc_stepper_current[TMC_AXIS]   = { X_CURRENT, Y_CURRENT, Z_CURRENT, X_CURRENT, Y_CURRENT, Z_CURRENT, Z_CURRENT,
-                                                    E0_CURRENT, E1_CURRENT, E2_CURRENT, E3_CURRENT, E4_CURRENT, E5_CURRENT },
-                tmc_stepper_microstep[TMC_AXIS] = { X_MICROSTEPS, Y_MICROSTEPS, Z_MICROSTEPS, X_MICROSTEPS, Y_MICROSTEPS, Z_MICROSTEPS, Z_MICROSTEPS,
-                                                    E0_MICROSTEPS, E1_MICROSTEPS, E2_MICROSTEPS, E3_MICROSTEPS, E4_MICROSTEPS, E5_MICROSTEPS };
-      uint32_t  tmc_hybrid_threshold[TMC_AXIS]  = { X_HYBRID_THRESHOLD, Y_HYBRID_THRESHOLD, Z_HYBRID_THRESHOLD,
-                                                    X_HYBRID_THRESHOLD, Y_HYBRID_THRESHOLD, Z_HYBRID_THRESHOLD, Z_HYBRID_THRESHOLD,
-                                                    E0_HYBRID_THRESHOLD, E1_HYBRID_THRESHOLD, E2_HYBRID_THRESHOLD,
-                                                    E3_HYBRID_THRESHOLD, E4_HYBRID_THRESHOLD, E5_HYBRID_THRESHOLD };
-      bool      tmc_stealth_enabled[TMC_AXIS]   = { X_STEALTHCHOP, Y_STEALTHCHOP, Z_STEALTHCHOP, X_STEALTHCHOP, Y_STEALTHCHOP, Z_STEALTHCHOP, Z_STEALTHCHOP,
-                                                    E0_STEALTHCHOP, E1_STEALTHCHOP, E2_STEALTHCHOP, E3_STEALTHCHOP, E4_STEALTHCHOP, E5_STEALTHCHOP };
+      uint16_t  tmc_stepper_current[MAX_DRIVER],
+                tmc_stepper_microstep[MAX_DRIVER];
+      uint32_t  tmc_hybrid_threshold[MAX_DRIVER];
+      bool      tmc_stealth_enabled[MAX_DRIVER];
 
-      LOOP_TMC() {
-        MKTMC* st = tmc.driver_by_index(t);
-        if (st) {
-          tmc_stepper_current[t]    = st->getMilliamps();
-          tmc_stepper_microstep[t]  = st->microsteps();
+      LOOP_DRV_XYZ() {
+        Driver* drv = driver[d];
+        if (drv && drv->tmc) {
+          tmc_stepper_current[d]    = drv->tmc->getMilliamps();
+          tmc_stepper_microstep[d]  = drv->tmc->getMicrosteps();
           #if ENABLED(HYBRID_THRESHOLD)
-            tmc_hybrid_threshold[t] = st->hybrid_thrs;
+            tmc_hybrid_threshold[d] = drv->tmc->get_pwm_thrs();
           #endif
           #if TMC_HAS_STEALTHCHOP
-            tmc_stealth_enabled[t]  = st->stealthChop_enabled;
+            tmc_stealth_enabled[d]  = drv->tmc->get_stealthChop_status();
+          #endif
+        }
+      }
+      LOOP_DRV_EXT() {
+        Driver* drv = driver.e[d];
+        if (drv && drv->tmc) {
+          tmc_stepper_current[XYZ + d]    = drv->tmc->getMilliamps();
+          tmc_stepper_microstep[XYZ + d]  = drv->tmc->getMicrosteps();
+          #if ENABLED(HYBRID_THRESHOLD)
+            tmc_hybrid_threshold[XYZ + d] = drv->tmc->get_pwm_thrs_e();
+          #endif
+          #if TMC_HAS_STEALTHCHOP
+            tmc_stealth_enabled[XYZ + d]  = drv->tmc->get_stealthChop_status();
           #endif
         }
       }
@@ -790,16 +725,16 @@ void EEPROM::post_process() {
       //
       // TMC2130 StallGuard threshold
       //
-      int16_t tmc_sgt[XYZ] = { 0, 0, 0 };
+      int16_t tmc_sgt[XYZ] = { 0 };
       #if HAS_SENSORLESS
         #if X_HAS_SENSORLESS
-          tmc_sgt[X_AXIS] = stepperX->sgt();
+          tmc_sgt[X_AXIS] = driver.x->tmc->homing_threshold();
         #endif
         #if Y_HAS_SENSORLESS
-          tmc_sgt[Y_AXIS] = stepperY->sgt();
+          tmc_sgt[Y_AXIS] = driver.y->tmc->homing_threshold();
         #endif
         #if Z_HAS_SENSORLESS
-          tmc_sgt[Z_AXIS] = stepperZ->sgt();
+          tmc_sgt[Z_AXIS] = driver.z->tmc->homing_threshold();
         #endif
       #endif
       EEPROM_WRITE(tmc_sgt);
@@ -809,7 +744,7 @@ void EEPROM::post_process() {
     //
     // Validate CRC and Data Size
     //
-    if (!eeprom_error) {
+    if (!flag.error) {
       const uint16_t  eeprom_size = eeprom_index - (EEPROM_OFFSET),
                       final_crc = working_crc;
 
@@ -826,7 +761,7 @@ void EEPROM::post_process() {
         SERIAL_EM(")");
       #endif
 
-      eeprom_error |= size_error(eeprom_size);
+      flag.error |= size_error(eeprom_size);
     }
 
     //
@@ -837,11 +772,29 @@ void EEPROM::post_process() {
         store_mesh(ubl.storage_slot);
     #endif
 
-    eeprom_error |= memorystore.access_write();
+    flag.error |= memorystore.access_write();
 
-    sound.feedback(!eeprom_error);
+    sound.feedback(!flag.error);
 
-    return !eeprom_error;
+    return !flag.error;
+  }
+
+  /**
+   * M505 - Clear EEPROM and reset
+   */
+  void EEPROM::clear() {
+    uint16_t temp_crc = 0;
+    int eeprom_index = EEPROM_OFFSET;
+
+    SERIAL_LM(ECHO, "Clear EEPROM and RESET!");
+
+    while (eeprom_index <= EEPROM_SIZE)
+      memorystore.write_data(eeprom_index, (uint8_t*)0XFF, 1, &temp_crc);
+
+    // Reset Printer
+    printer.setRunning(false);
+    watchdog.enable(WDTO_15MS);
+    while(1);
   }
 
   /**
@@ -851,10 +804,24 @@ void EEPROM::post_process() {
 
     uint16_t  working_crc = 0,
               stored_crc  = 0;
+    char      stored_ver[6];
 
-    char stored_ver[6];
+    driver_data_t driver_data[XYZ]            = { { NoPin, NoPin, NoPin }, false };
+    driver_data_t driver_e_data[MAX_DRIVER_E] = { { NoPin, NoPin, NoPin }, false };
+
+    extruder_data_t extruder_data[MAX_EXTRUDER];
+    heater_data_t   hotend_data[MAX_HOTEND];
+    heater_data_t   bed_data[MAX_BED];
+    heater_data_t   chamber_data[MAX_CHAMBER];
+    heater_data_t   cooler_data[MAX_COOLER];
+    fan_data_t      fan_data[MAX_FAN];
 
     int eeprom_index = EEPROM_OFFSET;
+
+    if (memorystore.access_start()) {
+      SERIAL_EM("No EEPROM.");
+      return false;
+    }
 
     EEPROM_READ_ALWAYS(stored_ver);
     EEPROM_READ_ALWAYS(stored_crc);
@@ -870,14 +837,27 @@ void EEPROM::post_process() {
         SERIAL_MT("(EEPROM=", stored_ver);
         SERIAL_EM(" MK4duo=" EEPROM_VERSION ")");
       #endif
-      reset();
-      eeprom_error = true;
+      flag.error = true;
     }
     else {
 
-      float dummy = 0;
-
       working_crc = 0; // Init to 0. Accumulated by EEPROM_READ
+
+      //
+      // ToolManager data
+      //
+      EEPROM_READ(toolManager.extruder);
+      EEPROM_READ(extruder_data);
+      if (!flag.validating) {
+        toolManager.create_object();
+        LOOP_EXTRUDER() if (extruders[e]) extruders[e]->data = extruder_data[e];
+      }
+
+      //
+      // TempManager data
+      //
+      EEPROM_READ(tempManager.heater);
+      if (!flag.validating) tempManager.create_object();
 
       //
       // Mechanics data
@@ -885,71 +865,109 @@ void EEPROM::post_process() {
       EEPROM_READ(mechanics.data);
 
       //
-      // Hotend offset
+      // Stepper data
       //
-      EEPROM_READ(tools.hotend_offset);
+      EEPROM_READ(stepper.data);
 
       //
-      // Endstops bit
+      // Driver data
       //
-      EEPROM_READ(endstops.logic_flag);
-      EEPROM_READ(endstops.pullup_flag);
+      EEPROM_READ(driver_data);
+      EEPROM_READ(driver_e_data);
+      if (!flag.validating) {
+        stepper.create_driver();  // Create driver stepper
+        LOOP_DRV_XYZ()  if (driver[d])    driver[d]->data   = driver_data[d];
+        LOOP_DRV_EXT()  if (driver.e[d])  driver.e[d]->data = driver_e_data[d];
+      }
 
       //
-      // TWO or THREE Endstops adj
+      // Endstops data
       //
-      #if ENABLED(X_TWO_ENDSTOPS)
-        EEPROM_READ(endstops.x2_endstop_adj);
+      EEPROM_READ(endstops.data);
+
+      //
+      // Nozzle data
+      //
+      EEPROM_READ(nozzle.data);
+
+      //
+      // Sound
+      //
+      EEPROM_READ(sound.data);
+
+      //
+      // Heaters data
+      //
+      #if HAS_HOTENDS
+        EEPROM_READ(hotend_data);
       #endif
-      #if ENABLED(Y_TWO_ENDSTOPS)
-        EEPROM_READ(endstops.y2_endstop_adj);
+      #if HAS_BEDS
+        EEPROM_READ(bed_data);
       #endif
-      #if ENABLED(Z_THREE_ENDSTOPS)
-        EEPROM_READ(endstops.z2_endstop_adj);
-        EEPROM_READ(endstops.z3_endstop_adj);
-      #elif ENABLED(Z_TWO_ENDSTOPS)
-        EEPROM_READ(endstops.z2_endstop_adj);
+      #if HAS_CHAMBERS
+        EEPROM_READ(chamber_data);
+      #endif
+      #if HAS_COOLERS
+        EEPROM_READ(cooler_data);
+      #endif
+      if (!flag.validating) {
+        #if HAS_HOTENDS
+          LOOP_HOTEND()   if (hotends[h])   hotends[h]->data  = hotend_data[h];
+        #endif
+        #if HAS_BEDS
+          LOOP_BED()      if (beds[h])      beds[h]->data     = bed_data[h];
+        #endif
+        #if HAS_CHAMBERS
+          LOOP_CHAMBER()  if (chambers[h])  chambers[h]->data = chamber_data[h];
+        #endif
+        #if HAS_COOLERS
+          LOOP_COOLER()   if (coolers[h])   coolers[h]->data  = cooler_data[h];
+        #endif
+      }
+
+      //
+      // Fans data
+      //
+      EEPROM_READ(fanManager.data);
+      EEPROM_READ(fan_data);
+      if (!flag.validating) {
+        fanManager.create_object();
+        LOOP_FAN() if (fans[f]) fans[f]->data = fan_data[f];
+      }
+
+      //
+      // DHT sensor data
+      //
+      #if HAS_DHT
+        EEPROM_READ(dhtsensor.data);
       #endif
 
       //
-      // Filament Runout
+      // Filament Runout data
       //
       #if HAS_FILAMENT_SENSOR
-        EEPROM_READ(filamentrunout.sensor.logic_flag);
-        EEPROM_READ(filamentrunout.sensor.pullup_flag);
+        EEPROM_READ(filamentrunout.sensor.data);
       #endif
 
       //
-      // Power Check
+      // PowerManager data
       //
       #if HAS_POWER_CHECK
-        EEPROM_READ(powerManager.flag);
+        EEPROM_READ(powerManager.data);
       #endif
 
       //
-      // General Leveling
+      // Z fade height
       //
       #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
         EEPROM_READ(new_z_fade_height);
       #endif
 
       //
-      // Mesh (Manual) Bed Leveling
+      // Mesh Bed Leveling
       //
       #if ENABLED(MESH_BED_LEVELING)
-        uint8_t mesh_num_x = 0, mesh_num_y = 0;
-        mbl.reset();
-        EEPROM_READ(mbl.z_offset);
-        EEPROM_READ_ALWAYS(mesh_num_x);
-        EEPROM_READ_ALWAYS(mesh_num_y);
-        if (mesh_num_x == GRID_MAX_POINTS_X && mesh_num_y == GRID_MAX_POINTS_Y) {
-          // EEPROM data fits the current mesh
-          EEPROM_READ(mbl.z_values);
-        }
-        else {
-          // EEPROM data is stale
-          for (uint8_t q = 0; q < mesh_num_x * mesh_num_y; q++) EEPROM_READ(dummy);
-        }
+        EEPROM_READ(mbl.data);
       #endif // MESH_BED_LEVELING
 
       //
@@ -964,19 +982,20 @@ void EEPROM::post_process() {
       //
       #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
         uint8_t grid_max_x, grid_max_y;
-        EEPROM_READ_ALWAYS(grid_max_x);            // 1 byte
-        EEPROM_READ_ALWAYS(grid_max_y);            // 1 byte
+        EEPROM_READ_ALWAYS(grid_max_x);
+        EEPROM_READ_ALWAYS(grid_max_y);
         if (grid_max_x == GRID_MAX_POINTS_X && grid_max_y == GRID_MAX_POINTS_Y) {
-          if (!validating) bedlevel.set_bed_leveling_enabled(false);
-          EEPROM_READ(abl.bilinear_grid_spacing); // 2 ints
-          EEPROM_READ(abl.bilinear_start);        // 2 ints
-          EEPROM_READ(abl.z_values);              // 9 to 256 floats
+          if (!flag.validating) bedlevel.set_bed_leveling_enabled(false);
+          EEPROM_READ(abl.bilinear_grid_spacing);
+          EEPROM_READ(abl.bilinear_start);
+          EEPROM_READ(abl.z_values);
         }
         else { // EEPROM data is stale
           // Skip past disabled (or stale) Bilinear Grid data
           int bgs[2], bs[2];
           EEPROM_READ(bgs);
           EEPROM_READ(bs);
+          float dummy = 0;
           for (uint16_t q = grid_max_x * grid_max_y; q--;) EEPROM_READ(dummy);
         }
       #endif // AUTO_BED_LEVELING_BILINEAR
@@ -988,7 +1007,8 @@ void EEPROM::post_process() {
         bool bedlevel_leveling_active;
         EEPROM_READ(bedlevel_leveling_active);
         EEPROM_READ(ubl.storage_slot);
-        bedlevel.flag.leveling_active = bedlevel_leveling_active;
+        if (!flag.validating)
+          bedlevel.flag.leveling_active = bedlevel_leveling_active;
       #endif
 
       //
@@ -999,73 +1019,28 @@ void EEPROM::post_process() {
       #endif
 
       //
-      // ULTIPANEL
+      // LCD Language
+      //
+      #if HAS_LCD
+        EEPROM_READ(lcdui.lang);
+      #endif
+
+      //
+      // LCD menu
       //
       #if HAS_LCD_MENU
-        #if HOTENDS > 0
+        #if HAS_HOTENDS
           EEPROM_READ(lcdui.preheat_hotend_temp);
         #endif
-        #if BEDS > 0
+        #if HAS_BEDS
           EEPROM_READ(lcdui.preheat_bed_temp);
         #endif
-        #if CHAMBERS > 0
+        #if HAS_CHAMBERS
           EEPROM_READ(lcdui.preheat_chamber_temp);
         #endif
-        #if FAN_COUNT > 0
+        #if HAS_FAN
           EEPROM_READ(lcdui.preheat_fan_speed);
         #endif
-      #endif
-
-      //
-      // Heaters
-      //
-      #if HEATER_COUNT > 0
-        LOOP_HOTEND() {
-          EEPROM_READ(hotends[h].data);
-          EEPROM_READ(hotends[h].pid);
-          EEPROM_READ(hotends[h].sensor);
-        }
-        LOOP_BED() {
-          EEPROM_READ(beds[h].data);
-          EEPROM_READ(beds[h].pid);
-          EEPROM_READ(beds[h].sensor);
-        }
-        LOOP_CHAMBER() {
-          EEPROM_READ(chambers[h].data);
-          EEPROM_READ(chambers[h].pid);
-          EEPROM_READ(chambers[h].sensor);
-        }
-        LOOP_COOLER() {
-          EEPROM_READ(coolers[h].data);
-          EEPROM_READ(coolers[h].pid);
-          EEPROM_READ(coolers[h].sensor);
-        }
-      #endif
-
-      //
-      // PID add extrusion rate
-      //
-      #if ENABLED(PID_ADD_EXTRUSION_RATE)
-        EEPROM_READ(tools.lpq_len);
-      #endif
-
-      //
-      // DHT sensor
-      //
-      #if ENABLED(DHT_SENSOR)
-        EEPROM_READ(dhtsensor.data);
-      #endif
-
-      //
-      // Fans
-      //
-      #if FAN_COUNT > 0
-        LOOP_FAN() {
-          EEPROM_READ(fans[f].data);
-          #if ENABLED(TACHOMETRIC)
-            EEPROM_READ(fans[f].tacho);
-          #endif
-        }
       #endif
 
       //
@@ -1090,6 +1065,13 @@ void EEPROM::post_process() {
       #endif
 
       //
+      // BLTOUCH
+      //
+      #if HAS_BLTOUCH
+        EEPROM_READ(bltouch.last_mode);
+      #endif
+
+      //
       // Firmware Retraction
       //
       #if ENABLED(FWRETRACT)
@@ -1101,14 +1083,9 @@ void EEPROM::post_process() {
       // Volumetric & Filament Size
       //
       #if ENABLED(VOLUMETRIC_EXTRUSION)
-
         bool volumetric_enabled;
         EEPROM_READ(volumetric_enabled);
-        if (!validating) printer.setVolumetric(volumetric_enabled);
-
-        LOOP_EXTRUDER()
-          EEPROM_READ(tools.filament_size[e]);
-
+        if (!flag.validating) printer.setVolumetric(volumetric_enabled);
       #endif
 
       //
@@ -1119,78 +1096,55 @@ void EEPROM::post_process() {
       #endif
 
       //
-      // Stepper
-      //
-      EEPROM_READ(stepper.direction_flag);
-      EEPROM_READ(stepper.direction_delay);
-      EEPROM_READ(stepper.minimum_pulse);
-      EEPROM_READ(stepper.maximum_rate);
-      EEPROM_READ(stepper.quad_stepping);
-
-      //
-      // Sound
-      //
-      EEPROM_READ(sound.mode);
-
-      //
-      // Alligator board
-      //
-      #if MB(ALLIGATOR_R2) || MB(ALLIGATOR_R3)
-        EEPROM_READ(externaldac.motor_current);
-      #endif
-
-      //
-      // Linear Advance
-      //
-      #if ENABLED(LIN_ADVANCE)
-        EEPROM_READ(planner.extruder_advance_K);
-      #endif
-
-      //
       // Hysteresis Feature
       //
       #if ENABLED(HYSTERESIS_FEATURE)
-        EEPROM_READ(hysteresis.mm);
-        EEPROM_READ(hysteresis.correction);
+        EEPROM_READ(hysteresis.data);
       #endif
 
-      //
-      // Advanced Pause
-      //
-      #if ENABLED(ADVANCED_PAUSE_FEATURE)
-        EEPROM_READ(advancedpause.data);
-      #endif
-
-      if (!validating) reset_stepper_drivers();
+      if (!flag.validating) stepper.reset_drivers();
 
       //
-      // TMC2130 or TMC2208 Stepper Current
+      // Trinamic Stepper data
       //
       #if HAS_TRINAMIC
 
-        uint16_t  tmc_stepper_current[TMC_AXIS],
-                  tmc_stepper_microstep[TMC_AXIS];
-        uint32_t  tmc_hybrid_threshold[TMC_AXIS];
-        bool      tmc_stealth_enabled[TMC_AXIS];
+        uint16_t  tmc_stepper_current[MAX_DRIVER],
+                  tmc_stepper_microstep[MAX_DRIVER];
+        uint32_t  tmc_hybrid_threshold[MAX_DRIVER];
+        bool      tmc_stealth_enabled[MAX_DRIVER];
 
         EEPROM_READ(tmc_stepper_current);
         EEPROM_READ(tmc_stepper_microstep);
         EEPROM_READ(tmc_hybrid_threshold);
         EEPROM_READ(tmc_stealth_enabled);
 
-        if (!validating) {
-          LOOP_TMC() {
-            MKTMC* st = tmc.driver_by_index(t);
-            if (st) {
-              st->rms_current(tmc_stepper_current[t]);
-              st->microsteps(tmc_stepper_microstep[t]);
+        if (!flag.validating) {
+          LOOP_DRV_XYZ() {
+            Driver* drv = driver[d];
+            if (drv && drv->tmc) {
+              drv->tmc->rms_current(tmc_stepper_current[d]);
+              drv->tmc->microsteps(tmc_stepper_microstep[d]);
               #if ENABLED(HYBRID_THRESHOLD)
-                st->hybrid_thrs = tmc_hybrid_threshold[t];
-                st->refresh_hybrid_thrs(mechanics.data.axis_steps_per_mm[st->id]);
+                drv->tmc->set_pwm_thrs(tmc_hybrid_threshold[d]);
               #endif
               #if TMC_HAS_STEALTHCHOP
-                st->stealthChop_enabled = tmc_stealth_enabled[t];
-                st->refresh_stepping_mode();
+                drv->tmc->stealthChop_enabled = tmc_stealth_enabled[d];
+                drv->tmc->refresh_stepping_mode();
+              #endif
+            }
+          }
+          LOOP_DRV_EXT() {
+            Driver* drv = driver.e[d];
+            if (drv && drv->tmc) {
+              drv->tmc->rms_current(tmc_stepper_current[XYZ + d]);
+              drv->tmc->microsteps(tmc_stepper_microstep[XYZ + d]);
+              #if ENABLED(HYBRID_THRESHOLD)
+                drv->tmc->set_pwm_thrs_e(tmc_hybrid_threshold[XYZ + d]);
+              #endif
+              #if TMC_HAS_STEALTHCHOP
+                drv->tmc->stealthChop_enabled = tmc_stealth_enabled[XYZ + d];
+                drv->tmc->refresh_stepping_mode();
               #endif
             }
           }
@@ -1205,32 +1159,32 @@ void EEPROM::post_process() {
         int16_t tmc_sgt[XYZ];
         EEPROM_READ(tmc_sgt);
         #if HAS_SENSORLESS
-          if (!validating) {
+          if (!flag.validating) {
             #if ENABLED(X_STALL_SENSITIVITY)
               #if AXIS_HAS_STALLGUARD(X)
-                stepperX->sgt(tmc_sgt[X_AXIS]);
+                driver.x->tmc->homing_threshold(tmc_sgt[X_AXIS]);
               #endif
               #if AXIS_HAS_STALLGUARD(X2)
-                stepperX2->sgt(tmc_sgt[X_AXIS]);
+                driver.x2->tmc->homing_threshold(tmc_sgt[X_AXIS]);
               #endif
             #endif
             #if ENABLED(Y_STALL_SENSITIVITY)
               #if AXIS_HAS_STALLGUARD(Y)
-                stepperY->sgt(tmc_sgt[Y_AXIS]);
+                driver.y->tmc->homing_threshold(tmc_sgt[Y_AXIS]);
               #endif
               #if AXIS_HAS_STALLGUARD(Y2)
-                stepperY2->sgt(tmc_sgt[Y_AXIS]);
+                driver.y2->tmc->homing_threshold(tmc_sgt[Y_AXIS]);
               #endif
             #endif
             #if ENABLED(Z_STALL_SENSITIVITY)
               #if AXIS_HAS_STALLGUARD(Z)
-                stepperZ->sgt(tmc_sgt[Z_AXIS]);
+                driver.z->tmc->homing_threshold(tmc_sgt[Z_AXIS]);
               #endif
               #if AXIS_HAS_STALLGUARD(Z2)
-                stepperZ2->sgt(tmc_sgt[Z_AXIS]);
+                driver.z2->tmc->homing_threshold(tmc_sgt[Z_AXIS]);
               #endif
               #if AXIS_HAS_STALLGUARD(Z3)
-                stepperZ3->sgt(tmc_sgt[Z_AXIS]);
+                driver.z3->tmc->homing_threshold(tmc_sgt[Z_AXIS]);
               #endif
             #endif
           }
@@ -1238,8 +1192,8 @@ void EEPROM::post_process() {
 
       #endif // HAS_TRINAMIC
 
-      eeprom_error = size_error(eeprom_index - (EEPROM_OFFSET));
-      if (eeprom_error) {
+      flag.error = size_error(eeprom_index - (EEPROM_OFFSET));
+      if (flag.error) {
         #if ENABLED(EEPROM_CHITCHAT)
           SERIAL_MV("Index: ", int(eeprom_index - (EEPROM_OFFSET)));
           SERIAL_MV(" Size: ", datasize());
@@ -1247,14 +1201,14 @@ void EEPROM::post_process() {
         #endif
       }
       else if (working_crc != stored_crc) {
-        eeprom_error = true;
+        flag.error = true;
         #if ENABLED(EEPROM_CHITCHAT)
           SERIAL_SMV(ER, "EEPROM CRC mismatch - (stored) ", stored_crc);
           SERIAL_MV(" != ", working_crc);
           SERIAL_EM(" (calculated)!");
         #endif
       }
-      else if (!validating) {
+      else if (!flag.validating) {
         #if ENABLED(EEPROM_CHITCHAT)
           SERIAL_ST(ECHO, version);
           SERIAL_MV(" Stored settings retrieved (", eeprom_index - (EEPROM_OFFSET));
@@ -1263,12 +1217,11 @@ void EEPROM::post_process() {
         #endif
       }
 
-      if (!validating && !eeprom_error) post_process();
+      if (!flag.validating && !flag.error) post_process();
 
       #if ENABLED(AUTO_BED_LEVELING_UBL)
 
-        if (!validating) {
-          meshes_begin = (eeprom_index + EEPROM_OFFSET + 32) & 0xFFF8;
+        if (!flag.validating) {
 
           ubl.report_state();
 
@@ -1280,7 +1233,7 @@ void EEPROM::post_process() {
             #endif
           }
           else {
-            eeprom_error = true;
+            flag.error = true;
             #if ENABLED(EEPROM_CHITCHAT)
               SERIAL_MSG("?Can't enable ");
               ubl.echo_name();
@@ -1308,19 +1261,12 @@ void EEPROM::post_process() {
     }
 
     #if ENABLED(EEPROM_CHITCHAT) && DISABLED(DISABLE_M503)
-      if (!validating) Print_Settings();
+      if (!flag.validating) Print_Settings();
     #endif
 
-    if (validating) sound.feedback(!eeprom_error);
+    if (flag.validating) sound.feedback(!flag.error);
 
-    return !eeprom_error;
-  }
-
-  bool EEPROM::validate() {
-    validating = true;
-    const bool success = _load();
-    validating = false;
-    return success;
+    return !flag.error;
   }
 
   bool EEPROM::load() {
@@ -1333,6 +1279,13 @@ void EEPROM::post_process() {
     return false;
   }
 
+  bool EEPROM::validate() {
+    flag.validating = true;
+    const bool success = _load();
+    flag.validating = false;
+    return success;
+  }
+
   #if ENABLED(AUTO_BED_LEVELING_UBL)
 
     #if ENABLED(EEPROM_CHITCHAT)
@@ -1341,9 +1294,16 @@ void EEPROM::post_process() {
         SERIAL_VAL(s);
         SERIAL_EM(" mesh slots available.");
       }
+    #else
+      void ubl_invalid_slot(const int) { }
     #endif
 
     const uint16_t EEPROM::meshes_end = memorystore.capacity() - 129;
+
+    uint16_t EEPROM::meshes_start_index() {
+      return (datasize() + EEPROM_OFFSET + 32) & 0xFFF8;  // Pad the end of configuration data so it can float up
+                                                          // or down a little bit without disrupting the mesh data
+    }
 
     uint16_t EEPROM::calc_num_meshes() {
       return (meshes_end - meshes_start_index()) / sizeof(ubl.z_values);
@@ -1357,12 +1317,10 @@ void EEPROM::post_process() {
 
       const int16_t a = calc_num_meshes();
       if (!WITHIN(slot, 0, a - 1)) {
-        #if ENABLED(EEPROM_CHITCHAT)
-          ubl_invalid_slot(a);
-          SERIAL_MV("E2END=", (int)(memorystore.capacity() - 1));
-          SERIAL_MV(" meshes_end=", (int)meshes_end);
-          SERIAL_EMV(" slot=", slot);
-        #endif
+        ubl_invalid_slot(a);
+        DEBUG_MV("E2END=", (int)(memorystore.capacity() - 1));
+        DEBUG_MV(" meshes_end=", (int)meshes_end);
+        DEBUG_EMV(" slot=", slot);
         return;
       }
 
@@ -1371,13 +1329,8 @@ void EEPROM::post_process() {
 
       const bool status = memorystore.write_data(pos, (uint8_t *)&ubl.z_values, sizeof(ubl.z_values), &crc);
 
-      if (status)
-        SERIAL_MSG("?Unable to save mesh data.\n");
-
-      #if ENABLED(EEPROM_CHITCHAT)
-        else
-          SERIAL_EMV("Mesh saved in slot ", slot);
-      #endif
+      if (status) SERIAL_MSG("?Unable to save mesh data.\n");
+      else        DEBUG_EMV("Mesh saved in slot ", slot);
 
     }
 
@@ -1386,9 +1339,7 @@ void EEPROM::post_process() {
       const int16_t a = calc_num_meshes();
 
       if (!WITHIN(slot, 0, a - 1)) {
-        #if ENABLED(EEPROM_CHITCHAT)
-          ubl_invalid_slot(a);
-        #endif
+        ubl_invalid_slot(a);
         return;
       }
 
@@ -1398,13 +1349,8 @@ void EEPROM::post_process() {
 
       const bool status = memorystore.read_data(pos, dest, sizeof(ubl.z_values), &crc);
 
-      if (status)
-        SERIAL_MSG("?Unable to load mesh data.\n");
-
-      #if ENABLED(EEPROM_CHITCHAT)
-        else
-          SERIAL_EMV("Mesh loaded from slot ", slot);
-      #endif
+      if (status) SERIAL_MSG("?Unable to load mesh data.\n");
+      else        DEBUG_EMV("Mesh loaded from slot ", slot);
 
     }
 
@@ -1412,7 +1358,9 @@ void EEPROM::post_process() {
 
 #else // !HAS_EEPROM
 
-  bool EEPROM::store() { SERIAL_LM(ER, "EEPROM disabled"); return false; }
+  bool eeprom_disabled() { SERIAL_LM(ER, "EEPROM disabled"); return false; }
+  bool EEPROM::store() { return eeprom_disabled(); }
+  void EEPROM::clear() { (void)eeprom_disabled(); }
 
 #endif // HAS_EEPROM
 
@@ -1425,819 +1373,58 @@ void EEPROM::reset() {
     new_z_fade_height = 0.0f;
   #endif
 
-  #if ENABLED(HOTEND_OFFSET_X) && ENABLED(HOTEND_OFFSET_Y) && ENABLED(HOTEND_OFFSET_Z)
-    constexpr float HEoffset[XYZ][4] = {
-      HOTEND_OFFSET_X,
-      HOTEND_OFFSET_Y,
-      HOTEND_OFFSET_Z
-    };
-  #else
-    constexpr float HEoffset[XYZ][HOTENDS] = { 0.0f };
-  #endif
-
-  static_assert(
-    HEoffset[X_AXIS][0] == 0 && HEoffset[Y_AXIS][0] == 0 && HEoffset[Z_AXIS][0] == 0,
-    "Offsets for the first hotend must be 0.0."
-  );
-  LOOP_XYZ(i) {
-    LOOP_HOTEND() tools.hotend_offset[i][h] = HEoffset[i][h];
-  }
-
-  #if MB(ALLIGATOR_R2) || MB(ALLIGATOR_R3)
-    constexpr uint16_t tmp1[] = { X_CURRENT, Y_CURRENT, Z_CURRENT, E0_CURRENT, E1_CURRENT, E2_CURRENT, E3_CURRENT };
-    for (uint8_t i = 0; i < 3 + DRIVER_EXTRUDERS; i++)
-      externaldac.motor_current[i] = tmp1[ALIM(i, tmp1)];
-  #endif
-
-  // Call Mechanic Factory parameters
-  mechanics.factory_parameters();
+  // Call Printer Factory parameters
+  printer.factory_parameters();
 
   // Call Stepper Factory parameters
   stepper.factory_parameters();
 
+  // Call Tools Factory parameters
+  toolManager.factory_parameters();
+
+  // Call Temperature Factory parameters
+  tempManager.factory_parameters();
+
+  // Call Fans Factory parameters
+  fanManager.factory_parameters();
+
+  // Call Mechanic Factory parameters
+  mechanics.factory_parameters();
+
+  // Call Planner Factory parameters
+  planner.factory_parameters();
+
   // Call Endstop Factory parameters
   endstops.factory_parameters();
 
-  // Reset Printer Flag
-  printer.reset_flag();
+  // Call Nozzle Factory parameters
+  nozzle.factory_parameters();
 
-  // Reset sound mode
-  sound.mode = SOUND_MODE_ON;
-
-  #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
-    bedlevel.z_fade_height = 0.0f;
-  #endif
+  // Call Sound Factory parameters
+  sound.factory_parameters();
 
   #if HAS_LEVELING
-    bedlevel.reset();
+    bedlevel.factory_parameters();
+  #endif
+
+  #if ENABLED(MESH_BED_LEVELING)
+    mbl.factory_parameters();
   #endif
 
   #if HAS_BED_PROBE
-    // Call Probe Factory parameters
     probe.factory_parameters();
   #endif
 
-  #if HAS_LCD_MENU
-    #if HOTENDS > 0
-      lcdui.preheat_hotend_temp[0] = PREHEAT_1_TEMP_HOTEND;
-      lcdui.preheat_hotend_temp[1] = PREHEAT_2_TEMP_HOTEND;
-      lcdui.preheat_hotend_temp[2] = PREHEAT_3_TEMP_HOTEND;
-    #endif
-    #if BEDS > 0
-      lcdui.preheat_bed_temp[0] = PREHEAT_1_TEMP_BED;
-      lcdui.preheat_bed_temp[1] = PREHEAT_2_TEMP_BED;
-      lcdui.preheat_bed_temp[2] = PREHEAT_3_TEMP_BED;
-    #endif
-    #if CHAMBERS > 0
-      lcdui.preheat_chamber_temp[0] = PREHEAT_1_TEMP_CHAMBER;
-      lcdui.preheat_chamber_temp[1] = PREHEAT_2_TEMP_CHAMBER;
-      lcdui.preheat_chamber_temp[2] = PREHEAT_3_TEMP_CHAMBER;
-    #endif
-    #if FAN_COUNT > 0
-      lcdui.preheat_fan_speed[0] = PREHEAT_1_FAN_SPEED;
-      lcdui.preheat_fan_speed[1] = PREHEAT_2_FAN_SPEED;
-      lcdui.preheat_fan_speed[2] = PREHEAT_3_FAN_SPEED;
-    #endif
-  #endif
-
-  #if HAS_LCD_CONTRAST
-    lcdui.contrast = DEFAULT_LCD_CONTRAST;
+  #if HAS_LCD
+    lcdui.factory_parameters();
   #endif
 
   #if HAS_SD_RESTART
-    restart.enable(true);
+    restart.factory_parameters();
   #endif
 
-  #if HAS_SERVOS
-
-    #if HAS_DONDOLO
-      constexpr int16_t angles[] = { DONDOLO_SERVOPOS_E0, DONDOLO_SERVOPOS_E1 };
-      servo[DONDOLO_SERVO_INDEX].angle[0] = angles[0];
-      servo[DONDOLO_SERVO_INDEX].angle[0] = angles[1];
-    #endif
-
-    #if HAS_Z_SERVO_PROBE
-      constexpr uint8_t z_probe_angles[2] = Z_SERVO_ANGLES;
-      servo[Z_PROBE_SERVO_NR].angle[0] = z_probe_angles[0];
-      servo[Z_PROBE_SERVO_NR].angle[1] = z_probe_angles[1];
-    #endif
-
-  #endif
-  
-  #if ENABLED(PID_ADD_EXTRUSION_RATE)
-    tools.lpq_len = 20; // default last-position-queue size
-  #endif
-
-  // Heaters
-  #if HEATER_COUNT > 0
-
-    Heater        *heat;
-    heater_data_t *data;
-    pid_data_t    *pid;
-    sensor_data_t *sens;
-
-    #if HOTENDS > 0
-
-      static const float  HEKp[]  PROGMEM = HOTEND_Kp,
-                          HEKi[]  PROGMEM = HOTEND_Ki,
-                          HEKd[]  PROGMEM = HOTEND_Kd,
-                          HEKc[]  PROGMEM = HOTEND_Kc;
-
-      LOOP_HOTEND() {
-        pid = &hotends[h].pid;
-        pid->Kp  = pgm_read_float(&HEKp[ALIM(h, HEKp)]);
-        pid->Ki  = pgm_read_float(&HEKi[ALIM(h, HEKi)]);
-        pid->Kd  = pgm_read_float(&HEKd[ALIM(h, HEKd)]);
-        pid->Kc  = pgm_read_float(&HEKc[ALIM(h, HEKc)]);
-      }
-
-      #if HAS_HEATER_HE0
-        // HOTEND 0
-        heat  = &hotends[0];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_HE0_PIN;
-        data->ID              = 0;
-        data->mintemp         = HOTEND_0_MINTEMP;
-        data->maxtemp         = HOTEND_0_MAXTEMP;
-        data->freq            = HOTEND_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = PID_DRIVE_MIN;
-        pid->DriveMax         = PID_DRIVE_MAX;
-        pid->Max              = PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_HE0_PIN;
-        sens->type            = TEMP_SENSOR_HE0;
-        sens->r25             = HOT0_R25;
-        sens->beta            = HOT0_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMP);
-        heat->setHWinvert(INVERTED_HEATER_PINS);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_HOTENDS);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_HE0
-
-      #if HAS_HEATER_HE1
-        // HOTEND 1
-        heat  = &hotends[1];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_HE1_PIN;
-        data->ID              = 1;
-        data->mintemp         = HOTEND_1_MINTEMP;
-        data->maxtemp         = HOTEND_1_MAXTEMP;
-        data->freq            = HOTEND_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = PID_DRIVE_MIN;
-        pid->DriveMax         = PID_DRIVE_MAX;
-        pid->Max              = PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_HE1_PIN;
-        sens->type            = TEMP_SENSOR_HE1;
-        sens->r25             = HOT1_R25;
-        sens->beta            = HOT1_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMP);
-        heat->setHWinvert(INVERTED_HEATER_PINS);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_HOTENDS);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_HE1
-
-      #if HAS_HEATER_HE2
-        // HOTEND 2
-        heat  = &hotends[2];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_HE2_PIN;
-        data->ID              = 2;
-        data->mintemp         = HOTEND_2_MINTEMP;
-        data->maxtemp         = HOTEND_2_MAXTEMP;
-        data->freq            = HOTEND_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = PID_DRIVE_MIN;
-        pid->DriveMax         = PID_DRIVE_MAX;
-        pid->Max              = PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_HE2_PIN;
-        sens->type            = TEMP_SENSOR_HE2;
-        sens->r25             = HOT2_R25;
-        sens->beta            = HOT2_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMP);
-        heat->setHWinvert(INVERTED_HEATER_PINS);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_HOTENDS);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_HE2
-
-      #if HAS_HEATER_HE3
-        // HOTEND 3
-        heat  = &hotends[3];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_HE3_PIN;
-        data->ID              = 3;
-        data->mintemp         = HOTEND_3_MINTEMP;
-        data->maxtemp         = HOTEND_3_MAXTEMP;
-        data->freq            = HOTEND_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = PID_DRIVE_MIN;
-        pid->DriveMax         = PID_DRIVE_MAX;
-        pid->Max              = PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_HE3_PIN;
-        sens->type            = TEMP_SENSOR_HE3;
-        sens->r25             = HOT3_R25;
-        sens->beta            = HOT3_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMP);
-        heat->setHWinvert(INVERTED_HEATER_PINS);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_HOTENDS);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_HE3
-
-      #if HAS_HEATER_HE4
-        // HOTEND 4
-        heat  = &hotends[4];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_HE4_PIN;
-        data->ID              = 4;
-        data->mintemp         = HOTEND_4_MINTEMP;
-        data->maxtemp         = HOTEND_4_MAXTEMP;
-        data->freq            = HOTEND_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = PID_DRIVE_MIN;
-        pid->DriveMax         = PID_DRIVE_MAX;
-        pid->Max              = PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_4_PIN;
-        sens->type            = TEMP_SENSOR_HE4;
-        sens->r25             = HOT4_R25;
-        sens->beta            = HOT4_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMP);
-        heat->setHWinvert(INVERTED_HEATER_PINS);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_HOTENDS);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_HE4
-
-      #if HAS_HEATER_HE5
-        // HOTEND 5
-        heat  = &hotends[5];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_HE5_PIN;
-        data->ID              = 5;
-        data->mintemp         = HOTEND_5_MINTEMP;
-        data->maxtemp         = HOTEND_5_MAXTEMP;
-        data->freq            = HOTEND_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = PID_DRIVE_MIN;
-        pid->DriveMax         = PID_DRIVE_MAX;
-        pid->Max              = PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_5_PIN;
-        sens->type            = TEMP_SENSOR_HE5;
-        sens->r25             = HOT5_R25;
-        sens->beta            = HOT5_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMP);
-        heat->setHWinvert(INVERTED_HEATER_PINS);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_HOTENDS);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_HE3
-
-    #endif // HOTENDS > 0
-
-    #if BEDS > 0
-
-      static const float  BEDKp[] PROGMEM = BED_Kp,
-                          BEDKi[] PROGMEM = BED_Ki,
-                          BEDKd[] PROGMEM = BED_Kd;
-
-      LOOP_BED() {
-        pid = &beds[h].pid;
-        pid->Kp  = pgm_read_float(&BEDKp[ALIM(h, BEDKp)]);
-        pid->Ki  = pgm_read_float(&BEDKi[ALIM(h, BEDKi)]);
-        pid->Kd  = pgm_read_float(&BEDKd[ALIM(h, BEDKd)]);
-      }
-
-      #if HAS_HEATER_BED0
-        // BED 0
-        heat  = &beds[0];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_BED0_PIN;
-        data->ID              = 0;
-        data->mintemp         = BED_MINTEMP;
-        data->maxtemp         = BED_MAXTEMP;
-        data->freq            = BED_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = BED_PID_DRIVE_MIN;
-        pid->DriveMax         = BED_PID_DRIVE_MAX;
-        pid->Max              = BED_PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_BED0_PIN;
-        sens->type            = TEMP_SENSOR_BED0;
-        sens->r25             = BED0_R25;
-        sens->beta            = BED0_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMPBED);
-        heat->setHWinvert(INVERTED_BED_PIN);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_BED);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_BED0
-
-      #if HAS_HEATER_BED1
-        // BED 1
-        heat  = &beds[1];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_BED1_PIN;
-        data->ID              = 1;
-        data->mintemp         = BED_MINTEMP;
-        data->maxtemp         = BED_MAXTEMP;
-        data->freq            = BED_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = BED_PID_DRIVE_MIN;
-        pid->DriveMax         = BED_PID_DRIVE_MAX;
-        pid->Max              = BED_PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_BED1_PIN;
-        sens->type            = TEMP_SENSOR_BED1;
-        sens->r25             = BED1_R25;
-        sens->beta            = BED1_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMPBED);
-        heat->setHWinvert(INVERTED_BED_PIN);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_BED);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_BED1
-
-      #if HAS_HEATER_BED2
-        // BED 2
-        heat  = &beds[2];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_BED2_PIN;
-        data->ID              = 2;
-        data->mintemp         = BED_MINTEMP;
-        data->maxtemp         = BED_MAXTEMP;
-        data->freq            = BED_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = BED_PID_DRIVE_MIN;
-        pid->DriveMax         = BED_PID_DRIVE_MAX;
-        pid->Max              = BED_PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_BED2_PIN;
-        sens->type            = TEMP_SENSOR_BED2;
-        sens->r25             = BED2_R25;
-        sens->beta            = BED2_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMPBED);
-        heat->setHWinvert(INVERTED_BED_PIN);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_BED);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_BED2
-
-      #if HAS_HEATER_BED3
-        // BED 3
-        heat  = &beds[3];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_BED3_PIN;
-        data->ID              = 3;
-        data->mintemp         = BED_MINTEMP;
-        data->maxtemp         = BED_MAXTEMP;
-        data->freq            = BED_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = BED_PID_DRIVE_MIN;
-        pid->DriveMax         = BED_PID_DRIVE_MAX;
-        pid->Max              = BED_PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_BED3_PIN;
-        sens->type            = TEMP_SENSOR_BED3;
-        sens->r25             = BED3_R25;
-        sens->beta            = BED3_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMPBED);
-        heat->setHWinvert(INVERTED_BED_PIN);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_BED);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_BED3
-
-    #endif // BEDS > 0
-
-    #if CHAMBERS > 0
-
-      static const float  CHAMBERKp[] PROGMEM = CHAMBER_Kp,
-                          CHAMBERKi[] PROGMEM = CHAMBER_Ki,
-                          CHAMBERKd[] PROGMEM = CHAMBER_Kd;
-
-      LOOP_CHAMBER() {
-        pid = &chambers[h].pid;
-        pid->Kp  = pgm_read_float(&CHAMBERKp[ALIM(h, CHAMBERKp)]);
-        pid->Ki  = pgm_read_float(&CHAMBERKi[ALIM(h, CHAMBERKi)]);
-        pid->Kd  = pgm_read_float(&CHAMBERKd[ALIM(h, CHAMBERKd)]);
-      }
-
-      #if HAS_HEATER_CHAMBER0
-        // CHAMBER 0
-        heat  = &chambers[0];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_CHAMBER0_PIN;
-        data->ID              = 0;
-        data->mintemp         = CHAMBER_MINTEMP;
-        data->maxtemp         = CHAMBER_MAXTEMP;
-        data->freq            = CHAMBER_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = CHAMBER_PID_DRIVE_MIN;
-        pid->DriveMax         = CHAMBER_PID_DRIVE_MAX;
-        pid->Max              = CHAMBER_PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_CHAMBER0_PIN;
-        sens->type            = TEMP_SENSOR_CHAMBER0;
-        sens->r25             = CHAMBER0_R25;
-        sens->beta            = CHAMBER0_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMPCHAMBER);
-        heat->setHWinvert(INVERTED_CHAMBER_PIN);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_CHAMBER);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_CHAMBER0
-
-      #if HAS_HEATER_CHAMBER1
-        // CHAMBER 1
-        heat  = &chambers[0];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_CHAMBER1_PIN;
-        data->ID              = 1;
-        data->mintemp         = CHAMBER_MINTEMP;
-        data->maxtemp         = CHAMBER_MAXTEMP;
-        data->freq            = CHAMBER_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = CHAMBER_PID_DRIVE_MIN;
-        pid->DriveMax         = CHAMBER_PID_DRIVE_MAX;
-        pid->Max              = CHAMBER_PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_CHAMBER1_PIN;
-        sens->type            = TEMP_SENSOR_CHAMBER1;
-        sens->r25             = CHAMBER1_R25;
-        sens->beta            = CHAMBER1_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMPCHAMBER);
-        heat->setHWinvert(INVERTED_CHAMBER_PIN);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_CHAMBER);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_CHAMBER1
-
-      #if HAS_HEATER_CHAMBER2
-        // CHAMBER 2
-        heat  = &chambers[2];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_CHAMBER2_PIN;
-        data->ID              = 2;
-        data->mintemp         = CHAMBER_MINTEMP;
-        data->maxtemp         = CHAMBER_MAXTEMP;
-        data->freq            = CHAMBER_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = CHAMBER_PID_DRIVE_MIN;
-        pid->DriveMax         = CHAMBER_PID_DRIVE_MAX;
-        pid->Max              = CHAMBER_PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_CHAMBER2_PIN;
-        sens->type            = TEMP_SENSOR_CHAMBER2;
-        sens->r25             = CHAMBER2_R25;
-        sens->beta            = CHAMBER2_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMPCHAMBER);
-        heat->setHWinvert(INVERTED_CHAMBER_PIN);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_CHAMBER);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_CHAMBER2
-
-      #if HAS_HEATER_CHAMBER3
-        // CHAMBER 3
-        heat  = &chambers[3];
-        data  = &heat->data;
-        sens  = &heat->sensor;
-        pid   = &heat->pid;
-        data->pin             = HEATER_CHAMBER3_PIN;
-        data->ID              = 3;
-        data->mintemp         = CHAMBER_MINTEMP;
-        data->maxtemp         = CHAMBER_MAXTEMP;
-        data->freq            = CHAMBER_PWM_FREQUENCY;
-        // Pid
-        pid->DriveMin         = CHAMBER_PID_DRIVE_MIN;
-        pid->DriveMax         = CHAMBER_PID_DRIVE_MAX;
-        pid->Max              = CHAMBER_PID_MAX;
-        // Sensor
-        sens->pin             = TEMP_CHAMBER3_PIN;
-        sens->type            = TEMP_SENSOR_CHAMBER3;
-        sens->r25             = CHAMBER3_R25;
-        sens->beta            = CHAMBER3_BETA;
-        sens->pullupR         = THERMISTOR_SERIES_RS;
-        sens->shC             = 0;
-        sens->adcLowOffset    = 0;
-        sens->adcHighOffset   = 0;
-        #if HAS_AD8495 || HAS_AD595
-          sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-          sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-        #endif
-        heat->resetFlag();
-        heat->setUsePid(PIDTEMPCHAMBER);
-        heat->setHWinvert(INVERTED_CHAMBER_PIN);
-        heat->setHWpwm(HARDWARE_PWM);
-        heat->setThermalProtection(THERMAL_PROTECTION_CHAMBER);
-        #if HAS_EEPROM
-          heat->setPidTuned(false);
-        #else
-          heat->setPidTuned(true);
-        #endif
-      #endif // HAS_HEATER_CHAMBER0
-
-    #endif // CHAMBERS > 0
-
-    #if COOLERS > 0
-
-      static const float  COOLERKp PROGMEM = COOLER_Kp,
-                          COOLERKi PROGMEM = COOLER_Ki,
-                          COOLERKd PROGMEM = COOLER_Kd;
-
-      LOOP_COOLER() {
-        pid = &coolers[h].pid;
-        pid->Kp  = pgm_read_float(&COOLERKp);
-        pid->Ki  = pgm_read_float(&COOLERKi);
-        pid->Kd  = pgm_read_float(&COOLERKd);
-      }
-
-      heat  = &coolers[0];
-      data  = &heat->data;
-      sens  = &heat->sensor;
-      pid   = &heat->pid;
-      data->pin             = HEATER_COOLER_PIN;
-      data->ID              = 0;
-      data->mintemp         = COOLER_MINTEMP;
-      data->maxtemp         = COOLER_MAXTEMP;
-      data->freq            = COOLER_PWM_FREQUENCY;
-      // Pid
-      pid->DriveMin         = COOLER_PID_DRIVE_MIN;
-      pid->DriveMax         = COOLER_PID_DRIVE_MAX;
-      pid->Max              = COOLER_PID_MAX;
-      // Sensor
-      sens->pin             = TEMP_COOLER_PIN;
-      sens->type            = TEMP_SENSOR_COOLER;
-      sens->r25             = COOLER_R25;
-      sens->beta            = COOLER_BETA;
-      sens->pullupR         = THERMISTOR_SERIES_RS;
-      sens->shC             = 0;
-      sens->adcLowOffset    = 0;
-      sens->adcHighOffset   = 0;
-      #if HAS_AD8495 || HAS_AD595
-        sens->ad595_offset  = TEMP_SENSOR_AD595_OFFSET;
-        sens->ad595_gain    = TEMP_SENSOR_AD595_GAIN;
-      #endif
-      heat->resetFlag();
-      heat->setUsePid(PIDTEMPCOOLER);
-      heat->setHWinvert(INVERTED_COOLER_PIN);
-      heat->setHWpwm(HARDWARE_PWM);
-      heat->setThermalProtection(THERMAL_PROTECTION_COOLER);
-      #if HAS_EEPROM
-        heat->setPidTuned(false);
-      #else
-        heat->setPidTuned(true);
-      #endif
-
-    #endif // CHAMBERS > 0
-
-  #endif // HEATER_COUNT > 0
-
-  // Fans && Tachometric
-  #if FAN_COUNT > 0
-
-    static const pin_t  fanCh[]   PROGMEM = FANS_CHANNELS;
-    static const int8_t fanAuto[] PROGMEM = AUTO_FAN;
-
-    #if ENABLED(TACHOMETRIC)
-      constexpr pin_t tacho_temp_pin[] = { TACHO0_PIN, TACHO1_PIN, TACHO2_PIN, TACHO3_PIN, TACHO4_PIN, TACHO5_PIN };
-    #endif
-
-    Fan *fan;
-    fan_data_t *fdata;
-
-    LOOP_FAN() {
-      fan   = &fans[f];
-      fdata = &fan->data;
-      fdata->ID                   = f;
-      fdata->pin                  = (int8_t)pgm_read_byte(&fanCh[f]);
-      fdata->min_speed            = FAN_MIN_PWM;
-      fdata->max_speed            = FAN_MAX_PWM;
-      fdata->freq                 = FAN_PWM_FREQUENCY;
-      fdata->trigger_temperature   = HOTEND_AUTO_FAN_TEMPERATURE;
-      fdata->auto_monitor         = 0;
-      fdata->flag.all             = false;
-      fan->set_auto_monitor((int8_t)pgm_read_byte(&fanAuto[f]));
-      fan->setHWinvert(FAN_INVERTED);
-      #if ENABLED(TACHOMETRIC)
-        fan->tacho.pin            = tacho_temp_pin[f];
-      #endif
-      LOOP_HOTEND() {
-        if (TEST(fdata->auto_monitor, h)) {
-          fdata->min_speed        = HOTEND_AUTO_FAN_MIN_SPEED;
-          fdata->max_speed        = HOTEND_AUTO_FAN_SPEED;
-        }
-      }
-      if (TEST(fdata->auto_monitor, 7)) {
-        fdata->min_speed          = CONTROLLERFAN_MIN_SPEED;
-        fdata->max_speed          = CONTROLLERFAN_SPEED;
-      }
-    }
-
+  #if HAS_BLTOUCH
+    bltouch.factory_parameters();
   #endif
 
   #if HAS_FILAMENT_SENSOR
@@ -2248,62 +1435,24 @@ void EEPROM::reset() {
     powerManager.factory_parameters();
   #endif
 
-  #if ENABLED(DHT_SENSOR)
+  #if HAS_DHT
     dhtsensor.factory_parameters();
   #endif
 
   #if ENABLED(FWRETRACT)
-    fwretract.reset();
+    fwretract.factory_parameters();
   #endif
 
   #if ENABLED(HYSTERESIS_FEATURE)
     hysteresis.factory_parameters();
   #endif
 
-  #if ENABLED(VOLUMETRIC_EXTRUSION)
-
-    #if ENABLED(VOLUMETRIC_DEFAULT_ON)
-      printer.setVolumetric(true);
-    #else
-      printer.setVolumetric(false);
-    #endif
-
-    for (uint8_t q = 0; q < COUNT(tools.filament_size); q++)
-      tools.filament_size[q] = DEFAULT_NOMINAL_FILAMENT_DIA;
-
-  #endif
-
-  #if ENABLED(IDLE_OOZING_PREVENT)
-    printer.IDLE_OOZING_enabled = true;
-  #endif
-
-  #if HAS_TRINAMIC
-    tmc.current_init_to_defaults();
-    tmc.microstep_init_to_defaults();
-    #if ENABLED(HYBRID_THRESHOLD)
-      tmc.hybrid_threshold_init_to_defaults();
-    #endif
-  #endif
-
-  reset_stepper_drivers();
-
-  #if ENABLED(LIN_ADVANCE)
-    planner.extruder_advance_K = LIN_ADVANCE_K;
-  #endif
-
-  #if ENABLED(ADVANCED_PAUSE_FEATURE)
-    for (uint8_t e = 0; e < DRIVER_EXTRUDERS; e++) {
-      advancedpause.data[e].unload_length = PAUSE_PARK_UNLOAD_LENGTH;
-      advancedpause.data[e].load_length = PAUSE_PARK_FAST_LOAD_LENGTH;
-    }
-  #endif
-
-  // Reset the watchdog
-  watchdog.reset();
-
   post_process();
 
   SERIAL_LM(ECHO, "Factory Settings Loaded");
+
+  // Reset the watchdog
+  watchdog.reset();
 
 }
 
@@ -2346,33 +1495,51 @@ void EEPROM::reset() {
     mechanics.print_parameters();
 
     /**
+     * Print Number Extruder, Hotend, Bed, Chamber, Fan
+     */
+    printer.print_M353();
+
+    /**
+     * Print Hotends tools assignment
+     */
+    toolManager.print_M563();
+
+    /**
      * Print heaters parameters
      */
-    LOOP_HOTEND() {
-      hotends[h].print_M305();
-      hotends[h].print_M306();
-      hotends[h].print_M301();
-    }
-    LOOP_BED() {
-      beds[h].print_M305();
-      beds[h].print_M306();
-      beds[h].print_M301();
-    }
-    LOOP_CHAMBER() {
-      chambers[h].print_M305();
-      chambers[h].print_M306();
-      chambers[h].print_M301();
-    }
-    LOOP_COOLER() {
-      coolers[h].print_M305();
-      coolers[h].print_M306();
-      coolers[h].print_M301();
-    }
+    #if HAS_HOTENDS
+      LOOP_HOTEND() {
+        hotends[h]->print_M305();
+        hotends[h]->print_M306();
+        hotends[h]->print_M301();
+      }
+    #endif
+    #if HAS_BEDS
+      LOOP_BED() {
+        beds[h]->print_M305();
+        beds[h]->print_M306();
+        beds[h]->print_M301();
+      }
+    #endif
+    #if HAS_CHAMBERS
+      LOOP_CHAMBER() {
+        chambers[h]->print_M305();
+        chambers[h]->print_M306();
+        chambers[h]->print_M301();
+      }
+    #endif
+    #if HAS_COOLERS
+      LOOP_COOLER() {
+        coolers[h]->print_M305();
+        coolers[h]->print_M306();
+        coolers[h]->print_M301();
+      }
+    #endif
 
     /**
      * Print dht parameters
      */
-    #if ENABLED(DHT_SENSOR)
+    #if HAS_DHT
       dhtsensor.print_M305();
     #endif
 
@@ -2380,23 +1547,38 @@ void EEPROM::reset() {
      * Print AD595 parameters
      */
     #if HAS_AD8495 || HAS_AD595
-      LOOP_HOTEND() hotends[h].print_M595();
+      LOOP_HOTEND() hotends[h]->print_M595();
+    #endif
+
+    /**
+     * Print Tools data
+     */
+    #if ENABLED(TOOL_CHANGE_FIL_SWAP)
+      toolManager.print_M217();
+    #endif
+
+    /**
+     * Print Nozzle data
+     */
+    #if ENABLED(NOZZLE_PARK_FEATURE) || MAX_EXTRUDER > 1
+      nozzle.print_M217();
     #endif
 
     /**
      * Print Hotends offsets parameters
      */
-    #if HOTENDS > 1
-      LOOP_HOTEND() tools.print_M218(h);
+    #if MAX_HOTEND > 1
+      nozzle.print_M218();
     #endif
 
     /**
      * Print Fans parameters
      */
-    #if FAN_COUNT > 0
-      LOOP_FAN() fans[f].print_M106();
-    #endif
+    fanManager.print_parameters();
 
+    /**
+     * Print Endstops parameters
+     */
     endstops.print_parameters();
 
     #if HAS_LCD_MENU
@@ -2406,7 +1588,7 @@ void EEPROM::reset() {
       #if ENABLED(TEMPERATURE_UNITS_SUPPORT)
         #define TEMP_UNIT(N) parser.to_temp_units(N)
         SERIAL_SM(CFG, "  M149 ");
-        SERIAL_CHR(parser.temp_units_code);
+        SERIAL_CHR(parser.temp_units_code());
         SERIAL_MSG(" ; Units in ");
         SERIAL_STR(parser.temp_units_name());
       #else
@@ -2427,7 +1609,7 @@ void EEPROM::reset() {
     #endif
 
     #if HAS_SERVOS
-      LOOP_SERVO() servo[s].print_parameters();
+      LOOP_SERVO() servo[s].print_M281();
     #endif
 
     /**
@@ -2456,7 +1638,7 @@ void EEPROM::reset() {
             for (uint8_t px = 0; px < GRID_MAX_POINTS_X; px++) {
               SERIAL_SMV(CFG, "  G29 S3 I", (int)px);
               SERIAL_MV(" J", (int)iy);
-              SERIAL_EMV(" Z", LINEAR_UNIT(mbl.z_values[px][iy]), 3);
+              SERIAL_EMV(" Z", LINEAR_UNIT(mbl.data.z_values[px][iy]), 3);
             }
           }
         }
@@ -2491,17 +1673,17 @@ void EEPROM::reset() {
       SERIAL_LM(CFG, "Endstop adjustment");
       SERIAL_SM(CFG, "  M666");
       #if ENABLED(X_TWO_ENDSTOPS)
-        SERIAL_MV(" X", LINEAR_UNIT(endstops.x2_endstop_adj));
+        SERIAL_MV(" X", LINEAR_UNIT(endstops.data.x2_endstop_adj));
       #endif
       #if ENABLED(Y_TWO_ENDSTOPS)
-        SERIAL_MV(" Y", LINEAR_UNIT(endstops.y2_endstop_adj));
+        SERIAL_MV(" Y", LINEAR_UNIT(endstops.data.y2_endstop_adj));
       #endif
       #if ENABLED(Z_THREE_ENDSTOPS)
         SERIAL_EOL();
-        SERIAL_LMV(CFG, "  M666 S2 Z", LINEAR_UNIT(endstops.z2_endstop_adj));
-        SERIAL_SMV(CFG, "  M666 S3 Z", LINEAR_UNIT(endstops.z3_endstop_adj));
+        SERIAL_LMV(CFG, "  M666 S2 Z", LINEAR_UNIT(endstops.data.z2_endstop_adj));
+        SERIAL_SMV(CFG, "  M666 S3 Z", LINEAR_UNIT(endstops.data.z3_endstop_adj));
       #elif ENABLED(Z_TWO_ENDSTOPS)
-        SERIAL_MV(" Z", LINEAR_UNIT(endstops.z2_endstop_adj));
+        SERIAL_MV(" Z", LINEAR_UNIT(endstops.data.z2_endstop_adj));
       #endif
       SERIAL_EOL();
 
@@ -2511,36 +1693,28 @@ void EEPROM::reset() {
      * Auto Bed Leveling
      */
     #if HAS_BED_PROBE
-      SERIAL_SM(CFG, "Probe Offset X Y Z, speed Fast and Slow [mm/min], Repetitions");
-      SERIAL_UNITS(true);
-      SERIAL_SMV(CFG, "  M851 X", LINEAR_UNIT(probe.data.offset[X_AXIS]), 3);
-      SERIAL_MV(" Y", LINEAR_UNIT(probe.data.offset[Y_AXIS]), 3);
-      SERIAL_MV(" Z", LINEAR_UNIT(probe.data.offset[Z_AXIS]), 3);
-      SERIAL_MV(" F", probe.data.speed_fast);
-      SERIAL_MV(" S", probe.data.speed_slow);
-      SERIAL_MV(" R", probe.data.repetitions);
-      SERIAL_EOL();
+      probe.print_M851();
     #endif
 
     #if HAS_LCD_MENU
       SERIAL_LM(CFG, "Material heatup parameters");
       for (uint8_t i = 0; i < COUNT(lcdui.preheat_hotend_temp); i++) {
         SERIAL_SMV(CFG, "  M145 S", i);
-        #if HOTENDS > 0
+        #if HAS_HOTENDS
           SERIAL_MV(" H", TEMP_UNIT(lcdui.preheat_hotend_temp[i]));
         #endif
-        #if BEDS > 0
+        #if HAS_BEDS
           SERIAL_MV(" B", TEMP_UNIT(lcdui.preheat_bed_temp[i]));
         #endif
         #if CHAMBER > 0
           SERIAL_MV(" C", TEMP_UNIT(lcdui.preheat_chamber_temp[i]));
         #endif
-        #if FAN_COUNT > 0
+        #if HAS_FAN
           SERIAL_MV(" F", lcdui.preheat_fan_speed[i]);
         #endif
         SERIAL_EOL();
       }
-    #endif // ULTIPANEL
+    #endif // HAS_LCD_MENU
 
     #if ENABLED(FWRETRACT)
       SERIAL_LM(CFG, "Retract: S<length> F<units/m> W<swap lenght> Z<lift>");
@@ -2559,51 +1733,23 @@ void EEPROM::reset() {
       SERIAL_LMV(CFG, "  M209 S", fwretract.autoretract_enabled ? 1 : 0);
     #endif // FWRETRACT
 
+    #if HAS_FILAMENT_SENSOR
+      filamentrunout.print_M412();
+    #endif
+
     #if ENABLED(VOLUMETRIC_EXTRUSION)
-
-      /**
-       * Volumetric extrusion M200
-       */
-      SERIAL_SM(CFG, "Filament settings");
-      if (printer.isVolumetric())
-        SERIAL_EOL();
-      else
-        SERIAL_EM(" Disabled");
-
-      #if EXTRUDERS == 1
-        SERIAL_LMV(CFG, "  M200 T0 D", tools.filament_size[0], 3);
-      #elif EXTRUDERS > 1
-        LOOP_EXTRUDER() {
-          SERIAL_SMV(CFG, "  M200 T", (int)e);
-          SERIAL_EMV(" D", tools.filament_size[e], 3);
-        }
-      #endif
-
+      toolManager.print_M200();
     #endif // ENABLED(VOLUMETRIC_EXTRUSION)
+
+    /**
+     * Driver Pins M352
+     */
+    stepper.print_M352();
 
     /**
      * Stepper driver control
      */
-    SERIAL_LM(CFG, "Stepper Direction");
-    SERIAL_SMV(CFG, "  M569 X", (int)stepper.isStepDir(X_AXIS));
-    SERIAL_MV(" Y", (int)stepper.isStepDir(Y_AXIS));
-    SERIAL_MV(" Z", (int)stepper.isStepDir(Z_AXIS));
-    #if DRIVER_EXTRUDERS == 1
-      SERIAL_MV(" T0 E", (int)stepper.isStepDir(E_AXIS));
-    #endif
-    SERIAL_EOL();
-    #if DRIVER_EXTRUDERS > 1
-      for (int8_t i = 0; i < DRIVER_EXTRUDERS; i++) {
-        SERIAL_SMV(CFG, "  M569 T", i);
-        SERIAL_EMV(" E" , (int)stepper.isStepDir((AxisEnum)(E_AXIS + i)));
-      }
-    #endif
-    SERIAL_LM(CFG, "Stepper driver control");
-    SERIAL_SMV(CFG, "  M569 Q", stepper.quad_stepping);
-    SERIAL_MV(" D", stepper.direction_delay);
-    SERIAL_MV(" P", stepper.minimum_pulse);
-    SERIAL_MV(" R", stepper.maximum_rate);
-    SERIAL_EOL();
+    stepper.print_M569();
 
     /**
      * Alligator current drivers M906
@@ -2612,39 +1758,34 @@ void EEPROM::reset() {
 
       SERIAL_LM(CFG, "Stepper driver current (mA)");
       SERIAL_SM(CFG, "  M906");
-      SERIAL_MV(" X", externaldac.motor_current[X_AXIS]);
-      SERIAL_MV(" Y", externaldac.motor_current[Y_AXIS]);
-      SERIAL_MV(" Z", externaldac.motor_current[Z_AXIS]);
-      #if EXTRUDERS == 1
-        SERIAL_MV(" T0 E", externaldac.motor_current[E_AXIS]);
-      #endif
+      SERIAL_MV(" X", driver.x->data.ma);
+      SERIAL_MV(" Y", driver.y->data.ma);
+      SERIAL_MV(" Z", driver.z->data.ma);
       SERIAL_EOL();
-      #if DRIVER_EXTRUDERS > 1
-        for (uint8_t i = 0; i < DRIVER_EXTRUDERS; i++) {
-          SERIAL_SM(CFG, "  M906");
-          SERIAL_MV(" T", int(i));
-          SERIAL_MV(" E", externaldac.motor_current[E_AXIS + i]);
-          SERIAL_EOL();
-        }
-      #endif
+      LOOP_DRV_EXT() {
+        SERIAL_SM(CFG, "  M906");
+        SERIAL_MV(" T", int(d));
+        SERIAL_MV(" E", driver.e[extruders[d]->get_driver()]->data.ma);
+        SERIAL_EOL();
+      }
 
     #endif // ALLIGATOR_R2 || ALLIGATOR_R3
 
     #if HAS_TRINAMIC
 
-      // TMC2130 or TMC2208 stepper driver current
-      tmc.print_M906();
-
-      // TMC2130 or TMC2208 stepper driver microsteps
+      // Trinamic stepper driver microsteps
       tmc.print_M350();
 
-      // TMC2130 or TMC2208 Hybrid Threshold
+      // Trinamic stepper driver current
+      tmc.print_M906();
+
+      // Trinamic Hybrid Threshold
       tmc.print_M913();
 
       // TMC2130 StallGuard threshold
       tmc.print_M914();
 
-      // TMC stepping mode
+      // Trinamic stepping mode
       tmc.print_M940();
 
     #endif // HAS_TRINAMIC
@@ -2653,8 +1794,7 @@ void EEPROM::reset() {
      * Linear Advance
      */
     #if ENABLED(LIN_ADVANCE)
-      SERIAL_LM(CFG, "Linear Advance");
-      SERIAL_LMV(CFG, "  M900 K", planner.extruder_advance_K);
+      toolManager.print_M900();
     #endif
 
     /**
@@ -2669,16 +1809,11 @@ void EEPROM::reset() {
      */
     #if ENABLED(ADVANCED_PAUSE_FEATURE)
       SERIAL_LM(CFG, "Filament load/unload lengths");
-      #if EXTRUDERS == 1
-        SERIAL_SMV(CFG, "  M603 L", LINEAR_UNIT(advancedpause.data[0].load_length), 2);
-        SERIAL_EMV(" U", LINEAR_UNIT(advancedpause.data[0].unload_length), 2);
-      #else // EXTRUDERS != 1
-        LOOP_EXTRUDER() {
-          SERIAL_SMV(CFG, "  M603 T", (int)e);
-          SERIAL_MV(" L", LINEAR_UNIT(advancedpause.data[e].load_length), 2);
-          SERIAL_EMV(" U", LINEAR_UNIT(advancedpause.data[e].unload_length), 2);
-        }
-      #endif // EXTRUDERS != 1
+      LOOP_EXTRUDER() {
+        SERIAL_SMV(CFG, "  M603 T", (int)e);
+        SERIAL_MV(" L", LINEAR_UNIT(extruders[e]->data.load_length), 2);
+        SERIAL_EMV(" U", LINEAR_UNIT(extruders[e]->data.unload_length), 2);
+      }
     #endif // ADVANCED_PAUSE_FEATURE
 
     print_job_counter.showStats();

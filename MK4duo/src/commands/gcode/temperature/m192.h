@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2013 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,24 +23,24 @@
 /**
  * mcode
  *
- * Copyright (C) 2017 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2017 Alberto Cotronei @MagoKimbra
  */
 
-#if COOLERS > 0
+#if HAS_COOLERS
 
 #define CODE_M192
 
 /**
  * M192: Sxxx Wait for cooler current temp to reach target temp.
  */
-inline void gcode_M192(void) {
+inline void gcode_M192() {
   if (printer.debugDryrun() || printer.debugSimulation()) return;
 
   LCD_MESSAGEPGM(MSG_COOLER_COOLING);
   if (parser.seen('S'))
-    coolers[0].setTarget(parser.value_celsius());
+    coolers[0]->set_target_temp(parser.value_celsius());
   else return;
-  coolers[0].wait_for_target(false);
+  coolers[0]->wait_for_target(false);
 
 }
 

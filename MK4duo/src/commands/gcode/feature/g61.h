@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_G61
@@ -34,18 +34,18 @@
  *        F<speed> - Set Feedrate.
  *        S<slot> specifies memory slot # (0-based) to save into (default 0).
  */
-inline void gcode_G61(void) {
+inline void gcode_G61() {
 
   if (!printer.isPosSaved()) return;
 
   const uint8_t slot = parser.byteval('S');
 
   if (slot >= NUM_POSITON_SLOTS) {
-    SERIAL_LMV(ER, MSG_INVALID_POS_SLOT, NUM_POSITON_SLOTS);
+    SERIAL_LMV(ER, MSG_HOST_INVALID_POS_SLOT, NUM_POSITON_SLOTS);
     return;
   }
 
-  SERIAL_MSG(MSG_RESTORING_POS);
+  SERIAL_MSG(MSG_HOST_RESTORING_POS);
   SERIAL_MV(" S", int(slot));
   SERIAL_MSG("->");
 

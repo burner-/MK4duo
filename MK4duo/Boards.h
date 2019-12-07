@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -141,3 +141,8 @@
  * SAMD21J18
  */
 #define BOARD_MINITRONICS_V2  2706    // Minitronics v2.0
+
+/**
+ * STM32 ARM Cortex-M4F
+ */
+#define BOARD_RUMBA32         4203    // RUMBA32 STM32F446 based controller

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mmu2.cpp
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "../../../MK4duo.h"
@@ -36,8 +36,8 @@ MMU2 mmu2;
 
 #define MMU_TODELAY 100
 #define MMU_TIMEOUT 10
-#define MMU_CMD_TIMEOUT 60000U 	  // 1 min timeout for mmu commands (except P0)
-#define MMU_P0_TIMEOUT   3000U    // timeout for P0 command: 3 seconds
+#define MMU_CMD_TIMEOUT 60000UL // 5 min timeout for mmu commands (except P0)
+#define MMU_P0_TIMEOUT   3000UL // Timeout for P0 command: 3seconds
 
 #define MMU_CMD_NONE 0
 #define MMU_CMD_T0   0x10
@@ -73,25 +73,13 @@ MMU2 mmu2;
 #define MMU2_NO_TOOL  99
 #define MMU_BAUD      115200
 
-#if MMU2_SERIAL > 0
-  #if MMU2_SERIAL == 1
-    #define mmuSerial Serial1
-  #elif MMU2_SERIAL == 2
-    #define mmuSerial Serial2
-  #elif MMU2_SERIAL == 3
-    #define mmuSerial Serial3
-  #endif
-#else
-  #define mmuSerial Serial1
-#endif
-
 bool MMU2::enabled, MMU2::ready, MMU2::mmu_print_saved;
 uint8_t MMU2::cmd, MMU2::cmd_arg, MMU2::last_cmd, MMU2::extruder;
 int8_t MMU2::state = 0;
 volatile int8_t MMU2::finda = 1;
 volatile bool MMU2::finda_runout_valid;
 int16_t MMU2::version = -1, MMU2::buildnr = -1;
-millis_s MMU2::last_request_ms, MMU2::next_P0_request_ms;
+short_timer_t MMU2::last_request_timer, MMU2::next_P0_request_timer;
 char MMU2::rx_buffer[16], MMU2::tx_buffer[16];
 
 #if HAS_LCD_MENU
@@ -122,7 +110,7 @@ void MMU2::init() {
   mmuSerial.begin(MMU_BAUD);
   extruder = MMU2_NO_TOOL;
 
-  printer.safe_delay(10);
+  HAL::delayMilliseconds(10);
   reset();
   rx_buffer[0] = '\0';
   state = -1;
@@ -135,7 +123,7 @@ void MMU2::reset() {
 
   #if PIN_EXISTS(MMU2_RST)
     WRITE(MMU2_RST_PIN, LOW);
-    printer.safe_delay(20);
+    HAL::delayMilliseconds(20);
     WRITE(MMU2_RST_PIN, HIGH);
   #else
     tx_str_P(PSTR("X0\n")); // Send soft reset
@@ -322,7 +310,7 @@ void MMU2::mmu_loop() {
         last_cmd = cmd;
         cmd = MMU_CMD_NONE;
       }
-      else if (expired(&next_P0_request_ms, 300U)) {
+      else if (next_P0_request_timer.expired(300)) {
         // read FINDA
         tx_str_P(PSTR("P0\n"));
         state = 2; // wait for response
@@ -351,7 +339,7 @@ void MMU2::mmu_loop() {
 
         if (!finda && finda_runout_valid) filament_runout();
       }
-      else if (expired(&last_request_ms, MMU_P0_TIMEOUT)) // Resend request after timeout (30s)
+      else if (last_request_timer.expired(MMU_P0_TIMEOUT)) // Resend request after timeout (30s)
         state = 1;
 
       break;
@@ -366,7 +354,7 @@ void MMU2::mmu_loop() {
         state = 1;
         last_cmd = MMU_CMD_NONE;
       }
-      else if (expired(&last_request_ms, MMU_CMD_TIMEOUT)) {
+      else if (last_request_timer.expired(MMU_CMD_TIMEOUT)) {
         // resend request after timeout
         if (last_cmd) {
           #if ENABLED(MMU2_DEBUG)
@@ -388,7 +376,7 @@ void MMU2::mmu_loop() {
 bool MMU2::rx_start() {
   // check for start message
   if (rx_str_P(PSTR("start\n"))) {
-    next_P0_request_ms = millis();
+    next_P0_request_timer.start();
     return true;
   }
   return false;
@@ -437,7 +425,7 @@ void MMU2::tx_str_P(const char* str) {
   uint8_t len = strlen_P(str);
   for (uint8_t i = 0; i < len; i++) mmuSerial.write(pgm_read_byte(str++));
   rx_buffer[0] = '\0';
-  last_request_ms = millis();
+  last_request_timer.start();
 }
 
 /**
@@ -448,7 +436,7 @@ void MMU2::tx_printf_P(const char* format, int argument = -1) {
   uint8_t len = sprintf_P(tx_buffer, format, argument);
   for (uint8_t i = 0; i < len; i++) mmuSerial.write(tx_buffer[i]);
   rx_buffer[0] = '\0';
-  last_request_ms = millis();
+  last_request_timer.start();
 }
 
 /**
@@ -459,7 +447,7 @@ void MMU2::tx_printf_P(const char* format, int argument1, int argument2) {
   uint8_t len = sprintf_P(tx_buffer, format, argument1, argument2);
   for (uint8_t i = 0; i < len; i++) mmuSerial.write(tx_buffer[i]);
   rx_buffer[0] = '\0';
-  last_request_ms = millis();
+  last_request_timer.start();
 }
 
 /**
@@ -475,7 +463,7 @@ void MMU2::clear_rx_buffer() {
  */
 bool MMU2::rx_ok() {
   if (rx_str_P(PSTR("ok\n"))) {
-    next_P0_request_ms = millis();
+    next_P0_request_timer.start();
     return true;
   }
   return false;
@@ -488,7 +476,7 @@ void MMU2::check_version() {
   if (buildnr < MMU_REQUIRED_FW_BUILDNR) {
     SERIAL_SM(ER, "MMU2 firmware version invalid. Required version >= ");
     SERIAL_EV(MMU_REQUIRED_FW_BUILDNR);
-    printer.kill(MSG_MMU2_WRONG_FIRMWARE);
+    printer.kill(GET_TEXT(MSG_MMU2_WRONG_FIRMWARE));
   }
 }
 
@@ -503,25 +491,22 @@ void MMU2::tool_change(uint8_t index) {
 
   if (index != extruder) {
 
-    printer.keepalive(InHandler);
-    stepper.disable_E0();
-    lcdui.status_printf_P(0, PSTR(MSG_MMU2_LOADING_FILAMENT), int(index + 1));
+    stepper.disable_E(0);
+    lcdui.status_printf_P(0, GET_TEXT(MSG_MMU2_LOADING_FILAMENT), int(index + 1));
 
     command(MMU_CMD_T0 + index);
 
     manage_response(true, true);
-    printer.keepalive(InHandler);
 
     command(MMU_CMD_C0);
     extruder = index; // filament change is finished
-    tools.active_extruder = 0;
+    toolManager.extruder.active = 0;
 
-    stepper.enable_E0();
+    stepper.enable_E(0);
 
-    SERIAL_LMV(ECHO, MSG_ACTIVE_EXTRUDER, int(extruder));
+    SERIAL_LMV(ECHO, MSG_HOST_ACTIVE_EXTRUDER, int(extruder));
 
     lcdui.reset_status();
-    printer.keepalive(NotBusy);
   }
 
   set_runout_valid(true);
@@ -543,36 +528,33 @@ void MMU2::tool_change(const char* special) {
   #if HAS_LCD_MENU
 
     set_runout_valid(false);
-    printer.keepalive(InHandler);
 
     switch (*special) {
       case '?': {
         uint8_t index = mmu2_choose_filament();
-        while (!hotends[0].wait_for_heating()) printer.safe_delay(100);
+        while (!hotends[0]->wait_for_heating()) HAL::delayMilliseconds(100);
         load_filament_to_nozzle(index);
       } break;
 
       case 'x': {
         planner.synchronize();
         uint8_t index = mmu2_choose_filament();
-        stepper.disable_E0();
+        stepper.disable_E(0);
         command(MMU_CMD_T0 + index);
         manage_response(true, true);
         command(MMU_CMD_C0);
         mmu_loop();
 
-        stepper.enable_E0();
+        stepper.enable_E(0);
         extruder = index;
-        tools.active_extruder = 0;
+        toolManager.extruder.active = 0;
       } break;
 
       case 'c': {
-        while (!hotends[0].wait_for_heating()) printer.safe_delay(100);
+        while (!hotends[0]->wait_for_heating()) HAL::delayMilliseconds(100);
         execute_extruder_sequence((const E_Step *)load_to_nozzle_sequence, COUNT(load_to_nozzle_sequence));
       } break;
     }
-
-    printer.keepalive(NotBusy);
 
     set_runout_valid(true);
 
@@ -592,7 +574,7 @@ void MMU2::command(const uint8_t mmu_cmd) {
 /**
  * Wait for response from MMU
  */
-bool MMU2::get_response(void) {
+bool MMU2::get_response() {
   while (cmd != MMU_CMD_NONE) printer.idle();
 
   while (!ready) {
@@ -610,12 +592,13 @@ bool MMU2::get_response(void) {
 /**
  * Wait for response and deal with timeout if nexcessary
  */
-void MMU2::manage_response(bool move_axes, bool turn_off_nozzle) {
+void MMU2::manage_response(const bool move_axes, const bool turn_off_nozzle) {
 
   bool response = false;
   mmu_print_saved = false;
-  point_t park_point = NOZZLE_PARK_POINT;
   int16_t resume_hotend_temp;
+
+  PRINTER_KEEPALIVE(PausedforUser);
 
   while (!response) {
 
@@ -630,13 +613,13 @@ void MMU2::manage_response(bool move_axes, bool turn_off_nozzle) {
 
         SERIAL_EM("MMU not responding");
 
-        resume_hotend_temp = hotends[0].target_temperature;
-        COPY_ARRAY(mechanics.stored_position[1], mechanics.current_position);
+        resume_hotend_temp = hotends[0]->deg_target();
+        COPY_ARRAY(mechanics.stored_position[0], mechanics.current_position.x);
 
         if (move_axes && mechanics.isHomedAll())
-          Nozzle::park(2, park_point /*= NOZZLE_PARK_POINT*/);
+          Nozzle::park(2);
 
-        if (turn_off_nozzle) hotends[0].setTarget(0);
+        if (turn_off_nozzle) hotends[0]->set_target_temp(0);
 
         LCD_MESSAGEPGM(MSG_MMU2_NOT_RESPONDING);
         sound.playtone(100, 659);
@@ -644,20 +627,17 @@ void MMU2::manage_response(bool move_axes, bool turn_off_nozzle) {
         sound.playtone(100, 659);
         sound.playtone(300, 440);
         sound.playtone(100, 659);
-
-        printer.keepalive(PausedforUser);
       }
     }
     else if (mmu_print_saved) {
       SERIAL_EM("MMU starts responding\n");
-      printer.keepalive(InHandler);
 
       if (turn_off_nozzle && resume_hotend_temp) {
-        hotends[0].setTarget(resume_hotend_temp);
+        hotends[0]->set_target_temp(resume_hotend_temp);
         LCD_MESSAGEPGM(MSG_HEATING);
         sound.playtone(200, 40);
 
-        while (!hotends[0].wait_for_heating()) printer.safe_delay(1000);
+        while (!hotends[0]->wait_for_heating()) HAL::delayMilliseconds(1000);
       }
 
       if (move_axes && mechanics.isHomedAll()) {
@@ -666,10 +646,10 @@ void MMU2::manage_response(bool move_axes, bool turn_off_nozzle) {
         sound.playtone(200, 404);
 
         // Move XY to starting position, then Z
-        mechanics.do_blocking_move_to_xy(mechanics.stored_position[1][X_AXIS], mechanics.stored_position[1][Y_AXIS], NOZZLE_PARK_XY_FEEDRATE);
+        mechanics.do_blocking_move_to_xy(mechanics.stored_position[0][X_AXIS], mechanics.stored_position[0][Y_AXIS], NOZZLE_PARK_XY_FEEDRATE);
 
         // Move Z_AXIS to saved position
-        mechanics.do_blocking_move_to_z(mechanics.stored_position[1][Z_AXIS], NOZZLE_PARK_Z_FEEDRATE);
+        mechanics.do_blocking_move_to_z(mechanics.stored_position[0][Z_AXIS], NOZZLE_PARK_Z_FEEDRATE);
       }
       else {
         sound.playtone(200, 404);
@@ -682,19 +662,13 @@ void MMU2::manage_response(bool move_axes, bool turn_off_nozzle) {
 
 void MMU2::set_filament_type(uint8_t index, uint8_t filamentType) {
   if (!enabled) return;
-
-  printer.keepalive(InHandler);
-
   cmd_arg = filamentType;
   command(MMU_CMD_F0 + index);
-
   manage_response(true, true);
-
-  printer.keepalive(NotBusy);
 }
 
 void MMU2::filament_runout() {
-  commands.enqueue_and_echo_P(PSTR(MMU2_FILAMENT_RUNOUT_SCRIPT));
+  commands.inject_P(PSTR(MMU2_FILAMENT_RUNOUT_SCRIPT));
   planner.synchronize();
 }
 
@@ -724,27 +698,24 @@ void MMU2::set_runout_valid(const bool valid) {
 
     if (!enabled) return false;
 
-    if (thermalManager.tooColdToExtrude(ACTIVE_HOTEND)) {
+    if (tempManager.tooColdToExtrude(toolManager.active_hotend())) {
       sound.playtone(200, 404);
       LCD_ALERTMESSAGEPGM(MSG_HOTEND_TOO_COLD);
       return false;
     }
     else {
-      printer.keepalive(InHandler);
-
       command(MMU_CMD_T0 + index);
       manage_response(true, true);
       command(MMU_CMD_C0);
       mmu_loop();
 
       extruder = index;
-      tools.active_extruder = 0;
+      toolManager.extruder.active = 0;
 
       load_to_nozzle();
 
       sound.playtone(200, 404);
 
-      printer.keepalive(NotBusy);
       return true;
     }
   }
@@ -766,20 +737,19 @@ void MMU2::set_runout_valid(const bool valid) {
 
     if (!enabled) return false;
 
-    if (thermalManager.tooColdToExtrude(ACTIVE_HOTEND)) {
+    if (tempManager.tooColdToExtrude(toolManager.active_hotend())) {
       sound.playtone(200, 404);
       LCD_ALERTMESSAGEPGM(MSG_HOTEND_TOO_COLD);
       return false;
     }
 
-    printer.keepalive(InHandler);
     LCD_MESSAGEPGM(MSG_MMU2_EJECTING_FILAMENT);
-    const bool saved_e_relative_mode = printer.axis_relative_modes[E_AXIS];
-    printer.axis_relative_modes[E_AXIS] = true;
+    const bool saved_e_relative_mode = mechanics.axis_relative_modes[E_AXIS];
+    mechanics.axis_relative_modes[E_AXIS] = true;
 
-    stepper.enable_E0();
-    mechanics.current_position[E_AXIS] -= MMU2_FILAMENTCHANGE_EJECT_FEED;
-    planner.buffer_line(mechanics.current_position[X_AXIS], mechanics.current_position[Y_AXIS], mechanics.current_position[Z_AXIS], mechanics.current_position[E_AXIS], 2500 / 60, tools.active_extruder);
+    stepper.enable_E(0);
+    mechanics.current_position.e -= MMU2_FILAMENTCHANGE_EJECT_FEED;
+    planner.buffer_line(mechanics.current_position, 2500 / 60, toolManager.extruder.active);
     planner.synchronize();
     command(MMU_CMD_E0 + index);
     manage_response(false, false);
@@ -806,11 +776,9 @@ void MMU2::set_runout_valid(const bool valid) {
 
     sound.playtone(200, 404);
 
-    printer.keepalive(NotBusy);
+    mechanics.axis_relative_modes[E_AXIS] = saved_e_relative_mode;
 
-    printer.axis_relative_modes[E_AXIS] = saved_e_relative_mode;
-
-    stepper.disable_E0();
+    stepper.disable_E(0);
 
     return true;
   }
@@ -824,13 +792,11 @@ void MMU2::set_runout_valid(const bool valid) {
 
     if (!enabled) return false;
 
-    if (thermalManager.tooColdToExtrude(ACTIVE_HOTEND)) {
+    if (tempManager.tooColdToExtrude(toolManager.active_hotend())) {
       sound.playtone(200, 404);
       LCD_ALERTMESSAGEPGM(MSG_HOTEND_TOO_COLD);
       return false;
     }
-
-    printer.keepalive(InHandler);
 
     filament_ramming();
 
@@ -843,8 +809,6 @@ void MMU2::set_runout_valid(const bool valid) {
     extruder = MMU2_NO_TOOL;
 
     set_runout_valid(false);
-
-    printer.keepalive(NotBusy);
 
     return true;
   }
@@ -859,10 +823,10 @@ void MMU2::set_runout_valid(const bool valid) {
   void MMU2::execute_extruder_sequence(const E_Step * sequence, int steps) {
 
     planner.synchronize();
-    stepper.enable_E0();
+    stepper.enable_E(0);
 
-    const bool saved_e_relative_mode = printer.axis_relative_modes[E_AXIS];
-    printer.axis_relative_modes[E_AXIS] = true;
+    const uint8_t saved_e_relative_mode = mechanics.axis_relative_modes;
+    mechanics.set_e_relative();
 
     const E_Step* step = sequence;
 
@@ -876,17 +840,16 @@ void MMU2::set_runout_valid(const bool valid) {
         DEBUG_EV(fr);
       #endif
 
-      mechanics.current_position[E_AXIS] += es;
-      planner.buffer_line(mechanics.current_position[X_AXIS], mechanics.current_position[Y_AXIS], mechanics.current_position[Z_AXIS],
-                          mechanics.current_position[E_AXIS], MMM_TO_MMS(fr), tools.active_extruder);
+      mechanics.current_position.e += es;
+      planner.buffer_line(mechanics.current_position, MMM_TO_MMS(fr), toolManager.extruder.active);
       planner.synchronize();
 
       step++;
     }
 
-    printer.axis_relative_modes[E_AXIS] = saved_e_relative_mode;
+    mechanics.axis_relative_modes = saved_e_relative_mode;
 
-    stepper.disable_E0();
+    stepper.disable_E(0);
   }
 
 #endif // HAS_LCD_MENU

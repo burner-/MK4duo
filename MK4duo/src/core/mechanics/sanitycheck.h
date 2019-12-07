@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,15 +19,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * sanitycheck.h
  *
  * Test configuration values for errors at compile-time.
  */
-
-#ifndef _MECH_SANITYCHECK_H_
-#define _MECH_SANITYCHECK_H_
 
 // Mechanism
 #if DISABLED(MECHANISM)
@@ -344,76 +342,6 @@
   #error "DEPENDENCY ERROR: Z_ENABLE_PIN is not defined for your board. You have to define it yourself."
 #endif
 
-#if DRIVER_EXTRUDERS > 0
-  #if !HAS_E0_STEP
-    #error "DEPENDENCY ERROR: E0_STEP_PIN is not defined for your board. You have to define it yourself."
-  #endif
-  #if !HAS_E0_DIR
-    #error "DEPENDENCY ERROR: E0_DIR_PIN is not defined for your board. You have to define it yourself."
-  #endif
-  #if !HAS_E0_ENABLE
-    #error "DEPENDENCY ERROR: E0_ENABLE_PIN is not defined for your board. You have to define it yourself."
-  #endif
-  #if DRIVER_EXTRUDERS > 1
-    #if !HAS_E1_STEP
-      #error "DEPENDENCY ERROR: E1_STEP_PIN is not defined for your board. You have to define it yourself."
-    #endif
-    #if !HAS_E1_DIR
-      #error "DEPENDENCY ERROR: E1_DIR_PIN is not defined for your board. You have to define it yourself."
-    #endif
-    #if !HAS_E1_ENABLE
-      #error "DEPENDENCY ERROR: E1_ENABLE_PIN is not defined for your board. You have to define it yourself."
-    #endif
-    #if DRIVER_EXTRUDERS > 2
-      #if !HAS_E2_STEP
-        #error "DEPENDENCY ERROR: E2_STEP_PIN is not defined for your board. You have to define it yourself."
-      #endif
-      #if !HAS_E2_DIR
-        #error "DEPENDENCY ERROR: E2_DIR_PIN is not defined for your board. You have to define it yourself."
-      #endif
-      #if !HAS_E2_ENABLE
-        #error "DEPENDENCY ERROR: E2_ENABLE_PIN is not defined for your board. You have to define it yourself."
-      #endif
-      #if DRIVER_EXTRUDERS > 3
-        #if !HAS_E3_STEP
-          #error "DEPENDENCY ERROR: E3_STEP_PIN is not defined for your board. You have to define it yourself."
-        #endif
-        #if !HAS_E3_DIR
-          #error "DEPENDENCY ERROR: E3_DIR_PIN is not defined for your board. You have to define it yourself."
-        #endif
-        #if !HAS_E3_ENABLE
-          #error "DEPENDENCY ERROR: E3_ENABLE_PIN is not defined for your board. You have to define it yourself."
-        #endif
-        #if DRIVER_EXTRUDERS > 4
-          #if !HAS_E4_STEP
-            #error "DEPENDENCY ERROR: E4_STEP_PIN is not defined for your board. You have to define it yourself."
-          #endif
-          #if !HAS_E4_DIR
-            #error "DEPENDENCY ERROR: E4_DIR_PIN is not defined for your board. You have to define it yourself."
-          #endif
-          #if !HAS_E4_ENABLE
-            #error "DEPENDENCY ERROR: E4_ENABLE_PIN is not defined for your board. You have to define it yourself."
-          #endif
-          #if DRIVER_EXTRUDERS > 5
-            #if !HAS_E5_STEP
-              #error "DEPENDENCY ERROR: E5_STEP_PIN is not defined for your board. You have to define it yourself."
-            #endif
-            #if !HAS_E5_DIR
-              #error "DEPENDENCY ERROR: E5_DIR_PIN is not defined for your board. You have to define it yourself."
-            #endif
-            #if !HAS_E5_ENABLE
-              #error "DEPENDENCY ERROR: E5_ENABLE_PIN is not defined for your board. You have to define it yourself."
-            #endif
-          #endif
-        #endif
-      #endif
-    #endif
-  #endif
-#endif
-#if X2_HAS_DRV(TMC26X) && (!PIN_EXISTS(X2_ENABLE) || !HAS_X2_STEP || !PIN_EXISTS(X2_DIR))
-  #error "DEPENDENCY ERROR: You have to set X2_ENABLE_PIN, X2_STEP_PIN and X2_DIR_PIN to a valid pin if you enable X2_IS_TMC."
-#endif
-
 /**
  * Linear Advance 1.5 - Check K value range
  */
@@ -614,5 +542,3 @@
   #endif
 
 #endif // IS_SCARA
-
-#endif /* _MECH_SANITYCHECK_H_ */

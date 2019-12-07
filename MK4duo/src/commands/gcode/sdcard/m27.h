@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_SD_SUPPORT
@@ -35,13 +35,13 @@
  *      OR, with 'S<bool>' set the SD status auto-report.
  *      OR, with 'C' get the current filename.
  */
-inline void gcode_M27(void) {
+inline void gcode_M27() {
   if (parser.seen('C'))
     SERIAL_EMT("Current file: ", card.fileName);
   else if (parser.seenval('S'))
-    card.setAutoreportSD(parser.value_bool());
+    card.setAutoreport(parser.value_bool());
   else
-    card.printStatus();
+    card.print_status();
 }
 
 #endif // HAS_SD_SUPPORT

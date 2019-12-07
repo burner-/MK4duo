@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if MB(ALLIGATOR_R2) || MB(ALLIGATOR_R3)
@@ -33,17 +33,17 @@
   /**
    * M906: Set motor currents
    */
-  inline void gcode_M906(void) {
+  inline void gcode_M906() {
 
     if (commands.get_target_tool(906)) return;
 
     LOOP_XYZE(i) {
       if (parser.seen(axis_codes[i])) {
-        const uint8_t a = i + (i == E_AXIS ? TARGET_EXTRUDER : 0);
-        externaldac.motor_current[a] = parser.value_ushort();
+        const uint8_t a = i + (i == E_AXIS ? toolManager.extruder.target : 0);
+        driver[a]->data.ma = parser.value_ushort();
+        externaldac.set_driver_current(a, driver[a]->data.ma);
       }
     }
-    externaldac.set_driver_current();
   }
 
 #elif HAS_TRINAMIC
@@ -54,7 +54,7 @@
    * M906: Set motor current in milliamps using axis codes X, Y, Z, E
    * Report driver currents when no axis specified
    */
-  inline void gcode_M906(void) {
+  inline void gcode_M906() {
 
     if (commands.get_target_tool(906)) return;
 
@@ -70,53 +70,35 @@
       switch (i) {
         case X_AXIS:
           #if AXIS_HAS_TMC(X)
-            stepperX->rms_current(value);
+            driver.x->tmc->rms_current(value);
           #endif
           #if AXIS_HAS_TMC(X2)
-            stepperX2->rms_current(value);
+            driver.x2->rms_current(value);
           #endif
           break;
         case Y_AXIS:
           #if AXIS_HAS_TMC(Y)
-            stepperY->rms_current(value);
+            driver.y->tmc->rms_current(value);
           #endif
           #if AXIS_HAS_TMC(Y2)
-            stepperY2->rms_current(value);
+            driver.y2->tmc->rms_current(value);
           #endif
           break;
         case Z_AXIS:
           #if AXIS_HAS_TMC(Z)
-            stepperZ->rms_current(value);
+            driver.z->tmc->rms_current(value);
           #endif
           #if AXIS_HAS_TMC(Z2)
-            stepperZ2->rms_current(value);
+            driver.z2->tmc->rms_current(value);
           #endif
           #if AXIS_HAS_TMC(Z3)
-            stepperZ3->rms_current(value);
+            driver.z3->tmc->rms_current(value);
           #endif
           break;
-        case E_AXIS: {
-          switch (TARGET_EXTRUDER) {
-            #if AXIS_HAS_TMC(E0)
-              case 0: stepperE0->rms_current(value); break;
-            #endif
-            #if AXIS_HAS_TMC(E1)
-              case 1: stepperE1->rms_current(value); break;
-            #endif
-            #if AXIS_HAS_TMC(E2)
-              case 2: stepperE2->rms_current(value); break;
-            #endif
-            #if AXIS_HAS_TMC(E3)
-              case 3: stepperE3->rms_current(value); break;
-            #endif
-            #if AXIS_HAS_TMC(E4)
-              case 4: stepperE4->rms_current(value); break;
-            #endif
-            #if AXIS_HAS_TMC(E5)
-              case 5: stepperE5->rms_current(value); break;
-            #endif
-          }
-        } break;
+        case E_AXIS:
+          Driver* drv = driver.e[extruders[toolManager.extruder.target]->get_driver()];
+          if (drv && drv->tmc) drv->tmc->rms_current(value);
+          break;
       }
     }
 

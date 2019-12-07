@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,14 +47,12 @@
  * ARDUINO_ARCH_SAMD
  */
 
+#ifdef ARDUINO_ARCH_SAMD
+
 // --------------------------------------------------------------------------
 // Includes
 // --------------------------------------------------------------------------
-
 #include "../../../MK4duo.h"
-
-#if ENABLED(ARDUINO_ARCH_SAMD)
-
 #include <malloc.h>
 #include <Wire.h>
 #include "wiring_private.h"
@@ -87,12 +85,12 @@ static void syncTCC(Tcc* TCCx) {
 }
 
 // disable interrupts
-void cli(void) {
+void cli() {
   noInterrupts();
 }
 
 // enable interrupts
-void sei(void) {
+void sei() {
   interrupts();
 }
 
@@ -100,22 +98,18 @@ void sei(void) {
 // input parameters: Arduino pin number, frequency in Hz, duration in milliseconds
 void tone(const pin_t t_pin, const uint16_t frequency, const uint16_t duration) {
 
-  millis_s endTime = millis();
+  short_timer_t end_timer(true);
   const uint32_t halfPeriod = 1000000L / frequency / 2;
 
   HAL::pinMode(t_pin, OUTPUT_LOW);
 
-  while (pending(endTime, duration)) {
+  while (end_timer.pending(duration)) {
     HAL::digitalWrite(t_pin, HIGH);
     HAL::delayMicroseconds(halfPeriod);
     HAL::digitalWrite(t_pin, LOW);
     HAL::delayMicroseconds(halfPeriod);
   }
   HAL::pinMode(t_pin, OUTPUT_LOW);
-}
-
-static inline void ConfigurePin(const PinDescription& pinDesc) {
- // PIO_Configure(pinDesc.ulPort, pinDesc.ulPinType, pinDesc.ulPin, 0);
 }
 
 // This intercepts the 1ms system tick. It must return 'false', otherwise the Arduino core tick handler will be bypassed.
@@ -127,7 +121,7 @@ extern "C" int sysTickHook() {
 bool HAL::SPIReady = false;
 
 // do any hardware-specific initialization here
-void HAL::hwSetup(void) { SPIReady= true; }
+void HAL::hwSetup() { SPIReady= true; }
 
 HAL::HAL() {
   // ctor
@@ -191,7 +185,7 @@ static inline uint32_t mapResolution(uint32_t value, uint32_t from, uint32_t to)
 }
 
 
-void HAL::analogWrite(pin_t pin, uint32_t value, const uint16_t freq/*=1000U*/, const bool hwpwm/*=true*/) {
+void HAL::analogWrite(pin_t pin, uint32_t value, const uint16_t freq/*=1000U*/) {
 
   PinDescription pinDesc = g_APinDescription[pin];
   uint32_t attr = pinDesc.ulPinAttribute;
@@ -329,42 +323,29 @@ void HAL::analogWrite(pin_t pin, uint32_t value, const uint16_t freq/*=1000U*/, 
  */
 void HAL::Tick() {
 
-  static millis_s cycle_check_temp_ms = 0;
+  static short_timer_t  cycle_1s_timer(millis()),
+                        cycle_100_timer(millis());
 
   if (printer.isStopped()) return;
 
   // Heaters set output PWM
-  #if HOTENDS > 0
-    LOOP_HOTEND() hotends[h].set_output_pwm();
-  #endif
-  #if BEDS > 0
-    LOOP_BED() beds[h].set_output_pwm();
-  #endif
-  #if CHAMBERS > 0
-    LOOP_CHAMBER() chambers[h].set_output_pwm();
-  #endif
+  tempManager.set_output_pwm();
 
-  #if FAN_COUNT > 0
-    LOOP_FAN() fans[f].set_output_pwm();
-  #endif
+  // Fans set output PWM
+  fanManager.set_output_pwm();
 
-  // Calculation cycle temp a 100ms
-  if (expired(&cycle_check_temp_ms, 100U)) {
-    // Temperature Spin
-    thermalManager.spin();
-    #if ENABLED(FAN_KICKSTART_TIME) && FAN_COUNT > 0
-      LOOP_FAN() {
-        if (fans[f].kickstart) fans[f].kickstart--;
-      }
-    #endif
-  }
+  // Event 100 ms
+  if (cycle_100_timer.expired(100)) tempManager.spin();
+
+  // Event 1.0 Second
+  if (cycle_1s_timer.expired(1000)) printer.check_periodical_actions();
 
   // read analog values
   #if ANALOG_INPUTS > 0
-    LOOP_HOTEND() AnalogInputValues[hotends[h].sensor.pin] = (analogRead(hotends[h].sensor.pin) * 16);
+    LOOP_HOTEND() AnalogInputValues[hotends[h]->sensor.pin] = (analogRead(hotends[h]->sensor.pin) * 16);
     Analog_is_ready = true;
     // Update the raw values if they've been read. Else we could be updating them during reading.
-    thermalManager.set_current_temp_raw();
+    tempManager.set_current_temp_raw();
   #endif
 
   endstops.Tick();

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,16 +54,13 @@
 #include <SPI.h>
 
 /**
+ * Macro for start
+ */
+#include "src/lib/macros.h"
+
+/**
  * Include file
  */
-#include "src/lib/types.h"
-#include "src/lib/macros.h"
-#include "src/lib/enum.h"
-#include "src/lib/restorer.h"
-#include "src/lib/circular_queue.h"
-#include "src/lib/driver_types.h"
-#include "src/lib/duration_t.h"
-#include "src/lib/matrix.h"
 #include "Boards.h"
 
 // Configuration settings loading
@@ -101,35 +98,38 @@
   #include "Configuration_CNCRouter.h"
 #endif
 
-#include "src/inc/conditionals_pre.h"
-#include "src/inc/pins.h"
-#include "src/inc/conditionals_post.h"
+#include "src/conditionals/conditionals_pre.h"
+#include "src/conditionals/conditionals_pins.h"
+#include "src/conditionals/conditionals_post.h"
 
-// Sanity Check
-#include "src/inc/sanitycheck.h"
+// Lib modules
+#include "src/lib/types.h"
+#include "src/lib/timer.h"
+#include "src/lib/enum.h"
+#include "src/lib/restorer.h"
+#include "src/lib/circular_queue.h"
+#include "src/lib/driver_types.h"
+#include "src/lib/duration_t.h"
+#include "src/lib/matrix.h"
+#include "src/lib/vector_3/vector_3.h"
+#include "src/lib/least_squares_fit/least_squares_fit.h"
 
 // Platform modules
 #include "src/platform/platform.h"
 
-// Utility modules
-#include "src/utility/utility.h"
-#include "src/utility/watch.h"
-#include "src/utility/point_t.h"
-#include "src/utility/bezier.h"
-
 // Core modules
+#include "src/core/utility/utility.h"
+#include "src/core/watch/watch.h"
 #include "src/core/mechanics/mechanics.h"
-#include "src/core/tools/tools.h"
-#include "src/core/tools/nozzle.h"
-#include "src/core/fan/fan.h"
+#include "src/core/toolmanager/toolmanager.h"
+#include "src/core/nozzle/nozzle.h"
+#include "src/core/fanmanager/fanmanager.h"
 #include "src/core/eeprom/eeprom.h"
 #include "src/core/printer/printer.h"
 #include "src/core/planner/planner.h"
 #include "src/core/endstop/endstops.h"
 #include "src/core/stepper/stepper.h"
-#include "src/core/heater/sensor/thermistor.h"
-#include "src/core/heater/heater.h"
-#include "src/core/temperature/temperature.h"
+#include "src/core/tempmanager/tempmanager.h"
 #include "src/core/printcounter/printcounter.h"
 #include "src/core/sound/sound.h"
 
@@ -156,6 +156,8 @@
 #include "src/sdcard/sdcard.h"
 
 // Feature modules
+#include "src/feature/bezier/bezier.h"
+#include "src/feature/digipot/digipot.h"
 #include "src/feature/emergency_parser/emergency_parser.h"
 #include "src/feature/probe/probe.h"
 #include "src/feature/bedlevel/bedlevel.h"
@@ -163,20 +165,19 @@
 #include "src/feature/bltouch/bltouch.h"
 #include "src/feature/external_dac/external_dac.h"
 #include "src/feature/hysteresis/hysteresis.h"
-#include "src/feature/tmc/tmc.h"
 #include "src/feature/power/power.h"
 #include "src/feature/mixing/mixing.h"
 #include "src/feature/mmu2/mmu2.h"
 #include "src/feature/filament/filament.h"
-#include "src/feature/filamentrunout/filamentrunout.h"
 #include "src/feature/fwretract/fwretract.h"
+#include "src/feature/flowmeter/flowmeter.h"
 #include "src/feature/advanced_pause/advanced_pause.h"
+#include "src/feature/filamentrunout/filamentrunout.h"
 #include "src/feature/laser/base64/base64.h"
 #include "src/feature/laser/laser.h"
 #include "src/feature/cncrouter/cncrouter.h"
 #include "src/feature/mfrc522/mfrc522.h"
 #include "src/feature/pcf8574/pcf8574.h"
-#include "src/feature/dhtsensor/dhtsensor.h"
 #include "src/feature/rgbled/led.h"
 #include "src/feature/rgbled/led_events.h"
 #include "src/feature/caselight/caselight.h"

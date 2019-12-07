@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,20 +36,20 @@ extern void eeprom_flush(void);
 #endif
 
 /** Public Function */
+bool MemoryStore::access_start() { return false; }
+
 bool MemoryStore::access_write() {
   #if HAS_EEPROM_FLASH
     eeprom_flush();
-    return false;
   #elif HAS_EEPROM_SD
     card.write_eeprom();
-  #else
-    return false;
   #endif
+  return false;
 }
 
 bool MemoryStore::write_data(int &pos, const uint8_t *value, size_t size, uint16_t *crc) {
 
-  while(size--) {
+  while (size--) {
     uint8_t v = *value;
     #if HAS_EEPROM_SD
       eeprom_data[pos] = v;
@@ -61,7 +61,7 @@ bool MemoryStore::write_data(int &pos, const uint8_t *value, size_t size, uint16
         eeprom_write_byte(p, v);
         delay(2);
         if (eeprom_read_byte(p) != v) {
-          SERIAL_LM(ECHO, MSG_ERR_EEPROM_WRITE);
+          SERIAL_LM(ECHO, MSG_HOST_ERR_EEPROM_WRITE);
           return true;
         }
       }
@@ -76,7 +76,7 @@ bool MemoryStore::write_data(int &pos, const uint8_t *value, size_t size, uint16
 
 bool MemoryStore::read_data(int &pos, uint8_t *value, size_t size, uint16_t *crc, const bool writing/*=true*/) {
 
-  while(size--) {
+  while (size--) {
     #if HAS_EEPROM_SD
       uint8_t c = eeprom_data[pos];
     #else

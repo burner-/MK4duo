@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,22 +21,31 @@
  */
 #pragma once
 
-union flagpower_t {
-  uint8_t all;
-  struct {
-    bool  Logic   : 1;
-    bool  Pullup  : 1;
-    bool  bit2    : 1;
-    bool  bit3    : 1;
-    bool  bit4    : 1;
-    bool  bit5    : 1;
-    bool  bit6    : 1;
-    bool  bit7    : 1;
-  };
-  flagpower_t() { all = 0x00; }
-};
-
 #if HAS_POWER_SWITCH || HAS_POWER_CONSUMPTION_SENSOR || HAS_POWER_CHECK
+
+#if HAS_POWER_CHECK
+
+  union power_flag_t {
+    bool all;
+    struct {
+      bool  Logic   : 1;
+      bool  Pullup  : 1;
+      bool  bit2    : 1;
+      bool  bit3    : 1;
+      bool  bit4    : 1;
+      bool  bit5    : 1;
+      bool  bit6    : 1;
+      bool  bit7    : 1;
+    };
+    power_flag_t() { all = false; }
+  };
+
+  // Struct Power data
+  struct power_data_t {
+    power_flag_t flag;
+  };
+
+#endif
 
 class Power {
 
@@ -46,7 +55,9 @@ class Power {
 
   public: /** Public Parameters */
 
-    static flagpower_t flag;
+    #if HAS_POWER_CHECK
+      static power_data_t data;
+    #endif
 
     #if HAS_POWER_CONSUMPTION_SENSOR
       static int16_t  current_raw_powconsumption;
@@ -59,7 +70,7 @@ class Power {
     #if HAS_POWER_SWITCH
       static bool powersupply_on;
       #if (POWER_TIMEOUT > 0)
-        static millis_s last_Power_On_ms;
+        static long_timer_t last_power_on_timer;
       #endif
     #endif
 
@@ -91,6 +102,19 @@ class Power {
        */
       static void report();
 
+      /**
+       * check the pin and stop printing
+       */
+      static void outage();
+
+      // Flag bit 0 Set power check logic
+      FORCE_INLINE static void setLogic(const bool logic) { data.flag.Logic = logic; }
+      FORCE_INLINE static bool isLogic() { return data.flag.Logic; }
+
+      // Flag bit 1 Set power check pullup
+      FORCE_INLINE static void setPullup(const bool pullup) { data.flag.Pullup = pullup; }
+      FORCE_INLINE static bool isPullup() { return data.flag.Pullup; }
+
     #endif
 
     #if HAS_POWER_SWITCH
@@ -110,20 +134,6 @@ class Power {
                     raw_analog2voltage(),
                     analog2error(float current),
                     analog2efficiency(float watt);
-    #endif
-
-    // Flag bit 0 Set power check logic
-    FORCE_INLINE static void setLogic(const bool logic) { flag.Logic = logic; }
-    FORCE_INLINE static bool isLogic() { return flag.Logic; }
-
-    // Flag bit 1 Set power check pullup
-    FORCE_INLINE static void setPullup(const bool pullup) { flag.Pullup = pullup; }
-    FORCE_INLINE static bool isPullup() { return flag.Pullup; }
-
-  private: /** Private Function */
-
-    #if HAS_POWER_SWITCH
-      static bool is_power_needed();
     #endif
 
 };

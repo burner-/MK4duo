@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_SD_SUPPORT
@@ -34,7 +34,7 @@
 /**
  * M24: Start or Resume SD Print
  */
-inline void gcode_M24(void) {
+inline void gcode_M24() {
 
   if (parser.seenval('S')) card.setIndex(parser.value_long());
   if (parser.seenval('T')) print_job_counter.resume(parser.value_long());
@@ -49,10 +49,13 @@ inline void gcode_M24(void) {
   if (card.isFileOpen()) {
     card.startFileprint();
     print_job_counter.start();
+    #if HAS_SD_RESTART
+      restart.start_job();
+    #endif
   }
 
-  host_action.prompt_open(PROMPT_INFO, PSTR("Resume SD"));
   host_action.resume();
+  host_action.prompt_open(PROMPT_INFO, PSTR("Resuming SD"), PSTR("Dismiss"));
 
   lcdui.reset_status();
 
@@ -61,10 +64,10 @@ inline void gcode_M24(void) {
 /**
  * M25: Pause SD Print
  */
-void gcode_M25(void) {
+void gcode_M25() {
 
   // Set initial pause flag to prevent more commands from landing in the queue while we try to pause
-  #if ENABLED(SDSUPPORT)
+  #if HAS_SD_SUPPORT
     if (IS_SD_PRINTING()) card.pauseSDPrint();
   #endif
 

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_LEVELING
@@ -48,7 +48,7 @@
  *
  *    C         Center mesh on the mean of the lowest and highest
  */
-inline void gcode_M420(void) {
+inline void gcode_M420() {
 
   const bool  seen_S = parser.seen('S'),
               to_enable = seen_S ? parser.value_bool() : bedlevel.flag.leveling_active;
@@ -57,11 +57,7 @@ inline void gcode_M420(void) {
   // (Don't disable for just M420 or M420 V)
   if (seen_S && !to_enable) bedlevel.set_bed_leveling_enabled(false);
 
-  const float oldpos[] = {
-    mechanics.current_position[X_AXIS],
-    mechanics.current_position[Y_AXIS],
-    mechanics.current_position[Z_AXIS]
-  };
+  const xyz_pos_t oldpos = mechanics.current_position;
 
   #if ENABLED(AUTO_BED_LEVELING_UBL)
 
@@ -199,7 +195,7 @@ EXIT_M420:
 
   // Error if leveling failed to enable or reenable
   if (to_enable && !bedlevel.flag.leveling_active)
-    SERIAL_LM(ER, MSG_ERR_M420_FAILED);
+    SERIAL_LM(ER, MSG_HOST_ERR_M420_FAILED);
 
   SERIAL_STR(ECHO);
   SERIAL_EONOFF("Bed Leveling ", bedlevel.flag.leveling_active);
@@ -209,11 +205,11 @@ EXIT_M420:
     if (bedlevel.z_fade_height > 0.0)
       SERIAL_EV(bedlevel.z_fade_height);
     else
-      SERIAL_EM(MSG_OFF);
+      SERIAL_EM(MSG_HOST_OFF);
   #endif
 
   // Report change in position
-  if (memcmp(oldpos, mechanics.current_position, sizeof(oldpos)))
+  if (oldpos != mechanics.current_position)
     mechanics.report_current_position();
 
 }

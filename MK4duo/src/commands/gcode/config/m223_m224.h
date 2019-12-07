@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_FIL_RUNOUT_0
@@ -38,9 +38,9 @@
    *  S<bool>   - Set false or true
    *
    */
-  inline void gcode_M223(void) {
+  inline void gcode_M223() {
     if (commands.get_target_tool(223)) return;
-    filamentrunout.sensor.setLogic((FilRunoutEnum)tools.target_extruder, parser.value_bool());
+    filamentrunout.sensor.setLogic((FilRunoutEnum)toolManager.extruder.target, parser.value_bool());
     filamentrunout.sensor.report();
   }
 
@@ -51,9 +51,9 @@
    *  S<bool>   - Set false or true
    *
    */
-  inline void gcode_M224(void) {
+  inline void gcode_M224() {
     if (commands.get_target_tool(224)) return;
-    filamentrunout.sensor.setPullup((FilRunoutEnum)tools.target_extruder, parser.value_bool());
+    filamentrunout.sensor.setPullup((FilRunoutEnum)toolManager.extruder.target, parser.value_bool());
     filamentrunout.sensor.setup_pullup();
     filamentrunout.sensor.report();
   }

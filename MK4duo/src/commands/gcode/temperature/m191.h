@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if CHAMBERS > 0
+#if HAS_CHAMBERS
 
 #define CODE_M191
 
@@ -34,20 +34,20 @@
  * M191: Sxxx Wait for chamber current temp to reach target temp. Waits only when heating
  *       Rxxx Wait for chamber current temp to reach target temp. Waits when heating and cooling
  */
-inline void gcode_M191(void) {
+inline void gcode_M191() {
   if (printer.debugDryrun() || printer.debugSimulation()) return;
 
   const uint8_t c = parser.byteval('T');
   if (WITHIN(c, 0 , CHAMBERS - 1)) {
     bool no_wait_for_cooling = parser.seen('S');
     if (no_wait_for_cooling || parser.seen('R'))
-      chambers[c].setTarget(parser.value_celsius());
+      chambers[c]->set_target_temp(parser.value_celsius());
     else return;
 
-    lcdui.set_status_P(chambers[c].isHeating() ? PSTR(MSG_CHAMBER_HEATING) : PSTR(MSG_CHAMBER_COOLING));
+    lcdui.set_status_P(chambers[c]->isHeating() ? GET_TEXT(MSG_CHAMBER_HEATING) : GET_TEXT(MSG_CHAMBER_COOLING));
 
-    chambers[c].wait_for_target(no_wait_for_cooling);
+    chambers[c]->wait_for_target(no_wait_for_cooling);
   }
 }
 
-#endif // CHAMBERS > 0
+#endif // HAS_CHAMBERS

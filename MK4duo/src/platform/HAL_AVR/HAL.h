@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -95,21 +95,28 @@ typedef uint16_t  ptr_int_t;
 // --------------------------------------------------------------------------
 // Includes
 // --------------------------------------------------------------------------
+#define HardwareSerial_h // Hack to prevent HardwareSerial.h header inclusion
+#include "hardwareserial/HardwareSerial.h"
+#include "watchdog/watchdog.h"
 #include "fastio.h"
 #include "math.h"
 #include "delay.h"
-#include "watchdog.h"
 #include "speed_lookuptable.h"
 
-// Serial
-//#define EXTERNALSERIAL  // Force using arduino serial
-#ifndef EXTERNALSERIAL
-  #include "HardwareSerial.h"
-  #define MKSERIAL1 MKSerial
-#else
-  #define MKSERIAL1 Serial
+// Serial ports
+#if !WITHIN(SERIAL_PORT_1, -1, 3)
+  #error "SERIAL_PORT_1 must be from -1 to 3"
 #endif
-#define NUM_SERIAL 1
+#define MKSERIAL1 MKSerial1
+
+#if ENABLED(SERIAL_PORT_2) && SERIAL_PORT_2 >= -1
+  #if !WITHIN(SERIAL_PORT_2, -1, 3)
+    #error "SERIAL_PORT_2 must be from -1 to 3"
+  #elif SERIAL_PORT_2 == SERIAL_PORT_1
+    #error "SERIAL_PORT_2 must be different than SERIAL_PORT_1"
+  #endif
+  #define MKSERIAL2 MKSerial2
+#endif
 
 // --------------------------------------------------------------------------
 // Defines
@@ -157,11 +164,9 @@ typedef uint16_t  ptr_int_t;
 #define ANALOG_PRESCALER      _BV(ADPS0)|_BV(ADPS1)|_BV(ADPS2)
 #define OVERSAMPLENR          16
 #define ABS_ZERO              -273.15
-#define AD_RANGE              1024
+#define AD_RANGE              1023  // 10-bit resolution
 #define AD595_MAX             500.0f
 #define AD8495_MAX            1000.0f
-
-#define HARDWARE_PWM          false
 
 #define GET_PIN_MAP_PIN(index) index
 #define GET_PIN_MAP_INDEX(pin) pin
@@ -179,16 +184,14 @@ typedef uint16_t  ptr_int_t;
 #define STEPPER_TIMER_MIN_INTERVAL  8                                                         // minimum time in µs between stepper interrupts
 #define STEPPER_TIMER_MAX_INTERVAL  (STEPPER_TIMER_TICKS_PER_US * STEPPER_TIMER_MIN_INTERVAL) // maximum time in µs between stepper interrupts
 
-#define PULSE_TIMER_PRESCALE        STEPPER_TIMER_PRESCALE
-
 #define TEMP_TIMER_FREQUENCY        ((F_CPU) / 64.0 / 256.0) // 976 Hz
 
-#define STEPPER_TIMER               1
+#define STEPPER_TIMER_NUM           1
 #define STEPPER_TCCR                TCCR1A
 #define STEPPER_TIMSK               TIMSK1
 #define STEPPER_OCIE                OCIE1A
 
-#define TEMP_TIMER                  0
+#define TEMP_TIMER_NUM              0
 #define TEMP_OCR                    OCR0B
 #define TEMP_TCCR                   TCCR0A
 #define TEMP_TIMSK                  TIMSK0
@@ -199,6 +202,7 @@ typedef uint16_t  ptr_int_t;
 #define TIMER_COUNTER_0             TCNT0
 #define TIMER_COUNTER_1             TCNT1
 
+#define START_STEPPER_INTERRUPT()   HAL_timer_start(STEPPER_TIMER_NUM)
 #define ENABLE_STEPPER_INTERRUPT()  SBI(STEPPER_TIMSK, STEPPER_OCIE)
 #define DISABLE_STEPPER_INTERRUPT() CBI(STEPPER_TIMSK, STEPPER_OCIE)
 #define STEPPER_ISR_ENABLED()       TEST(STEPPER_TIMSK, STEPPER_OCIE)
@@ -207,82 +211,69 @@ typedef uint16_t  ptr_int_t;
 #define DISABLE_TEMP_INTERRUPT()    CBI(TEMP_TIMSK, TEMP_OCIE)
 #define TEMP_ISR_ENABLED()          TEST(TEMP_TIMSK, TEMP_OCIE)
 
-#define HAL_timer_set_count(timer, count)           (_CAT(TIMER_OCR_, timer) = count)
-#define HAL_timer_get_count(timer)                  _CAT(TIMER_OCR_, timer)
-#define HAL_timer_get_current_count(timer)          _CAT(TIMER_COUNTER_, timer)
-#define HAL_timer_restricts(timer, interval_ticks)  NOLESS(_CAT(TIMER_OCR_, timer), _CAT(TIMER_COUNTER_, timer) + interval_ticks)
+#define HAL_timer_set_count(timer, count)   (_CAT(TIMER_OCR_, timer) = count)
+#define HAL_timer_get_current_count(timer)  _CAT(TIMER_COUNTER_, timer)
 
 // Estimate the amount of time the ISR will take to execute
+#define TIMER_CYCLES                13UL
+
 // The base ISR takes 752 cycles
-#define ISR_BASE_CYCLES               752UL
+#define ISR_BASE_CYCLES            752UL
 
 // Linear advance base time is 32 cycles
 #if ENABLED(LIN_ADVANCE)
-  #define ISR_LA_BASE_CYCLES          32UL
+  #define ISR_LA_BASE_CYCLES        32UL
 #else
-  #define ISR_LA_BASE_CYCLES          0UL
+  #define ISR_LA_BASE_CYCLES         0UL
 #endif
 
 // Bezier interpolation adds 160 cycles
 #if ENABLED(BEZIER_JERK_CONTROL)
-  #define ISR_BEZIER_CYCLES           160UL
+  #define ISR_BEZIER_CYCLES        160UL
 #else
-  #define ISR_BEZIER_CYCLES           0UL
+  #define ISR_BEZIER_CYCLES          0UL
 #endif
 
 // Stepper Loop base cycles
-#define ISR_LOOP_BASE_CYCLES          32UL
-
-// To start the step pulse, in the worst case takes
-#define ISR_START_STEPPER_CYCLES      57UL
+#define ISR_LOOP_BASE_CYCLES        32UL
 
 // And each stepper (start + stop pulse) takes in worst case
-#define ISR_STEPPER_CYCLES            88UL
+#define ISR_STEPPER_CYCLES          88UL
 
 // For each stepper, we add its time
 #if HAS_X_STEP
-  #define ISR_START_X_STEPPER_CYCLES  ISR_START_STEPPER_CYCLES
   #define ISR_X_STEPPER_CYCLES        ISR_STEPPER_CYCLES
 #else
-  #define ISR_START_X_STEPPER_CYCLES  0UL
   #define ISR_X_STEPPER_CYCLES        0UL
 #endif
 #if HAS_Y_STEP
-  #define ISR_START_Y_STEPPER_CYCLES  ISR_START_STEPPER_CYCLES
   #define ISR_Y_STEPPER_CYCLES        ISR_STEPPER_CYCLES
 #else
-  #define ISR_START_Y_STEPPER_CYCLES  0UL
   #define ISR_Y_STEPPER_CYCLES        0UL
 #endif
 #if HAS_Z_STEP
-  #define ISR_START_Z_STEPPER_CYCLES  ISR_START_STEPPER_CYCLES
   #define ISR_Z_STEPPER_CYCLES        ISR_STEPPER_CYCLES
 #else
-  #define ISR_START_Z_STEPPER_CYCLES  0UL
   #define ISR_Z_STEPPER_CYCLES        0UL
 #endif
 
 // E is always interpolated
-#define ISR_START_E_STEPPER_CYCLES    ISR_START_STEPPER_CYCLES
 #define ISR_E_STEPPER_CYCLES          ISR_STEPPER_CYCLES
 
 // If linear advance is disabled, then the loop also handles them
 #if DISABLED(LIN_ADVANCE) && ENABLED(COLOR_MIXING_EXTRUDER)
-  #define ISR_START_MIXING_STEPPER_CYCLES ((MIXING_STEPPERS) * (ISR_START_STEPPER_CYCLES))
-  #define ISR_MIXING_STEPPER_CYCLES       ((MIXING_STEPPERS) * (ISR_STEPPER_CYCLES))
+  #define ISR_MIXING_STEPPER_CYCLES   ((MIXING_STEPPERS) * (ISR_STEPPER_CYCLES))
 #else
-  #define ISR_START_MIXING_STEPPER_CYCLES 0UL
-  #define ISR_MIXING_STEPPER_CYCLES       0UL
+  #define ISR_MIXING_STEPPER_CYCLES   0UL
 #endif
-
-// Calculate the minimum time to start all stepper pulses in the ISR loop
-#define MIN_ISR_START_LOOP_CYCLES     (ISR_START_X_STEPPER_CYCLES + ISR_START_Y_STEPPER_CYCLES + ISR_START_Z_STEPPER_CYCLES + ISR_START_E_STEPPER_CYCLES + ISR_START_MIXING_STEPPER_CYCLES)
 
 // And the total minimum loop time is, without including the base
 #define MIN_ISR_LOOP_CYCLES           (ISR_X_STEPPER_CYCLES + ISR_Y_STEPPER_CYCLES + ISR_Z_STEPPER_CYCLES + ISR_E_STEPPER_CYCLES + ISR_MIXING_STEPPER_CYCLES)
 
 // But the user could be enforcing a minimum time, so the loop time is
 #define ISR_LOOP_CYCLES               (ISR_LOOP_BASE_CYCLES + MAX(HAL_min_pulse_cycle, MIN_ISR_LOOP_CYCLES))
+
+#define TIMER_SETUP_NS                (1000UL * TIMER_CYCLES / ((F_CPU) / 1000000UL))
 
 // If linear advance is enabled, then it is handled separately
 #if ENABLED(LIN_ADVANCE)
@@ -305,7 +296,7 @@ typedef uint16_t  ptr_int_t;
 #define HAL_STEPPER_TIMER_ISR() \
 extern "C" void TIMER1_COMPA_vect (void) __attribute__ ((signal, naked, used, externally_visible)); \
 extern "C" void TIMER1_COMPA_vect_bottom (void) asm ("TIMER1_COMPA_vect_bottom") __attribute__ ((used, externally_visible, noinline)); \
-void TIMER1_COMPA_vect (void) { \
+void TIMER1_COMPA_vect () { \
   __asm__ __volatile__ ( \
     A("push r16")                      /* 2 Save R16 */ \
     A("in r16, __SREG__")              /* 1 Get SREG */ \
@@ -378,7 +369,7 @@ void TIMER1_COMPA_vect_bottom(void)
 #define HAL_TEMP_TIMER_ISR \
 extern "C" void TIMER0_COMPB_vect (void) __attribute__ ((signal, naked, used, externally_visible)); \
 extern "C" void TIMER0_COMPB_vect_bottom(void)  asm ("TIMER0_COMPB_vect_bottom") __attribute__ ((used, externally_visible, noinline)); \
-void TIMER0_COMPB_vect (void) { \
+void TIMER0_COMPB_vect () { \
   __asm__ __volatile__ ( \
     A("push r16")                       /* 2 Save R16 */ \
     A("in r16, __SREG__")               /* 1 Get SREG */ \
@@ -444,11 +435,10 @@ void TIMER0_COMPB_vect_bottom(void)
 // Public Variables
 // --------------------------------------------------------------------------
 
-extern uint16_t HAL_min_pulse_cycle,
-                HAL_min_pulse_tick,
-                HAL_add_pulse_ticks;
-
-extern uint32_t HAL_frequency_limit[8];
+extern hal_timer_t  HAL_min_pulse_cycle,
+                    HAL_pulse_high_tick,
+                    HAL_pulse_low_tick;
+extern uint32_t     HAL_frequency_limit[8];
 
 // --------------------------------------------------------------------------
 // Private Variables
@@ -457,16 +447,16 @@ extern uint32_t HAL_frequency_limit[8];
 // --------------------------------------------------------------------------
 // Public functions
 // --------------------------------------------------------------------------
-
-class InterruptLock {
-  public:
-   InterruptLock()  { noInterrupts(); }
-   ~InterruptLock() { interrupts();   }
-};
-
-void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency);
+void HAL_timer_start(const uint8_t timer_num);
 
 void HAL_calc_pulse_cycle();
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+extern "C" {
+  int freeMemory(void);
+}
+#pragma GCC diagnostic pop
 
 class HAL {
 
@@ -494,40 +484,71 @@ class HAL {
 
     static void showStartReason();
 
-    static int getFreeRam();
     static void resetHardware();
 
     static void setPwmFrequency(const pin_t pin, uint8_t val);
 
-    static void analogWrite(const pin_t pin, const uint8_t uValue, const uint16_t freq=1000U, const bool hwpwm=true);
+    static void analogWrite(const pin_t pin, const uint8_t uValue, const uint16_t freq=1000U);
 
     static void Tick();
 
     static inline void digitalWrite(const pin_t pin, const uint8_t value) {
-      ::digitalWrite(pin, value);
+      uint8_t bit = digitalPinToBitMask(pin);
+      uint8_t port = digitalPinToPort(pin);
+      volatile uint8_t *out = portOutputRegister(port);
+      if (value)
+        *out |= bit;
+      else
+        *out &= ~bit;
     }
     static inline uint8_t digitalRead(const pin_t pin) {
-      return ::digitalRead(pin);
+      uint8_t bit = digitalPinToBitMask(pin);
+      uint8_t port = digitalPinToPort(pin);
+      if (*portInputRegister(port) & bit) return HIGH;
+      return LOW;
     }
     static inline void pinMode(const pin_t pin, const uint8_t mode) {
+      uint8_t bit = digitalPinToBitMask(pin);
+      uint8_t port = digitalPinToPort(pin);
+      volatile uint8_t  *reg  = portModeRegister(port),
+                        *out  = portOutputRegister(port);
+
+      uint8_t oldSREG = SREG;
       switch (mode) {
         case INPUT:
-          ::pinMode(pin, INPUT); break;
+          cli();
+          *reg &= ~bit;
+          *out &= ~bit;
+          SREG = oldSREG;
+          break;
+        case INPUT_PULLUP:
+          cli();
+          *reg &= ~bit;
+          *out |= bit;
+          SREG = oldSREG;
+          break;
         case OUTPUT:
-          ::pinMode(pin, OUTPUT); break;
+          cli();
+          *reg |= bit;
+          SREG = oldSREG;
+          break;
         case OUTPUT_LOW:
-          ::pinMode(pin, OUTPUT);
-          ::digitalWrite(pin, LOW);
+          cli();
+          *reg |= bit;
+          *out &= ~bit;
+          SREG = oldSREG;
           break;
         case OUTPUT_HIGH:
-          ::pinMode(pin, OUTPUT);
-          ::digitalWrite(pin, HIGH);
+          cli();
+          *reg |= bit;
+          *out |= bit;
+          SREG = oldSREG;
           break;
         default: break;
       }
     }
     static inline void setInputPullup(const pin_t pin, const bool onoff) {
-      ::digitalWrite(pin, onoff);
+      onoff ? pinMode(pin, INPUT_PULLUP) : pinMode(pin, INPUT);
     }
 
     FORCE_INLINE static void delayNanoseconds(const uint32_t delayNs) {
@@ -542,34 +563,51 @@ class HAL {
         del = delayMs > 100 ? 100 : delayMs;
         delay(del);
         delayMs -= del;
-        watchdog.reset();
       }
     }
     static inline uint32_t timeInMilliseconds() {
       return millis();
     }
 
+    //
     // SPI related functions
-    #if ENABLED(SOFTWARE_SPI)
-      static void spiBegin();
-      static void spiInit(uint8_t spiRate);
-      static uint8_t spiReceive(void);
-      static void spiReadBlock(uint8_t* buf, uint16_t nbyte);
-      static void spiSend(uint8_t b);
-      static void spiSendBlock(uint8_t token, const uint8_t* buf);
-    #else
-      // Hardware setup
-      static void spiBegin();
-      static void spiInit(uint8_t spiRate);
-      // Write single byte to SPI
-      static void spiSend(uint8_t b);
-      static void spiSend(const uint8_t* buf, size_t n);
-      // Read single byte from SPI
-      static uint8_t spiReceive(void);
-      // Read from SPI into buffer
-      static void spiReadBlock(uint8_t* buf, uint16_t nbyte);
-      // Write from buffer to SPI
-      static void spiSendBlock(uint8_t token, const uint8_t* buf);
-    #endif
+    //
+
+    // Initialize SPI bus
+    static void spiBegin();
+
+    // Configure SPI for specified SPI speed
+    static void spiInit(uint8_t spiRate=6);
+
+    // Write single byte to SPI
+    static void spiSend(uint8_t nbyte);
+
+    // Write buffer to  SPI
+    static void spiSend(const uint8_t* buf, size_t nbyte);
+
+    // Write single byte to specified SPI channel
+    static void spiSend(uint32_t chan, uint8_t nbyte);
+
+    // Write buffer to specified SPI channel
+    static void spiSend(uint32_t chan ,const uint8_t* buf, size_t nbyte);
+
+    // Read single byte from SPI
+    static uint8_t spiReceive(void);
+
+    // Read single byte from specified SPI channel
+    static uint8_t spiReceive(uint32_t chan);
+
+    // Read from SPI into buffer
+    static void spiReadBlock(uint8_t* buf, uint16_t nbyte);
+
+    // Write token and then write from 512 byte buffer to SPI (for SD card)
+    static void spiSendBlock(uint8_t token, const uint8_t* buf);
+
+  private: /** Private Function */
+
+    /**
+     * Called from the Temperature ISR
+     */
+    static void set_current_temp_raw();
 
 };

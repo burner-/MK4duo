@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,18 +23,18 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if DISABLED(EMERGENCY_PARSER)
 
-  #define CODE_M876
+#define CODE_M876
 
-  /**
-   * M876: Host Prompt Response
-   */
-  inline void gcode_M876(void) {
-    if (parser.seenval('S')) host_action.response_handler(parser.value_byte());
-  }
+/**
+ * M876: Host dialog handling
+ */
+inline void gcode_M876() {
+  if (parser.seenval('S')) host_action.response_handler(parser.value_byte());
+}
 
 #endif

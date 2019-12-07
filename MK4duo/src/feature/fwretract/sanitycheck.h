@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,15 +19,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * sanitycheck.h
  *
  * Test configuration values for errors at compile-time.
  */
-
-#ifndef _FWRETRACT_SANITYCHECK_H_
-#define _FWRETRACT_SANITYCHECK_H_
 
 // Firmware Retract
 #if ENABLED(FWRETRACT)
@@ -62,5 +60,3 @@
     #error "DEPENDENCY ERROR: Missing setting RETRACT_RECOVER_FEEDRATE_SWAP."
   #endif
 #endif
-
-#endif /* _FWRETRACT_SANITYCHECK_H_ */

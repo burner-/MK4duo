@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_COLOR_LEDS
@@ -46,9 +46,9 @@
  *   M150 P127       ; Set LED 50% brightness
  *   M150 P          ; Set LED full brightness
  */
-inline void gcode_M150(void) {
+inline void gcode_M150() {
   if (parser.seen('S')) {
-    millis_s end = millis();
+    short_timer_t end_timer(millis());
     const uint8_t second = parser.value_byte();
     do {
       const uint8_t red   = random(256);
@@ -59,8 +59,8 @@ inline void gcode_M150(void) {
           , true
         #endif
       );
-      printer.safe_delay(100);
-    } while (pending(&end, millis_s(second * 1000U)));
+      HAL::delayMilliseconds(100);
+    } while (end_timer.pending(second * 1000));
   } 
   else {
     leds.set_color(MakeLEDColor(

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,9 +57,8 @@ class GCodeParser {
 
     // Command line state
     static char *command_ptr,     // The command, so it can be echoed
-                *string_arg;      // string of command line
-
-    static char command_letter;  // G, M, or T
+                *string_arg,      // string of command line
+                 command_letter;  // G, M, or T
 
     static uint16_t codenum;      // 123
 
@@ -159,7 +158,7 @@ class GCodeParser {
         }
       #endif
 
-      static inline bool seen_any() { return !!codebits; }
+      static inline bool seen_any() { return !codebits; }
 
       #define SEEN_TEST(L) TEST32(codebits, LETTER_BIT(L))
 

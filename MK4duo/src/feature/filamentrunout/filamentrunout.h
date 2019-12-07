@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,51 +22,44 @@
 #pragma once
 
 /**
- * filrunout.h
+ * filamentrunout.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
+
+#include "../../../MK4duo.h"
 
 #if HAS_FILAMENT_SENSOR
 
 //#define FILAMENT_RUNOUT_SENSOR_DEBUG
 
-#include "../../../MK4duo.h"
-
-union flagfilament_t {
+union filament_flag_t {
   uint8_t all;
   struct {
     bool  enabled       : 1;
-    bool  FilamentOut   : 1;
-    bool  hosthandling  : 1;
+    bool  ran_out       : 1;
+    bool  host_handling : 1;
     bool  bit3          : 1;
     bool  bit4          : 1;
     bool  bit5          : 1;
     bool  bit6          : 1;
     bool  bit7          : 1;
   };
-  flagfilament_t() { all = 0x00; }
+  filament_flag_t() { all = 0x00; }
 };
 
-class FilamentRunoutBase {
-
-  public: /** Public Parameters */
-
-    static flagfilament_t flag;
-
-  public: /** Public Function */
-
-    FORCE_INLINE static void setEnabled(const bool onoff) { flag.enabled = onoff; }
-    FORCE_INLINE static bool isEnabled() { return flag.enabled; }
-    FORCE_INLINE static void setFilamentOut(const bool onoff) { flag.FilamentOut = onoff; }
-    FORCE_INLINE static bool isFilamentOut() { return flag.FilamentOut; }
-    FORCE_INLINE static void setHostHandling(const bool onoff) { flag.hosthandling = onoff; }
-    FORCE_INLINE static bool isHostHandling() { return flag.hosthandling; }
-
-};
+// Struct Filament Runout data
+typedef struct {
+  filament_flag_t flag;
+  uint8_t         logic_flag,
+                  pullup_flag;
+  #if FILAMENT_RUNOUT_DISTANCE_MM > 0
+    float         runout_distance_mm;
+  #endif
+} filament_data_t;
 
 template<class RESPONSE_T, class SENSOR_T>
-class TFilamentRunout : public FilamentRunoutBase {
+class FilamentRunoutBase {
 
   public: /** Public Parameters */
 
@@ -83,7 +76,7 @@ class TFilamentRunout : public FilamentRunoutBase {
     }
 
     static inline void reset() {
-      setFilamentOut(false);
+      sensor.setFilamentOut(false);
       response.reset();
     }
 
@@ -94,14 +87,14 @@ class TFilamentRunout : public FilamentRunoutBase {
     }
 
     #if FILAMENT_RUNOUT_DISTANCE_MM > 0
-      static inline float& runout_distance() { return response.runout_distance_mm; }
-      static inline void set_runout_distance(const float &mm) { response.runout_distance_mm = mm; }
+      static inline float& runout_distance() { return sensor.data.runout_distance_mm; }
+      static inline void set_runout_distance(const float &mm) { sensor.data.runout_distance_mm = mm; }
     #endif
 
     // Handle a block completion. RunoutResponseDelayed uses this to
     // add up the length of filament moved while the filament is out.
     static inline void block_completed(const block_t* const b) {
-      if (isEnabled()) {
+      if (sensor.isEnabled()) {
         response.block_completed(b);
         sensor.block_completed(b);
       }
@@ -109,7 +102,7 @@ class TFilamentRunout : public FilamentRunoutBase {
 
     // Give the response a chance to update its counter.
     static inline void spin() {
-      if (isEnabled() && !isFilamentOut() && printer.isPrinting()) {
+      if (sensor.isEnabled() && !sensor.isFilamentOut() && printer.isPrinting()) {
         #if FILAMENT_RUNOUT_DISTANCE_MM > 0
           cli(); // Prevent RunoutResponseDelayed::block_completed from accumulating here
         #endif
@@ -119,9 +112,61 @@ class TFilamentRunout : public FilamentRunoutBase {
         #if FILAMENT_RUNOUT_DISTANCE_MM > 0
           sei();
         #endif
-        if (ran_out)
-          printer.setInterruptEvent(INTERRUPT_EVENT_FIL_RUNOUT);
+        if (ran_out) {
+          sensor.setFilamentOut(true);
+          event_runout();
+          planner.synchronize();
+        }
       }
+    }
+
+    static inline void print_M412() {
+      SERIAL_LM(CFG, "Filament runout: S<enable> H<Host control> D<Distanze (mm)>");
+      SERIAL_SM(CFG, "  M412");
+      SERIAL_MV(" S", sensor.isEnabled());
+      SERIAL_MV(" H", sensor.isHostHandling());
+      #if FILAMENT_RUNOUT_DISTANCE_MM > 0
+        SERIAL_MV(" D", runout_distance());
+      #endif
+      SERIAL_EOL();
+    }
+
+  private: /** Private Function */
+
+    static void event_runout() {
+
+      #if ENABLED(ADVANCED_PAUSE_FEATURE)
+        if (advancedpause.did_pause_print) return;
+      #endif
+
+      const char tool = DIGIT(toolManager.extruder.active);
+      host_action.prompt_reason = PROMPT_FILAMENT_RUNOUT;
+      host_action.prompt_begin(PSTR("Filament Runout T"), false);
+      SERIAL_CHR(tool);
+      SERIAL_EOL();
+      host_action.prompt_show();
+
+      const bool run_runout_script = !sensor.isHostHandling();
+
+      if (run_runout_script
+        && ( strstr(FILAMENT_RUNOUT_SCRIPT, "M600")
+          || strstr(FILAMENT_RUNOUT_SCRIPT, "M125")
+          #if ENABLED(ADVANCED_PAUSE_FEATURE)
+            || strstr(FILAMENT_RUNOUT_SCRIPT, "M25")
+          #endif
+        )
+      ) {
+        host_action.paused(false);
+      }
+      else
+        host_action.pause(false);
+
+      SERIAL_MSG(" filament_runout T");
+      SERIAL_CHR(tool);
+      SERIAL_EOL();
+
+      if (run_runout_script)
+        commands.inject_P(PSTR(FILAMENT_RUNOUT_SCRIPT));
     }
 
 };
@@ -130,8 +175,7 @@ class FilamentSensorBase {
 
   public: /** Public Parameters */
 
-    static uint8_t  logic_flag,
-                    pullup_flag;
+    static filament_data_t data;
 
   public: /** Public Function */
 
@@ -177,15 +221,22 @@ class FilamentSensorBase {
       );
     }
 
+    FORCE_INLINE static void setEnabled(const bool onoff) { data.flag.enabled = onoff; }
+    FORCE_INLINE static bool isEnabled() { return data.flag.enabled; }
+    FORCE_INLINE static void setFilamentOut(const bool onoff) { data.flag.ran_out = onoff; }
+    FORCE_INLINE static bool isFilamentOut() { return data.flag.ran_out; }
+    FORCE_INLINE static void setHostHandling(const bool onoff) { data.flag.host_handling = onoff; }
+    FORCE_INLINE static bool isHostHandling() { return data.flag.host_handling; }
+
     FORCE_INLINE static void setLogic(const FilRunoutEnum filrunout, const bool logic) {
-      SET_BIT(logic_flag, filrunout, logic);
+      SET_BIT_TO(data.logic_flag, filrunout, logic);
     }
-    FORCE_INLINE static bool isLogic(const FilRunoutEnum filrunout) { return TEST(logic_flag, filrunout); }
+    FORCE_INLINE static bool isLogic(const FilRunoutEnum filrunout) { return TEST(data.logic_flag, filrunout); }
 
     FORCE_INLINE static void setPullup(const FilRunoutEnum filrunout, const bool pullup) {
-      SET_BIT(pullup_flag, filrunout, pullup);
+      SET_BIT_TO(data.pullup_flag, filrunout, pullup);
     }
-    FORCE_INLINE static bool isPullup(const FilRunoutEnum filrunout) { return TEST(pullup_flag, filrunout); }
+    FORCE_INLINE static bool isPullup(const FilRunoutEnum filrunout) { return TEST(data.pullup_flag, filrunout); }
 
   protected: /** Protected Function */
 
@@ -228,7 +279,7 @@ class FilamentSensorBase {
 
         #if ENABLED(FILAMENT_RUNOUT_SENSOR_DEBUG)
           if (change) {
-            SERIAL_MSG("Motion detected:");
+            SERIAL_MSG("Motion detected:E");
             for (uint8_t e = 0; e < EXTRUDERS; e++)
               if (TEST(change, e)) { SERIAL_CHR(' '); SERIAL_CHR('0' + e); }
             SERIAL_EOL();
@@ -253,8 +304,8 @@ class FilamentSensorBase {
       static inline void block_completed(const block_t* const b) { UNUSED(b); }
 
       static inline void run() {
-        const bool out = read_runout_state(tools.active_extruder);
-        if (!out) filament_present(tools.active_extruder);
+        const bool out = read_runout_state(toolManager.extruder.active);
+        if (!out) filament_present(toolManager.extruder.active);
         #if ENABLED(FILAMENT_RUNOUT_SENSOR_DEBUG)
           static bool was_out = false;
           if (out != was_out) {
@@ -295,11 +346,7 @@ class FilamentSensorBase {
   // of filament specified by FILAMENT_RUNOUT_DISTANCE_MM has been fed
   // during a runout condition.
   class RunoutResponseDelayed {
-    
-    public: /** Public Parameters */
-
-      static float runout_distance_mm;
-
+ 
     private: /** Private Parameters */
 
       static volatile float runout_mm_countdown[EXTRUDERS];
@@ -312,8 +359,8 @@ class FilamentSensorBase {
 
       static inline void run() {
         #if ENABLED(FILAMENT_RUNOUT_SENSOR_DEBUG)
-          static millis_s nex_ms = millis();
-          if (expired(&nex_ms, 1000U)) {
+          static short_timer_t nex_timer(millis());
+          if (nex_timer.expired(1000)) {
             LOOP_EXTRUDER() {
               SERIAL_STR(e ? PSTR(", ") : PSTR("Remaining mm: "));
               SERIAL_VAL(runout_mm_countdown[e]);
@@ -324,14 +371,23 @@ class FilamentSensorBase {
       }
 
       static inline bool has_run_out() {
-        return runout_mm_countdown[tools.active_extruder] < 0;
+        return runout_mm_countdown[toolManager.extruder.active] < 0;
       }
 
-      static inline void filament_present(const uint8_t extruder) {
-        runout_mm_countdown[extruder] = runout_distance_mm;
-      }
+      static void filament_present(const uint8_t extruder);
 
-      static inline void block_completed(const block_t* const b);
+      static inline void block_completed(const block_t* const block) {
+        if (block->steps.x || block->steps.y || block->steps.z
+          #if ENABLED(ADVANCED_PAUSE_FEATURE)
+            || advancedpause.did_pause_print // Allow pause purge move to re-trigger runout state
+          #endif
+        ) {
+          // Only trigger on extrusion with XYZ movement to allow filament change and retract/recover.
+          const uint8_t e = block->active_extruder;
+          const int32_t steps = block->steps.e;
+          runout_mm_countdown[e] -= (TEST(block->direction_bits, E_AXIS) ? -steps : steps) * extruders[e]->steps_to_mm;
+        }
+      }
 
   };
 
@@ -360,12 +416,12 @@ class FilamentSensorBase {
 
 #if FILAMENT_RUNOUT_DISTANCE_MM > 0
   #if ENABLED(EXTRUDER_ENCODER_CONTROL)
-    typedef TFilamentRunout<RunoutResponseDelayed, FilamentSensorEncoder> FilamentRunout;
+    typedef FilamentRunoutBase<RunoutResponseDelayed, FilamentSensorEncoder>  FilamentRunout;
   #else
-    typedef TFilamentRunout<RunoutResponseDelayed, FilamentSensorSwitch> FilamentRunout;
+    typedef FilamentRunoutBase<RunoutResponseDelayed, FilamentSensorSwitch>   FilamentRunout;
   #endif
 #else
-  typedef TFilamentRunout<RunoutResponseDebounced, FilamentSensorSwitch> FilamentRunout;
+  typedef FilamentRunoutBase<RunoutResponseDebounced, FilamentSensorSwitch>   FilamentRunout;
 #endif
 
 extern FilamentRunout filamentrunout;

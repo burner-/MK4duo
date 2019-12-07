@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,16 +23,16 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if DISABLED(EMERGENCY_PARSER)
 
-  #define CODE_M108
+#define CODE_M108
 
-  /**
-   * M108: Cancel heatup and wait for the hotend and bed, this G-code is asynchronously handled in the get_serial() parser
-   */
-  inline void gcode_M108(void) { printer.setWaitForHeatUp(false); }
+/**
+ * M108: Cancel heatup and wait for the hotend and bed, this G-code is asynchronously handled in the get_serial() parser
+ */
+inline void gcode_M108() { printer.setWaitForHeatUp(false); }
 
 #endif

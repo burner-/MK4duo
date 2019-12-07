@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,26 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M220
 
 /**
- * M220: Set speed percentage factor, aka "Feed Rate" (M220 S95)
+ * M220 Sxxx: Set speed percentage factor, aka "Feed Rate" (M220 S95)
+ * M220 B: backup current speed override
+ * M220 R: restore previously saved speed override
  */
-inline void gcode_M220(void) {
-  if (parser.seenval('S')) mechanics.feedrate_percentage = parser.value_int();
+inline void gcode_M220() {
+  static int16_t backup_feedrate_percentage = 100;
+
+  if (parser.seenval('S'))
+    mechanics.feedrate_percentage = parser.value_int();
+
+  if (parser.seen('B'))
+    backup_feedrate_percentage = mechanics.feedrate_percentage;
+
+  if (parser.seen('R'))
+    mechanics.feedrate_percentage = backup_feedrate_percentage;
+
 }

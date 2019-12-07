@@ -16,9 +16,124 @@
   <!-- Needed for compatibility with Repetier Server -->
   <query>M503</query>
   <store>M500</store>
-  <defaults>M502
-  M500</defaults>
+  <defaults>
+    M502
+    M500
+  </defaults>
   <!-- Needed for compatibility with Repetier Server -->
+
+  <!-- M353: Number tools -->
+  <entry type="int" min="0" max="6">
+    <description unit="[0-6]">Number driver extruder</description>
+    <set>M353 D@</set>
+    <detect>M353.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="12">
+    <description unit="[0-12]">Number extruder</description>
+    <set>M353 E@</set>
+    <detect>M353.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="6">
+    <description unit="[0-6]">Number hotend</description>
+    <set>M353 H@</set>
+    <detect>M353.*H(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="4">
+    <description unit="[0-4]">Number bed</description>
+    <set>M353 B@</set>
+    <detect>M353.*B(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="4">
+    <description unit="[0-4]">Number chamber</description>
+    <set>M353 C@</set>
+    <detect>M353.*C(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="6">
+    <description unit="[0-6]">Number fan</description>
+    <set>M353 F@</set>
+    <detect>M353.*F(-?\d*)</detect>
+  </entry>
+
+  <!-- M563: Tools Driver Heater assignment -->
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 0 Driver assignment</description>
+    <set>M563 T0 D@</set>
+    <detect>M563 T0.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 0 Hotend assignment</description>
+    <set>M563 T0 H@</set>
+    <detect>M563 T0.*H(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 1 Driver assignment</description>
+    <set>M563 T1 D@</set>
+    <detect>M563 T1.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 1 Hotend assignment</description>
+    <set>M563 T1 H@</set>
+    <detect>M563 T1.*H(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 2 Driver assignment</description>
+    <set>M563 T2 D@</set>
+    <detect>M563 T2.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 2 Hotend assignment</description>
+    <set>M563 T2 H@</set>
+    <detect>M563 T2.*H(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 3 Driver assignment</description>
+    <set>M563 T3 D@</set>
+    <detect>M563 T3.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 3 Hotend assignment</description>
+    <set>M563 T3 H@</set>
+    <detect>M563 T3.*H(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 4 Driver assignment</description>
+    <set>M563 T4 D@</set>
+    <detect>M563 T4.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 4 Hotend assignment</description>
+    <set>M563 T4 H@</set>
+    <detect>M563 T4.*H(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 5 Driver assignment</description>
+    <set>M563 T5 D@</set>
+    <detect>M563 T5.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 5 Hotend assignment</description>
+    <set>M563 T5 H@</set>
+    <detect>M563 T5.*H(-?\d*)</detect>
+  </entry><entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 5 Driver assignment</description>
+    <set>M563 T5 D@</set>
+    <detect>M563 T5.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 5 Hotend assignment</description>
+    <set>M563 T5 H@</set>
+    <detect>M563 T5.*H(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 6 Driver assignment</description>
+    <set>M563 T6 D@</set>
+    <detect>M563 T6.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="5">
+    <description unit="[0-5]">Tool 6 Hotend assignment</description>
+    <set>M563 T6 H@</set>
+    <detect>M563 T6.*H(-?\d*)</detect>
+  </entry>
 
   <!-- M92: Axis resolution -->
   <entry type="float" min="0">
@@ -90,20 +205,15 @@
   </entry>
 
   <!-- M106: Fan parameters -->
+  <entry type="int">
+    <description unit="Hz">Fan frequency</description>
+    <set>M106 P0 F@</set>
+    <detect>M106 P0.*F(-?\d*)</detect>
+  </entry>
   <entry type="int" min="0">
     <description unit="">Fan 0 pin</description>
     <set>M106 P0 U@</set>
     <detect>M106 P0.*U(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Fan 0 speed</description>
-    <set>M106 P0 S@</set>
-    <detect>M106 P0.*S(-?\d*)</detect>
-  </entry>
-  <entry type="int">
-    <description unit="Hz">Fan 0 frequency</description>
-    <set>M106 P0 F@</set>
-    <detect>M106 P0.*F(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
     <description unit="[0-255]">Fan 0 min speed</description>
@@ -137,16 +247,6 @@
     <detect>M106 P1.*U(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Fan 1 speed</description>
-    <set>M106 P1 S@</set>
-    <detect>M106 P1.*S(-?\d*)</detect>
-  </entry>
-  <entry type="int">
-    <description unit="Hz">Fan 1 frequency</description>
-    <set>M106 P1 F@</set>
-    <detect>M106 P1.*F(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="255">
     <description unit="[0-255]">Fan 1 min speed</description>
     <set>M106 P1 L@</set>
     <detect>M106 P1.*L(-?\d*)</detect>
@@ -176,16 +276,6 @@
     <description unit="">Fan 2 pin</description>
     <set>M106 P2 U@</set>
     <detect>M106 P2.*U(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Fan 2 speed</description>
-    <set>M106 P2 S@</set>
-    <detect>M106 P2.*S(-?\d*)</detect>
-  </entry>
-  <entry type="int">
-    <description unit="Hz">Fan 2 frequency</description>
-    <set>M106 P2 F@</set>
-    <detect>M106 P2.*F(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
     <description unit="[0-255]">Fan 2 min speed</description>
@@ -219,16 +309,6 @@
     <detect>M106 P3.*U(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Fan 3 speed</description>
-    <set>M106 P3 S@</set>
-    <detect>M106 P3.*S(-?\d*)</detect>
-  </entry>
-  <entry type="int">
-    <description unit="Hz">Fan 3 frequency</description>
-    <set>M106 P3 F@</set>
-    <detect>M106 P3.*F(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="255">
     <description unit="[0-255]">Fan 3 min speed</description>
     <set>M106 P3 L@</set>
     <detect>M106 P3.*L(-?\d*)</detect>
@@ -260,16 +340,6 @@
     <detect>M106 P4.*U(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Fan 4 speed</description>
-    <set>M106 P4 S@</set>
-    <detect>M106 P4.*S(-?\d*)</detect>
-  </entry>
-  <entry type="int">
-    <description unit="Hz">Fan 4 frequency</description>
-    <set>M106 P4 F@</set>
-    <detect>M106 P4.*F(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="255">
     <description unit="[0-255]">Fan 4 min speed</description>
     <set>M106 P4 L@</set>
     <detect>M106 P4.*L(-?\d*)</detect>
@@ -299,16 +369,6 @@
     <description unit="">Fan 5 pin</description>
     <set>M106 P5 U@</set>
     <detect>M106 P5.*U(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Fan 5 speed</description>
-    <set>M106 P5 S@</set>
-    <detect>M106 P5.*S(-?\d*)</detect>
-  </entry>
-  <entry type="int">
-    <description unit="Hz">Fan 5 frequency</description>
-    <set>M106 P5 F@</set>
-    <detect>M106 P5.*F(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
     <description unit="[0-255]">Fan 5 min speed</description>
@@ -774,6 +834,43 @@
     <description unit="[0-1]">Autoretract enabled</description>
     <set>M209 S@</set>
     <detect>M209.*S(-?\d*)</detect>
+  </entry>
+
+  <!-- M217: Nozzle Park -->
+  <entry type="float" min="0" max="500">
+    <description unit="[unit]">Swap length</description>
+    <set>M217 S@</set>
+    <detect>M217.*S(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float" min="0" max="500">
+    <description unit="[unit]">Swap extra prime</description>
+    <set>M217 E@</set>
+    <detect>M217.*E(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="int" min="10" max="6000">
+    <description unit="[unit/min]">Swap prime speed</description>
+    <set>M217 P@</set>
+    <detect>M217.*P(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="10" max="6000">
+    <description unit="[unit/min]">Swap retract speed</description>
+    <set>M217 R@</set>
+    <detect>M217.*R(-?\d*)</detect>
+  </entry>
+  <entry type="float">
+    <description unit="[unit]">Park X</description>
+    <set>M217 X@</set>
+    <detect>M217.*X(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float">
+    <description unit="[unit]">Park Y</description>
+    <set>M217 Y@</set>
+    <detect>M217.*Y(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float">
+    <description unit="[unit]">Park Z raise</description>
+    <set>M217 Z@</set>
+    <detect>M217.*Z(-?\d*\.?\d*)</detect>
   </entry>
 
   <!-- M218: Hotend offset -->
@@ -1410,17 +1507,17 @@
 
   <!-- M306: Heaters parameters -->
   <entry type="int" min="0">
-    <description unit="[Ohm]">Hotend 0 PID drive min</description>
+    <description unit="[0-255]">Hotend 0 Power drive min</description>
     <set>M306 H0 A@</set>
     <detect>M306 H0.*A(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 0 PID drive max</description>
+    <description unit="[0-255]">Hotend 0 Power drive max</description>
     <set>M306 H0 B@</set>
     <detect>M306 H0.*B(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 0 PID max</description>
+    <description unit="[0-255]">Hotend 0 Power max</description>
     <set>M306 H0 C@</set>
     <detect>M306 H0.*C(-?\d*)</detect>
   </entry>
@@ -1466,17 +1563,17 @@
   </entry>
   <!-- ########################## -->
   <entry type="int" min="0">
-    <description unit="[Ohm]">Hotend 1 PID drive min</description>
+    <description unit="[0-255]">Hotend 1 Power drive min</description>
     <set>M306 H1 A@</set>
     <detect>M306 H1.*A(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 1 PID drive max</description>
+    <description unit="[0-255]">Hotend 1 Power drive max</description>
     <set>M306 H1 B@</set>
     <detect>M306 H1.*B(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 1 PID max</description>
+    <description unit="[0-255]">Hotend 1 Power max</description>
     <set>M306 H1 C@</set>
     <detect>M306 H1.*C(-?\d*)</detect>
   </entry>
@@ -1522,17 +1619,17 @@
   </entry>
   <!-- ########################## -->
   <entry type="int" min="0">
-    <description unit="[Ohm]">Hotend 2 PID drive min</description>
+    <description unit="[0-255]">Hotend 2 Power drive min</description>
     <set>M306 H2 A@</set>
     <detect>M306 H2.*A(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 2 PID drive max</description>
+    <description unit="[0-255]">Hotend 2 Power drive max</description>
     <set>M306 H2 B@</set>
     <detect>M306 H2.*B(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 2 PID max</description>
+    <description unit="[0-255]">Hotend 2 Power max</description>
     <set>M306 H2 C@</set>
     <detect>M306 H2.*C(-?\d*)</detect>
   </entry>
@@ -1578,17 +1675,17 @@
   </entry>
   <!-- ########################## -->
   <entry type="int" min="0">
-    <description unit="[Ohm]">Hotend 3 PID drive min</description>
+    <description unit="[0-255]">Hotend 3 Power drive min</description>
     <set>M306 H3 A@</set>
     <detect>M306 H3.*A(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 3 PID drive max</description>
+    <description unit="[0-255]">Hotend 3 Power drive max</description>
     <set>M306 H3 B@</set>
     <detect>M306 H3.*B(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 3 PID max</description>
+    <description unit="[0-255]">Hotend 3 Power max</description>
     <set>M306 H3 C@</set>
     <detect>M306 H3.*C(-?\d*)</detect>
   </entry>
@@ -1634,17 +1731,17 @@
   </entry>
   <!-- ########################## -->
   <entry type="int" min="0">
-    <description unit="[Ohm]">Hotend 4 PID drive min</description>
+    <description unit="[0-255]">Hotend 4 Power drive min</description>
     <set>M306 H4 A@</set>
     <detect>M306 H4.*A(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 4 PID drive max</description>
+    <description unit="[0-255]">Hotend 4 Power drive max</description>
     <set>M306 H4 B@</set>
     <detect>M306 H4.*B(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 4 PID max</description>
+    <description unit="[0-255]">Hotend 4 Power max</description>
     <set>M306 H4 C@</set>
     <detect>M306 H4.*C(-?\d*)</detect>
   </entry>
@@ -1690,17 +1787,17 @@
   </entry>
   <!-- ########################## -->
   <entry type="int" min="0">
-    <description unit="[Ohm]">Hotend 5 PID drive min</description>
+    <description unit="[0-255]">Hotend 5 Power drive min</description>
     <set>M306 H5 A@</set>
     <detect>M306 H5.*A(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 5 PID drive max</description>
+    <description unit="[0-255]">Hotend 5 Power drive max</description>
     <set>M306 H5 B@</set>
     <detect>M306 H5.*B(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Hotend 5 PID max</description>
+    <description unit="[0-255]">Hotend 5 Power max</description>
     <set>M306 H5 C@</set>
     <detect>M306 H5.*C(-?\d*)</detect>
   </entry>
@@ -1746,17 +1843,17 @@
   </entry>
   <!-- ########################## -->
   <entry type="int" min="0">
-    <description unit="[Ohm]">Bed PID drive min</description>
+    <description unit="[0-255]">Bed Power drive min</description>
     <set>M306 H-1 T0 A@</set>
     <detect>M306 H-1 T0.*A(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Bed PID drive max</description>
+    <description unit="[0-255]">Bed Power drive max</description>
     <set>M306 H-1 T0 B@</set>
     <detect>M306 H-1 T0.*B(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Bed PID max</description>
+    <description unit="[0-255]">Bed Power max</description>
     <set>M306 H-1 T0 C@</set>
     <detect>M306 H-1 T0.*C(-?\d*)</detect>
   </entry>
@@ -1802,17 +1899,17 @@
   </entry>
   <!-- ########################## -->
   <entry type="int" min="0">
-    <description unit="[Ohm]">Chamber PID drive min</description>
+    <description unit="[0-255]">Chamber Power drive min</description>
     <set>M306 H-2 T0 A@</set>
     <detect>M306 H-2 T0.*A(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Chamber PID drive max</description>
+    <description unit="[0-255]">Chamber Power drive max</description>
     <set>M306 H-2 T0 B@</set>
     <detect>M306 H-2 T0.*B(-?\d*)</detect>
   </entry>
   <entry type="int" min="0" max="255">
-    <description unit="[0-255]">Chamber PID max</description>
+    <description unit="[0-255]">Chamber Power max</description>
     <set>M306 H-2 T0 C@</set>
     <detect>M306 H-2 T0.*C(-?\d*)</detect>
   </entry>
@@ -1849,7 +1946,7 @@
 
   <!--  M413: Restart Enabled -->
   <entry type="int" min="0" max="1">
-    <description unit="[0-1]">SD Restart Job</description>
+    <description unit="[0-1]">SD Restart Enable</description>
     <set>M413 S@</set>
     <detect>M413.*S(-?\d*)</detect>
   </entry>
@@ -1864,73 +1961,6 @@
     <description unit="[unit]">Bed leveling: Z fade height</description>
     <set>M420 Z@</set>
     <detect>M420.*Z(-?\d*\.?\d*)</detect>
-  </entry>
-
-  <!-- M569: Stepper Direction, Quad_stepping Direction_delay, minimum_pulse e maximum_rate -->
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">X stepper direction</description>
-    <set>M569 X@</set>
-    <detect>M569.*X(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">Y stepper direction</description>
-    <set>M569 Y@</set>
-    <detect>M569.*Y(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">Z stepper direction</description>
-    <set>M569 Z@</set>
-    <detect>M569.*Z(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">E0 stepper direction</description>
-    <set>M569 T0 E@</set>
-    <detect>M569.*T0 E(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">E1 stepper direction</description>
-    <set>M569 T1 E@</set>
-    <detect>M569.*T1 E(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">E2 stepper direction</description>
-    <set>M569 T2 E@</set>
-    <detect>M569.*T2 E(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">E3 stepper direction</description>
-    <set>M569 T3 E@</set>
-    <detect>M569.*T3 E(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">E4 stepper direction</description>
-    <set>M569 T4 E@</set>
-    <detect>M569.*T4 E(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">E5 stepper direction</description>
-    <set>M569 T5 E@</set>
-    <detect>M569.*T5 E(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0">
-    <description unit="[ns]">Stepper direction delay</description>
-    <set>M569 D@</set>
-    <detect>M569.*D(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0">
-    <description unit="[µs]">Stepper minimum pulse time</description>
-    <set>M569 P@</set>
-    <detect>M569.*P(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0">
-    <description unit="[Hz]">Stepper maximum rate</description>
-    <set>M569 R@</set>
-    <detect>M569.*R(-?\d*)</detect>
-  </entry>
-  <entry type="int" min="0" max="1">
-    <description unit="[0-1]">Stepper Double/Quad Stepping</description>
-    <set>M569 Q@</set>
-    <detect>M569.*Q(-?\d*)</detect>
   </entry>
 
   <!-- M595: AD595 Offset and Gain -->
@@ -2037,6 +2067,38 @@
     <detect>M603 T5.*U(-?\d*\.?\d*)</detect>
   </entry>
 
+  <!-- M900: Linear Advance -->
+  <entry type="float">
+    <description unit="[unit]">T0 Linear Advance K factor</description>
+    <set>M900 T0 K@</set>
+    <detect>M900 T0.*K(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float">
+    <description unit="[unit]">T1 Linear Advance K factor</description>
+    <set>M900 T1 K@</set>
+    <detect>M900 T1.*K(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float">
+    <description unit="[unit]">T2 Linear Advance K factor</description>
+    <set>M900 T2 K@</set>
+    <detect>M900 T2.*K(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float">
+    <description unit="[unit]">T3 Linear Advance K factor</description>
+    <set>M900 T3 K@</set>
+    <detect>M900 T3.*K(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float">
+    <description unit="[unit]">T4 Linear Advance K factor</description>
+    <set>M900 T4 K@</set>
+    <detect>M900 T4.*K(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float">
+    <description unit="[unit]">T5 Linear Advance K factor</description>
+    <set>M900 T5 K@</set>
+    <detect>M900 T5.*K(-?\d*\.?\d*)</detect>
+  </entry>
+
   <!-- M666: Delta geometry parameters -->
   <entry type="float">
     <description unit="[unit]">X endstop adjustment</description>
@@ -2109,9 +2171,14 @@
     <detect>M666.*D(-?\d*\.?\d*)</detect>
   </entry>
   <entry type="float" min="0">
-    <description unit="[1/s]">Delta segments per second</description>
+    <description unit="[1/s]">Delta segments per second print</description>
     <set>M666 S@</set>
     <detect>M666.*S(-?\d*\.?\d*)</detect>
+  </entry>
+  <entry type="float" min="0">
+    <description unit="[1/s]">Delta segments per second move</description>
+    <set>M666 F@</set>
+    <detect>M666.*F(-?\d*\.?\d*)</detect>
   </entry>
   <entry type="int" min="10" max="255">
     <description unit="">Delta segments per line</description>
@@ -2166,18 +2233,6 @@
     <detect>M851.*R(-?\d*)</detect>
   </entry>
 
-  <!-- M900: Linear Advance -->
-  <entry type="float">
-    <description unit="[unit]">Linear Advance K factor</description>
-    <set>M900 K@</set>
-    <detect>M900.*K(-?\d*\.?\d*)</detect>
-  </entry>
-  <entry type="float">
-    <description unit="[unit]">Linear Advance Extrusion-Distance ratio</description>
-    <set>M900 R@</set>
-    <detect>M900.*R(-?\d*\.?\d*)</detect>
-  </entry>
-
   <!-- M350: Driver Microstep -->
   <entry type="int" min="1">
     <description unit="[ms]">X driver microstep</description>
@@ -2223,6 +2278,300 @@
     <description unit="[ms]">E5 driver microstep</description>
     <set>M350 T5 E@</set>
     <detect>M350.*T5 E(-?\d*)</detect>
+  </entry>
+
+  <!-- M352: Stepper pin and logic -->
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">X Enable Pin</description>
+    <set>M352 X E@</set>
+    <detect>M352 X.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">X Dir Pin</description>
+    <set>M352 X D@</set>
+    <detect>M352 X.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">X Step Pin</description>
+    <set>M352 X S@</set>
+    <detect>M352 X.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">X Enable logic</description>
+    <set>M352 X L@</set>
+    <detect>M352 X.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">X Step logic</description>
+    <set>M352 X M@</set>
+    <detect>M352 X.*M(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">Y Enable Pin</description>
+    <set>M352 Y E@</set>
+    <detect>M352 Y.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">Y Dir Pin</description>
+    <set>M352 Y D@</set>
+    <detect>M352 Y.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">Y Step Pin</description>
+    <set>M352 Y S@</set>
+    <detect>M352 Y.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">Y Enable logic</description>
+    <set>M352 Y L@</set>
+    <detect>M352 Y.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">Y Step logic</description>
+    <set>M352 Y M@</set>
+    <detect>M352 Y.*M(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">Z Enable Pin</description>
+    <set>M352 Z E@</set>
+    <detect>M352 Z.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">Z Dir Pin</description>
+    <set>M352 Z D@</set>
+    <detect>M352 Z.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">Z Step Pin</description>
+    <set>M352 Z S@</set>
+    <detect>M352 Z.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">Z Enable logic</description>
+    <set>M352 Z L@</set>
+    <detect>M352 Z.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">Z Step logic</description>
+    <set>M352 Z M@</set>
+    <detect>M352 Z.*M(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T0 Enable Pin</description>
+    <set>M352 T0 E@</set>
+    <detect>M352 T0.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T0 Dir Pin</description>
+    <set>M352 T0 D@</set>
+    <detect>M352 T0.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T0 Step Pin</description>
+    <set>M352 T0 S@</set>
+    <detect>M352 T0.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T0 Enable logic</description>
+    <set>M352 T0 L@</set>
+    <detect>M352 T0.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T0 Step logic</description>
+    <set>M352 T0 M@</set>
+    <detect>M352 T0.*M(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T1 Enable Pin</description>
+    <set>M352 T1 E@</set>
+    <detect>M352 T1.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T1 Dir Pin</description>
+    <set>M352 T1 D@</set>
+    <detect>M352 T1.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T1 Step Pin</description>
+    <set>M352 T1 S@</set>
+    <detect>M352 T1.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T1 Enable logic</description>
+    <set>M352 T1 L@</set>
+    <detect>M352 T1.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T1 Step logic</description>
+    <set>M352 T1 M@</set>
+    <detect>M352 T1.*M(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T2 Enable Pin</description>
+    <set>M352 T2 E@</set>
+    <detect>M352 T2.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T2 Dir Pin</description>
+    <set>M352 T2 D@</set>
+    <detect>M352 T2.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T2 Step Pin</description>
+    <set>M352 T2 S@</set>
+    <detect>M352 T2.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T2 Enable logic</description>
+    <set>M352 T2 L@</set>
+    <detect>M352 T2.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T2 Step logic</description>
+    <set>M352 T2 M@</set>
+    <detect>M352 T2.*M(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T3 Enable Pin</description>
+    <set>M352 T3 E@</set>
+    <detect>M352 T3.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T3 Dir Pin</description>
+    <set>M352 T3 D@</set>
+    <detect>M352 T3.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T3 Step Pin</description>
+    <set>M352 T3 S@</set>
+    <detect>M352 T3.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T3 Enable logic</description>
+    <set>M352 T3 L@</set>
+    <detect>M352 T3.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T3 Step logic</description>
+    <set>M352 T3 M@</set>
+    <detect>M352 T3.*M(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T4 Enable Pin</description>
+    <set>M352 T4 E@</set>
+    <detect>M352 T4.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T4 Dir Pin</description>
+    <set>M352 T4 D@</set>
+    <detect>M352 T4.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T4 Step Pin</description>
+    <set>M352 T4 S@</set>
+    <detect>M352 T4.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T4 Enable logic</description>
+    <set>M352 T4 L@</set>
+    <detect>M352 T4.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T4 Step logic</description>
+    <set>M352 T4 M@</set>
+    <detect>M352 T4.*M(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T5 Enable Pin</description>
+    <set>M352 T5 E@</set>
+    <detect>M352 T5.*E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T5 Dir Pin</description>
+    <set>M352 T5 D@</set>
+    <detect>M352 T5.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="100">
+    <description unit="[pin]">T5 Step Pin</description>
+    <set>M352 T5 S@</set>
+    <detect>M352 T5.*S(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T5 Enable logic</description>
+    <set>M352 T5 L@</set>
+    <detect>M352 T5.*L(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">T5 Step logic</description>
+    <set>M352 T5 M@</set>
+    <detect>M352 T5.*M(-?\d*)</detect>
+  </entry>
+
+  <!-- M569: Stepper Direction, Quad_stepping Direction_delay, minimum_pulse e maximum_rate -->
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">X stepper direction</description>
+    <set>M569 X@</set>
+    <detect>M569.*X(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">Y stepper direction</description>
+    <set>M569 Y@</set>
+    <detect>M569.*Y(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">Z stepper direction</description>
+    <set>M569 Z@</set>
+    <detect>M569.*Z(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">E0 stepper direction</description>
+    <set>M569 T0 E@</set>
+    <detect>M569.*T0 E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">E1 stepper direction</description>
+    <set>M569 T1 E@</set>
+    <detect>M569.*T1 E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">E2 stepper direction</description>
+    <set>M569 T2 E@</set>
+    <detect>M569.*T2 E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">E3 stepper direction</description>
+    <set>M569 T3 E@</set>
+    <detect>M569.*T3 E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">E4 stepper direction</description>
+    <set>M569 T4 E@</set>
+    <detect>M569.*T4 E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">E5 stepper direction</description>
+    <set>M569 T5 E@</set>
+    <detect>M569.*T5 E(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0">
+    <description unit="[ns]">Stepper direction delay</description>
+    <set>M569 D@</set>
+    <detect>M569.*D(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0">
+    <description unit="[µs]">Stepper minimum pulse time</description>
+    <set>M569 P@</set>
+    <detect>M569.*P(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0">
+    <description unit="[Hz]">Stepper maximum rate</description>
+    <set>M569 R@</set>
+    <detect>M569.*R(-?\d*)</detect>
+  </entry>
+  <entry type="int" min="0" max="1">
+    <description unit="[0-1]">Stepper Double/Quad Stepping</description>
+    <set>M569 Q@</set>
+    <detect>M569.*Q(-?\d*)</detect>
   </entry>
 
   <!-- M906: Motor Current -->

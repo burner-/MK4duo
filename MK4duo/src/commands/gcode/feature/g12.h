@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,26 +23,45 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(NOZZLE_CLEAN_FEATURE)
 
-  #define CODE_G12
+#define CODE_G12
 
-  /**
-   * G12: Clean the nozzle
-   */
-  inline void gcode_G12(void) {
-    // Don't allow nozzle cleaning without homing first
-    if (mechanics.axis_unhomed_error()) { return; }
+/**
+ * G12: Clean the nozzle
+ */
+inline void gcode_G12() {
 
-    const uint8_t pattern = parser.seen('P') ? parser.value_ushort() : 0,
-                  strokes = parser.seen('S') ? parser.value_ushort() : NOZZLE_CLEAN_STROKES,
-                  objects = parser.seen('T') ? parser.value_ushort() : NOZZLE_CLEAN_TRIANGLES;
-    const float   radius  = parser.seen('R') ? parser.value_float()  : NOZZLE_CLEAN_CIRCLE_RADIUS;
+  // Don't allow nozzle cleaning without homing first
+  if (mechanics.axis_unhomed_error()) return;
 
-    Nozzle::clean(pattern, strokes, radius, objects);
-  }
+  const uint8_t pattern = parser.ushortval('P', 0),
+                strokes = parser.ushortval('S', NOZZLE_CLEAN_STROKES),
+                objects = parser.ushortval('T', NOZZLE_CLEAN_TRIANGLES);
+  const float   radius  = parser.floatval('R', NOZZLE_CLEAN_CIRCLE_RADIUS);
+
+  const bool seenxyz = parser.seen("XYZ");
+  const uint8_t cleans = ((!seenxyz || parser.boolval('X') ? _BV(X_AXIS) : 0)
+                        | (!seenxyz || parser.boolval('Y') ? _BV(Y_AXIS) : 0)
+                      #if DISABLED(NOZZLE_CLEAN_NO_Z)
+                        | (!seenxyz || parser.boolval('Z') ? _BV(Z_AXIS) : 0)
+                      #endif
+  );
+
+  #if HAS_LEVELING
+    if (!TEST(cleans, Z_AXIS)) bedlevel.set_bed_leveling_enabled(false);
+  #endif
+
+  nozzle.clean(pattern, strokes, radius, objects, cleans);
+
+  // Re-enable bed level correction if it had been on
+  #if HAS_LEVELING
+    if (!TEST(cleans, Z_AXIS)) bedlevel.restore_bed_leveling_state();
+  #endif
+
+}
 
 #endif

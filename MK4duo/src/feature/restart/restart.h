@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,36 +38,39 @@ typedef struct {
 
   // SD file e position
   char fileName[MAX_PATH_NAME_LENGHT];
-  uint32_t sdpos;
+  volatile uint32_t sdpos;
 
   // Mechanics state
-  float   current_position[XYZE];
+  xyze_pos_t  axis_position_mm;
 
   #if ENABLED(WORKSPACE_OFFSETS)
-    float home_offset[XYZ];
-    float position_shift[XYZ];
+    xyz_pos_t home_offset,
+              position_shift;
   #endif
 
   uint16_t feedrate;
 
-  #if HOTENDS > 0
-    int16_t target_temperature[HOTENDS];
+  #if HAS_HOTENDS
+    int16_t target_temperature[MAX_HOTEND];
   #endif
-  #if BEDS > 0
-    int16_t bed_target_temperature[BEDS];
+  #if HAS_BEDS
+    int16_t bed_target_temperature[MAX_BED];
   #endif
-  #if CHAMBERS > 0
-    int16_t chamber_target_temperature[CHAMBERS];
+  #if HAS_CHAMBERS
+    int16_t chamber_target_temperature[MAX_CHAMBER];
   #endif
 
-  #if FAN_COUNT > 0
-    uint8_t fan_speed[FAN_COUNT];
+  #if HAS_FAN
+    uint8_t fan_speed[MAX_FAN];
   #endif
 
   // Extruders
-  #if EXTRUDERS > 1
+  #if MAX_EXTRUDER > 1
     uint8_t active_extruder;
   #endif
+
+  int16_t flow_percentage[MAX_EXTRUDER],
+          density_percentage[MAX_EXTRUDER];
 
   // Leveling
   #if HAS_LEVELING
@@ -80,18 +83,11 @@ typedef struct {
     gradient_t gradient;
   #endif
 
-  // Relative mode
-  bool relative_mode, relative_modes_e;
-
-  // Command buffer
-  uint8_t buffer_head, buffer_count;
-  char    buffer_ring[BUFSIZE][MAX_CMD_SIZE];
+  // Relative axis modes
+  uint8_t axis_relative_modes;
 
   // Job elapsed time
   millis_l print_job_counter_elapsed;
-
-  // Utility
-  bool just_restart;
 
   uint8_t valid_foot;
 
@@ -111,27 +107,34 @@ class Restart {
 
     static bool enabled;
 
-  public: /** Public Function */
+    static uint32_t cmd_sdpos,
+                    sdpos[BUFSIZE];
 
-    static void init_job();
+  public: /** Public Function */
 
     static void enable(const bool onoff);
     static void changed();
-
     static void check();
 
-    static inline bool exists()               { return card.exist_restart_file(); }
-    static inline void open(const bool read)  { card.open_restart_file(read); }
-    static inline void close()                { job_file.close(); }
-
+    static void start_job();
     static void purge_job();
     static void load_job();
     static void save_job(const bool force_save=false, const bool save_count=true);
     static void resume_job();
 
-    static inline bool valid() { return job_info.valid_head && job_info.valid_head == job_info.valid_foot; }
+    static inline bool exists()               { return card.exist_restart_file(); }
+    static inline void open(const bool read)  { card.open_restart_file(read); }
+    static inline void close()                { job_file.close(); }
+
+    static inline void factory_parameters()   { enable(true); }
+    static inline bool valid()                { return job_info.valid_head && job_info.valid_head == job_info.valid_foot; }
+
+    static inline uint32_t get_sdpos()        { return sdpos[commands.buffer_ring.head()]; }
+    static inline void set_sdpos()            { sdpos[commands.buffer_ring.tail()] = cmd_sdpos; }
 
   private: /** Private Function */
+
+    static void clear_job();
 
     static void write_job();
 

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 /**
  * led_events.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(PRINTER_EVENT_LEDS)
@@ -47,6 +47,14 @@
 
       static void onHeating(const bool Hotend, const float &start, const float &current, const float &target);
 
+      static inline void set_done() {
+        #if ENABLED(LED_COLOR_PRESETS)
+          leds.set_default();
+        #else
+          leds.set_off();
+        #endif
+      }
+
       static inline LEDColor onHeatingStart(const bool Hotend) {
         old_intensity = Hotend ? 0 : 127;
         return leds.get_color();
@@ -62,15 +70,15 @@
           #if HAS_LEDS_OFF_FLAG
             leds_off_after_print = true;
           #else
-            safe_delay(2000);
-            leds.set_off();
+            HAL::delayMilliseconds(2000);
+            set_done();
           #endif
         }
 
         static inline void onResumeAfterWait() {
           #if HAS_LEDS_OFF_FLAG
             if (leds_off_after_print) {
-              leds.set_off();
+              set_done();
               leds_off_after_print = false;
             }
           #endif

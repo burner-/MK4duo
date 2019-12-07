@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M203
@@ -33,13 +33,13 @@
  *
  *       With multiple extruders use T to specify which one.
  */
-inline void gcode_M203(void) {
+inline void gcode_M203() {
 
   if (commands.get_target_tool(203)) return;
 
   #if DISABLED(DISABLE_M503)
     // No arguments? Show M203 report.
-    if (!parser.seen("XYZE")) {
+    if (parser.seen_any()) {
       mechanics.print_M203();
       return;
     }
@@ -47,15 +47,18 @@ inline void gcode_M203(void) {
 
   LOOP_XYZE(i) {
     if (parser.seen(axis_codes[i])) {
-      const uint8_t a = i + (i == E_AXIS ? TARGET_EXTRUDER : 0);
       #if MECH(DELTA)
-        const float value = parser.value_per_axis_unit((AxisEnum)a);
+        const float value = parser.value_per_axis_unit((AxisEnum)i);
         if (i == E_AXIS)
-          mechanics.data.max_feedrate_mm_s[a] = value;
+          extruders[toolManager.extruder.target]->data.max_feedrate_mm_s = value;
         else
           LOOP_XYZ(axis) mechanics.data.max_feedrate_mm_s[axis] = value;
       #else
-        mechanics.data.max_feedrate_mm_s[a] = parser.value_axis_units((AxisEnum)a);
+        const float value = parser.value_per_axis_unit((AxisEnum)i);
+        if (i == E_AXIS)
+          extruders[toolManager.extruder.target]->data.max_feedrate_mm_s = value;
+        else
+        mechanics.data.max_feedrate_mm_s[i] = parser.value_axis_units((AxisEnum)i);
       #endif
     }
   }

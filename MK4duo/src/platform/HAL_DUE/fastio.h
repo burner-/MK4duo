@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,13 +20,15 @@
  *
  */
 
+#pragma once
+
 /**
  * Description: Fast IO functions for Arduino Due and compatible (SAM3X8E)
  *
  * Contributors:
- *  Copyright (C) 2014 Bob Cousins bobcousins42@googlemail.com
- *  Copyright (C) 2015-2016 Nico Tonnhofer wurstnase.reprap@gmail.com
- *  Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ *  Copyright (c) 2014 Bob Cousins bobcousins42@googlemail.com
+ *  Copyright (c) 2015-2016 Nico Tonnhofer wurstnase.reprap@gmail.com
+ *  Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 // **************************************************************************
@@ -45,7 +47,7 @@
 typedef struct {
   Pio* base_address;
   uint32_t shift_count;
-} Fastio_Param;
+} fastio_t;
 
 /**
  * ports and functions
@@ -61,7 +63,7 @@ typedef struct {
  * pins
  */
 
-static constexpr Fastio_Param Fastio[] = {
+static constexpr fastio_t fastio[] = {
   // D0 to D9
   { PIOA,  8 }, { PIOA,  9 }, { PIOB, 25 }, { PIOC, 28 }, { PIOC, 26 }, { PIOC, 25 }, { PIOC, 24 }, { PIOC, 23 }, { PIOC, 22 }, { PIOC, 21 },
 
@@ -142,9 +144,8 @@ static constexpr Fastio_Param Fastio[] = {
  * now you can simply SET_OUTPUT(STEP); WRITE(STEP, 1); WRITE(STEP, 0);
  */
 
-// NOT CHANGE uint8_t in Pin, ALLIGATOR board crashed!!!
 // Read a pin
-FORCE_INLINE static bool READ(const uint8_t pin) {
+FORCE_INLINE static bool READ(const pin_t pin) {
   #if ENABLED(PCF8574_EXPANSION_IO)
     if (pin >= PIN_START_FOR_PCF8574) {
       return pcf8574.digitalRead(pin - PIN_START_FOR_PCF8574);
@@ -152,29 +153,12 @@ FORCE_INLINE static bool READ(const uint8_t pin) {
     else
   #endif
   {
-    return (bool)(Fastio[pin].base_address->PIO_PDSR & (MASK(Fastio[pin].shift_count)));
-  }
-}
-FORCE_INLINE static bool READ_VAR(const uint8_t pin) {
-  #if ENABLED(PCF8574_EXPANSION_IO)
-    if (pin >= PIN_START_FOR_PCF8574) {
-      return pcf8574.digitalRead(pin - PIN_START_FOR_PCF8574);
-    }
-    else
-  #endif
-  {
-    const PinDescription& pinDesc = g_APinDescription[pin];
-    if (pinDesc.ulPinType != PIO_NOT_A_PIN) {
-      if (pinDesc.pPort->PIO_PDSR & pinDesc.ulPin)
-        return true;
-    }
-    return false;
+    return (bool)(fastio[uint8_t(pin)].base_address->PIO_PDSR & (MASK(fastio[uint8_t(pin)].shift_count)));
   }
 }
 
-// write to a pin
-// On some boards pins > 0x100 are used. These are not converted to atomic actions. An critical section is needed.
-FORCE_INLINE static void WRITE(const uint8_t pin, const bool flag) {
+// Write to a pin
+FORCE_INLINE static void WRITE(const pin_t pin, const bool flag) {
   #if ENABLED(PCF8574_EXPANSION_IO)
     if (pin >= PIN_START_FOR_PCF8574) {
       pcf8574.digitalWrite(pin - PIN_START_FOR_PCF8574, flag);
@@ -182,30 +166,21 @@ FORCE_INLINE static void WRITE(const uint8_t pin, const bool flag) {
     else
   #endif
   {
+    volatile Pio* pPio = fastio[uint8_t(pin)].base_address;
+    const uint32_t dwMask = MASK(fastio[uint8_t(pin)].shift_count);
     if (flag)
-      Fastio[pin].base_address->PIO_SODR = MASK(Fastio[pin].shift_count);
+      pPio->PIO_SODR = dwMask;
     else
-      Fastio[pin].base_address->PIO_CODR = MASK(Fastio[pin].shift_count);
-  }
-}
-FORCE_INLINE static void WRITE_VAR(const uint8_t pin, const bool flag) {
-  #if ENABLED(PCF8574_EXPANSION_IO)
-    if (pin >= PIN_START_FOR_PCF8574) {
-      pcf8574.digitalWrite(pin - PIN_START_FOR_PCF8574, flag);
-    }
-    else
-  #endif
-  {
-    volatile Pio* port = digitalPinToPort(pin);
-    uint32_t mask = g_APinDescription[pin].ulPin;
-    if (flag)
-      port->PIO_SODR = mask;
-    else
-      port->PIO_CODR = mask;
+      pPio->PIO_CODR = dwMask;
   }
 }
 
-// set pin as input
+// Toogle pin
+FORCE_INLINE static void TOGGLE(const pin_t pin) {
+  WRITE(pin, !READ(pin));
+}
+
+// Set pin as input
 FORCE_INLINE static void SET_INPUT(const pin_t pin) {
   #if ENABLED(PCF8574_EXPANSION_IO)
     if (pin >= PIN_START_FOR_PCF8574) {
@@ -222,7 +197,7 @@ FORCE_INLINE static void SET_INPUT(const pin_t pin) {
   }
 }
 
-// set pin as output
+// Set pin as output
 FORCE_INLINE static void SET_OUTPUT(const pin_t pin) {
   #if ENABLED(PCF8574_EXPANSION_IO)
     if (pin >= PIN_START_FOR_PCF8574) {
@@ -257,7 +232,7 @@ FORCE_INLINE static void SET_OUTPUT_HIGH(const pin_t pin) {
   }
 }
 
-// set pin as input with pullup
+// Set pin as input with pullup
 FORCE_INLINE static void SET_INPUT_PULLUP(const pin_t pin) {
   const PinDescription& pinDesc = g_APinDescription[pin];
   if (pinDesc.ulPinType != PIO_NOT_A_PIN) {
@@ -285,8 +260,5 @@ FORCE_INLINE static void OUT_WRITE(const pin_t pin, const uint8_t flag) {
 
 FORCE_INLINE static bool USEABLE_HARDWARE_PWM(const pin_t pin) {
   const uint32_t attr = g_APinDescription[pin].ulPinAttribute;
-  if ((attr & PIN_ATTR_PWM) != 0 || (attr & PIN_ATTR_TIMER) != 0)
-    return true;
-  else
-    return false;
+  return (attr & PIN_ATTR_PWM) != 0 || (attr & PIN_ATTR_TIMER) != 0;
 }

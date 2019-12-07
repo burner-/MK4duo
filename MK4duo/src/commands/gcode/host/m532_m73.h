@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M73
@@ -49,9 +49,9 @@ void gcode_M73_M532() {
  *   M73 P25 ; Set progress to 25%
  *
  */
-inline void gcode_M73(void) { gcode_M73_M532(); }
+inline void gcode_M73() { gcode_M73_M532(); }
 
 /**
  * M532: X<percent> L<curLayer> - update current print state progress (X=0..100) and layer L
  */
-inline void gcode_M532(void) { gcode_M73_M532(); }
+inline void gcode_M532() { gcode_M73_M532(); }

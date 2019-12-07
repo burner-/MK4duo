@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,32 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#ifndef _CONFIGURATION_MOTOR_DRIVER_H_
-#define _CONFIGURATION_MOTOR_DRIVER_H_
-
-
-/**********************************************************************************
- ************************** Trinamic TMC26x motor drivers *************************
- **********************************************************************************
- *                                                                                *
- * The TMC26XStepper library is required for this stepper driver.                 *
- * https://github.com/trinamic/TMC26XStepper                                      *
- *                                                                                *
- **********************************************************************************/
-#define X_SENSE_RESISTOR  91
-#define X2_SENSE_RESISTOR 91
-#define Y_SENSE_RESISTOR  91
-#define Y2_SENSE_RESISTOR 91
-#define Z_SENSE_RESISTOR  91
-#define Z2_SENSE_RESISTOR 91
-#define Z3_SENSE_RESISTOR 91
-#define E0_SENSE_RESISTOR 91
-#define E1_SENSE_RESISTOR 91
-#define E2_SENSE_RESISTOR 91
-#define E3_SENSE_RESISTOR 91
-#define E4_SENSE_RESISTOR 91
-#define E5_SENSE_RESISTOR 91
+#pragma once
 
 
 /**********************************************************************************
@@ -75,21 +50,36 @@
 // Select this if use software SPI. Choose pins in Configuration_pins.h
 //#define TMC_USE_SW_SPI
 
-// Use StallGuard2 to sense an obstacle and trigger an endstop.
+// Use StallGuard2 to home / probe X, Y, Z.
+//
+// TMC2130, TMC2160, TMC2660, TMC5130, and TMC5160 only
 // Connect the stepper driver's DIAG1 pin to the X/Y/Z endstop pin.
 // X, Y, and Z homing will always be done in spreadCycle mode.
 //
 // X/Y/Z_STALL_SENSITIVITY is used for tuning the trigger sensitivity.
-// Higher values make the system LESS sensitive.
-// Lower value make the system MORE sensitive.
-// Too low values can lead to false positives, while too high values will collide the axis without triggering.
-// It is advised to set X/Y/Z_HOME_BUMP_MM to 0.
-// M914 X/Y/Z to live tune the setting
-// TMC2130 or TMC5130 only
+// Use M914 X Y Z to live-adjust the sensitivity.
+//  Higher: LESS sensitive. (Too high => failure to trigger)
+//   Lower: MORE sensitive. (Too low  => false positives)
+//
+// It is recommended to set [XYZ]_HOME_BUMP_MM to 0.
+//
+// Poll the driver through SPI to determine load when homing.
+// Removes the need for a wire from DIAG1 to an endstop pin.
+//
+// IMPROVE_HOMING_RELIABILITY tunes acceleration and jerk when
+// homing and adds a guard period for endstop triggering.
+//
 //#define SENSORLESS_HOMING
 #define X_STALL_SENSITIVITY 8
 #define Y_STALL_SENSITIVITY 8
 #define Z_STALL_SENSITIVITY 8
+
+// TMC2130 only
+//#define SPI_ENDSTOPS
+//#define IMPROVE_HOMING_RELIABILITY
+
+// Create a 50/50 square wave step pulse optimal for stepper drivers.
+//#define SQUARE_WAVE_STEPPING
 
 // M922 S0/1 will enable continous reporting.
 //#define TMC_DEBUG
@@ -109,6 +99,7 @@
 // function through a communication line such as SPI or UART.
 //#define TMC_SOFTWARE_DRIVER_ENABLE
 
+// TMC2130, TMC2160, TMC2208, TMC5130 and TMC5160 only
 // Use Trinamic's ultra quiet stepping mode.
 // When disabled, MK4duo will use spreadCycle stepping mode.
 #define X_STEALTHCHOP   false
@@ -128,7 +119,7 @@
 #define CHOPPER_DEFAULT_19V  { 4,  1, 1 }
 #define CHOPPER_DEFAULT_24V  { 4,  2, 1 }
 #define CHOPPER_DEFAULT_36V  { 5,  2, 4 }
-#define CHOPPER_PRUSAMK3_24V { 4,  1, 4 } // Imported parameters from the official Prusa firmware for MK3 (24V)
+#define CHOPPER_PRUSAMK3_24V { 3, -2, 6 } // Imported parameters from the official Prusa firmware for MK3 (24V)
 #define CHOPPER_MK4DUO_436   { 5,  2, 3 } // Old defaults from MK4duo v4.3.6
 //
 // Define you own with
@@ -172,12 +163,11 @@
  *
  * Example:
  * #define TMC_ADV() { \
- *   stepperX->diag0_temp_prewarn(1); \
- *   stepperY->interpolate(0); \
+ *   driver[X_DRV]->tmc.diag0_temp_prewarn(1); \
+ *   driver[Y_DRV]->tmc.interpolate(0); \
  * }
  */
 #define  TMC_ADV() {  }
-
 
 // Hardware serial communication ports for TMC2208
 // If undefined software serial is used according to the pins below
@@ -224,68 +214,3 @@
 #define E4_SERIAL_RX_PIN  NoPin
 #define E5_SERIAL_TX_PIN  NoPin
 #define E5_SERIAL_RX_PIN  NoPin
-/**********************************************************************************/
-
-
-/**********************************************************************************
- ****************************** L6470 motor drivers *******************************
- **********************************************************************************
- *                                                                                *
- * Support for L6470 motor drivers                                                *
- * You need to import the L6470 library into the arduino IDE for this.            *
- *                                                                                *
- **********************************************************************************/
-#define X_K_VAL           50 // 0 - 255, Higher values, are higher power. Be careful not to go too high
-#define X_OVERCURRENT   2000 // maxc current in mA. If the current goes over this value, the driver will switch off
-#define X_STALLCURRENT  1500 // current in mA where the driver will detect a stall
-
-#define X2_K_VAL          50
-#define X2_OVERCURRENT  2000
-#define X2_STALLCURRENT 1500
-
-#define Y_K_VAL           50
-#define Y_OVERCURRENT   2000
-#define Y_STALLCURRENT  1500
-
-#define Y2_K_VAL          50
-#define Y2_OVERCURRENT  2000
-#define Y2_STALLCURRENT 1500
-
-#define Z_K_VAL           50
-#define Z_OVERCURRENT   2000
-#define Z_STALLCURRENT  1500
-
-#define Z2_K_VAL          50
-#define Z2_OVERCURRENT  2000
-#define Z2_STALLCURRENT 1500
-
-#define Z3_K_VAL          50
-#define Z3_OVERCURRENT  2000
-#define Z3_STALLCURRENT 1500
-
-#define E0_K_VAL          50
-#define E0_OVERCURRENT  2000
-#define E0_STALLCURRENT 1500
-
-#define E1_K_VAL          50
-#define E1_OVERCURRENT  2000
-#define E1_STALLCURRENT 1500
-
-#define E2_K_VAL          50
-#define E2_OVERCURRENT  2000
-#define E2_STALLCURRENT 1500
-
-#define E3_K_VAL          50
-#define E3_OVERCURRENT  2000
-#define E3_STALLCURRENT 1500
-
-#define E4_K_VAL          50
-#define E4_OVERCURRENT  2000
-#define E4_STALLCURRENT 1500
-
-#define E5_K_VAL          50
-#define E5_OVERCURRENT  2000
-#define E5_STALLCURRENT 1500
-/**********************************************************************************/
-
-#endif /* _CONFIGURATION_MOTOR_DRIVER_H_ */

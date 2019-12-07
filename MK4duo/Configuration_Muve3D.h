@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -291,11 +291,15 @@
 /*****************************************************************************************
  ********************************** Axis feedrate ****************************************
  *****************************************************************************************/
-//                                       X,   Y,  Z, E0...(per extruder). (mm/sec)
-#define DEFAULT_MAX_FEEDRATE          {600, 600, 20, 20}
-#define MANUAL_FEEDRATE               {50*60, 50*60, 10*60, 10*60}  // Feedrates for manual moves along X, Y, Z, E from panel
-#define DEFAULT_MIN_FEEDRATE       0.0                       // minimum feedrate
-#define DEFAULT_MIN_TRAVEL_FEEDRATE     0.0
+//                                       X,   Y,   Z,  E0...(per extruder). (mm/sec)
+#define DEFAULT_MAX_FEEDRATE          {500, 500, 500, 100, 100, 100, 100}
+// Feedrates for manual moves along        X,     Y,     Z,  E from panel
+#define MANUAL_FEEDRATE               {50*60, 50*60, 50*60, 10*60}
+// (mm) Smallest manual Z move (< 0.1mm)
+#define SHORT_MANUAL_Z_MOVE           0.025
+// Minimum feedrate
+#define DEFAULT_MIN_FEEDRATE          0.0
+#define DEFAULT_MIN_TRAVEL_FEEDRATE   0.0
 // Minimum planner junction speed. Sets the default minimum speed the planner plans for at the end
 // of the buffer and all stops. This should not be much greater than zero and should only be changed
 // if unwanted behavior is observed on a user's machine when running at very slow speeds.
@@ -363,9 +367,12 @@
  * For the other hotends it is their distance from the hotend 0.                         *
  *                                                                                       *
  *****************************************************************************************/
-#define HOTEND_OFFSET_X {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the X axis
-#define HOTEND_OFFSET_Y {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the Y axis
-#define HOTEND_OFFSET_Z {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the Z axis
+// (in mm) for each hotend, offset of the hotend on the X axis
+#define HOTEND_OFFSET_X {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
+// (in mm) for each hotend, offset of the hotend on the Y axis
+#define HOTEND_OFFSET_Y {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
+// (in mm) for each hotend, offset of the hotend on the Z axis
+#define HOTEND_OFFSET_Z {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
 /*****************************************************************************************/
 
 #endif /* _CONFIGURATION_MUVE3D_H_ */

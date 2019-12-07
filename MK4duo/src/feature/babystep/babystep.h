@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 /**
  * babystep.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(BABYSTEPPING)
@@ -51,7 +51,7 @@ class Babystep {
 
   public: /** Public Parameters */
 
-    static volatile int16_t todo[BS_TODO_AXIS(Z_AXIS) + 1];
+    static volatile int16_t steps[BS_TODO_AXIS(Z_AXIS) + 1];
 
       #if HAS_LCD_MENU
         static int16_t accum;                                   // Total babysteps in current edit

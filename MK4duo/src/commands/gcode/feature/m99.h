@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(HYSTERESIS_FEATURE)
@@ -38,27 +38,26 @@
  *  Z[float] Sets the hysteresis distance on Z (0 to disable)
  *
  */
-inline void gcode_M99(void) {
+inline void gcode_M99() {
 
   LOOP_XYZ(axis) {
     if (parser.seen(axis_codes[axis]))
-      hysteresis.mm[axis] = parser.value_float();
+      hysteresis.data.mm[axis] = parser.value_float();
   }
 
   if (parser.seen('F'))
-    hysteresis.correction = MAX(0, MIN(1.0, parser.value_float()));
+    hysteresis.data.correction = MAX(0, MIN(1.0, parser.value_float()));
 
-  if (hysteresis.correction > 0)
-    SERIAL_EM("Hysteresis correction is active:");
-  else
-    SERIAL_EM("Hysteresis correction is inactive:");
+  SERIAL_MSG("Hysteresis correction is ");
+  if (hysteresis.data.correction == 0) SERIAL_MSG("in");
+  SERIAL_EM("active:");
 
-  SERIAL_MV(" Correction Amount/Fade-out: F", hysteresis.correction);
+  SERIAL_MV(" Correction Amount/Fade-out: F", hysteresis.data.correction);
   SERIAL_EM(" (F1.0 = full, F0.0 = none)");
   SERIAL_MSG("  Hysteresis Distance (mm): ");
-  SERIAL_MV(" X", hysteresis.mm[X_AXIS]);
-  SERIAL_MV(" Y", hysteresis.mm[Y_AXIS]);
-  SERIAL_MV(" Z", hysteresis.mm[Z_AXIS]);
+  SERIAL_MV(" X", hysteresis.data.mm[X_AXIS]);
+  SERIAL_MV(" Y", hysteresis.data.mm[Y_AXIS]);
+  SERIAL_MV(" Z", hysteresis.data.mm[Z_AXIS]);
   SERIAL_EOL();
 
 }

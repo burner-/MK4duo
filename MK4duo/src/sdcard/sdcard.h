@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,13 +28,13 @@
 union flagcard_t {
   uint8_t all;
   struct {
-    bool  Detect          : 1;
+    bool  Mounted         : 1;
     bool  Saving          : 1;
-    bool  SDprinting      : 1;
-    bool  AutoreportSD    : 1;
-    bool  AbortSDprinting : 1;
+    bool  Printing        : 1;
+    bool  Autoreport      : 1;
+    bool  Abortprinting   : 1;
     bool  FilenameIsDir   : 1;
-    bool  bit6            : 1;
+    bool  WorkdirIsRoot   : 1;
     bool  bit7            : 1;
   };
   flagcard_t() { all = 0x00; }
@@ -75,6 +75,7 @@ class SDCard {
     static uint16_t nrFile_index;
 
     #if HAS_EEPROM_SD
+      #define EEPROM_FILE_NAME "eeprom.bin"
       static SdFile eeprom_file;
     #endif
 
@@ -170,17 +171,17 @@ class SDCard {
     static void mount();
     static void unmount();
     static void ls();
-    static void getfilename(uint16_t nr, PGM_P const match=NULL);
-    static void getAbsFilename(char* name);
+    static void getfilename(uint16_t nr, PGM_P const match=nullptr);
+    static void getAbsFilename(char * name);
     static void startFileprint();
-    static void openAndPrintFile(PGM_P name);
-    static void stopSDPrint();
-    static void write_command(char* buf);
-    static void printStatus();
-    static void startWrite(char* filename, const bool silent=false);
-    static void deleteFile(char* filename);
+    static void openAndPrintFile(const char * name);
+    static void stop_print();
+    static void write_command(char * buf);
+    static void print_status();
+    static void startWrite(char * filename, const bool silent=false);
+    static void deleteFile(char * filename);
     static void finishWrite();
-    static void makeDirectory(char* filename);
+    static void makeDirectory(char * filename);
     static void closeFile();
     static void printingHasFinished();
     static void chdir(PGM_P relpath);
@@ -221,33 +222,33 @@ class SDCard {
       static inline void getfilename_sorted(const uint16_t nr) { getfilename(nr); }
     #endif
 
-    // Card flag bit 0 SD Detect
-    FORCE_INLINE static void setDetect(const bool onoff) { flag.Detect = onoff; }
-    FORCE_INLINE static bool isDetected() { return flag.Detect; }
+    // Card flag bit 0 SD Mounted
+    FORCE_INLINE static void setMounted(const bool onoff) { flag.Mounted = onoff; }
+    FORCE_INLINE static bool isMounted() { return flag.Mounted; }
 
     // Card flag bit 1 saving
     FORCE_INLINE static void setSaving(const bool onoff) { flag.Saving = onoff; }
     FORCE_INLINE static bool isSaving() { return flag.Saving; }
 
     // Card flag bit 2 printing
-    FORCE_INLINE static void setSDprinting(const bool onoff) { flag.SDprinting = onoff; }
-    FORCE_INLINE static bool isSDprinting() { return flag.SDprinting; }
+    FORCE_INLINE static void setPrinting(const bool onoff) { flag.Printing = onoff; }
+    FORCE_INLINE static bool isPrinting() { return flag.Printing; }
 
-    // Card flag bit 3 Autoreport SD
-    FORCE_INLINE static void setAutoreportSD(const bool onoff) { flag.AutoreportSD = onoff; }
-    FORCE_INLINE static bool isAutoreportSD() { return flag.AutoreportSD; }
+    // Card flag bit 3 Autoreport
+    FORCE_INLINE static void setAutoreport(const bool onoff) { flag.Autoreport = onoff; }
+    FORCE_INLINE static bool isAutoreport() { return flag.Autoreport; }
 
-    // Card flag bit 4 AbortSDprinting
-    FORCE_INLINE static void setAbortSDprinting(const bool onoff) { flag.AbortSDprinting = onoff; }
-    FORCE_INLINE static bool isAbortSDprinting() { return flag.AbortSDprinting; }
+    // Card flag bit 4 Abortprinting
+    FORCE_INLINE static void setAbortSDprinting(const bool onoff) { flag.Abortprinting = onoff; }
+    FORCE_INLINE static bool isAbortSDprinting() { return flag.Abortprinting; }
 
     // Card flag bit 5 Filename is dir
     FORCE_INLINE static void setFilenameIsDir(const bool onoff) { flag.FilenameIsDir = onoff; }
     FORCE_INLINE static bool isFilenameIsDir() { return flag.FilenameIsDir; }
 
-    static inline void pauseSDPrint() { setSDprinting(false); }
-    static inline bool isFileOpen()   { return isDetected() && gcode_file.isOpen(); }
-    static inline bool isPaused()     { return isFileOpen() && !isSDprinting(); }
+    static inline void pauseSDPrint() { setPrinting(false); }
+    static inline bool isFileOpen()   { return isMounted() && gcode_file.isOpen(); }
+    static inline bool isPaused()     { return isFileOpen() && !isPrinting(); }
     static inline void setIndex(uint32_t newpos) { sdpos = newpos; gcode_file.seekSet(sdpos); }
     static inline uint32_t getIndex() { return sdpos; }
     static inline bool eof() { return sdpos >= fileSize; }
@@ -329,10 +330,10 @@ class SDCard {
 
 extern SDCard card;
 
-#define IS_SD_PRINTING()  card.isSDprinting()
+#define IS_SD_PRINTING()  card.isPrinting()
 #define IS_SD_PAUSED()    card.isPaused()
 #define IS_SD_FILE_OPEN() card.isFileOpen()
-#define IS_SD_OK()        card.isDetected()
+#define IS_SD_MOUNTED()   card.isMounted()
 
 #if PIN_EXISTS(SD_DETECT)
   #if ENABLED(SD_DETECT_INVERTED)
@@ -350,6 +351,6 @@ extern SDCard card;
 #define IS_SD_PRINTING()  false
 #define IS_SD_PAUSED()    false
 #define IS_SD_FILE_OPEN() false
-#define IS_SD_OK()        false
+#define IS_SD_MOUNTED()   false
 
 #endif // HAS_SD_SUPPORT

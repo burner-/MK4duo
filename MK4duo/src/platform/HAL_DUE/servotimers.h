@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,35 +74,35 @@
   TC2, chan 2 => TC8_Handler
  */
 
-#if ENABLED (_useTimer1)
+#ifdef _useTimer1
   #define TC_FOR_TIMER1       TC0
   #define CHANNEL_FOR_TIMER1  1
   #define ID_TC_FOR_TIMER1    ID_TC1
   #define IRQn_FOR_TIMER1     TC1_IRQn
   #define HANDLER_FOR_TIMER1  TC1_Handler
 #endif
-#if ENABLED (_useTimer2)
+#ifdef _useTimer2
   #define TC_FOR_TIMER2       TC0
   #define CHANNEL_FOR_TIMER2  2
   #define ID_TC_FOR_TIMER2    ID_TC2
   #define IRQn_FOR_TIMER2     TC2_IRQn
   #define HANDLER_FOR_TIMER2  TC2_Handler
 #endif
-#if ENABLED (_useTimer3)
+#ifdef _useTimer3
   #define TC_FOR_TIMER3       TC1
   #define CHANNEL_FOR_TIMER3  2
   #define ID_TC_FOR_TIMER3    ID_TC5
   #define IRQn_FOR_TIMER3     TC5_IRQn
   #define HANDLER_FOR_TIMER3  TC5_Handler
 #endif
-#if ENABLED (_useTimer4)
+#ifdef _useTimer4
   #define TC_FOR_TIMER4       TC0
   #define CHANNEL_FOR_TIMER4  2
   #define ID_TC_FOR_TIMER4    ID_TC2
   #define IRQn_FOR_TIMER4     TC2_IRQn
   #define HANDLER_FOR_TIMER4  TC2_Handler
 #endif
-#if ENABLED (_useTimer5)
+#ifdef _useTimer5
   #define TC_FOR_TIMER5       TC1
   #define CHANNEL_FOR_TIMER5  2
   #define ID_TC_FOR_TIMER5    ID_TC5
@@ -110,4 +110,21 @@
   #define HANDLER_FOR_TIMER5  TC5_Handler
 #endif
 
-typedef enum { _timer5, _Nbr_16timers } timer16_Sequence_t;
+typedef enum : unsigned char {
+  #ifdef _useTimer1
+    _timer1,
+  #endif
+  #ifdef _useTimer2
+    _timer2,
+  #endif
+  #ifdef _useTimer3
+    _timer3,
+  #endif
+  #ifdef _useTimer4
+    _timer4,
+  #endif
+  #ifdef _useTimer5
+    _timer5,
+  #endif
+  _Nbr_16timers
+} timer16_Sequence_t;

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,17 +23,14 @@
 /**
  * core_mechanics.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #pragma once
 
 // Struct Core Settings
 typedef struct : public generic_data_t {
-
-  axis_limits_t base_pos[XYZ];
-  float         base_home_pos[XYZ];
-
+  xyz_limit_float_t base_pos;
 } mechanics_data_t;
 
 class Core_Mechanics: public Mechanics {
@@ -59,36 +56,57 @@ class Core_Mechanics: public Mechanics {
      * The result is in the current coordinate space with
      * leveling applied. The coordinates need to be run through
      * unapply_leveling to obtain the "ideal" coordinates
-     * suitable for current_position, etc.
+     * suitable for current_position.x, etc.
      */
     static void get_cartesian_from_steppers();
 
     /**
-     *  Plan a move to (X, Y, Z) and set the current_position
-     *  The final current_position may not be the one that was requested
+     * Move the planner to the current position from wherever it last moved
+     * (or from wherever it has been told it is located).
      */
-    static void do_blocking_move_to(const float rx, const float ry, const float rz, const float &fr_mm_s=0.0);
-    static void do_blocking_move_to_x(const float &rx, const float &fr_mm_s=0.0);
-    static void do_blocking_move_to_z(const float &rz, const float &fr_mm_s=0.0);
-    static void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm_s=0.0);
-
-    FORCE_INLINE static void do_blocking_move_to(const float (&raw)[XYZ], const float &fr_mm_s=0.0) {
-      do_blocking_move_to(raw[X_AXIS], raw[Y_AXIS], raw[Z_AXIS], fr_mm_s);
+    static void internal_move_to_destination(const feedrate_t &fr_mm_s=0.0f);
+    static inline void prepare_internal_move_to_destination(const feedrate_t &fr_mm_s=0.0f) {
+      internal_move_to_destination(fr_mm_s);
     }
 
-    FORCE_INLINE static void do_blocking_move_to(const float (&raw)[XYZE], const float &fr_mm_s=0.0) {
-      do_blocking_move_to(raw[X_AXIS], raw[Y_AXIS], raw[Z_AXIS], fr_mm_s);
+    /**
+     *  Plan a move to (X, Y, Z) and set the current_position
+     */
+    static void do_blocking_move_to(const float rx, const float ry, const float rz, const feedrate_t &fr_mm_s=0.0f);
+    static void do_blocking_move_to(const xy_pos_t &raw, const feedrate_t &fr_mm_s=0.0f);
+    static void do_blocking_move_to(const xyz_pos_t &raw, const feedrate_t &fr_mm_s=0.0f);
+    static void do_blocking_move_to(const xyze_pos_t &raw, const feedrate_t &fr_mm_s=0.0f);
+
+    static void do_blocking_move_to_x(const float &rx, const feedrate_t &fr_mm_s=0.0f);
+    static void do_blocking_move_to_y(const float &ry, const feedrate_t &fr_mm_s=0.0f);
+    static void do_blocking_move_to_z(const float &rz, const feedrate_t &fr_mm_s=0.0f);
+
+    static void do_blocking_move_to_xy(const float &rx, const float &ry, const feedrate_t &fr_mm_s=0.0f);
+    static void do_blocking_move_to_xy(const xy_pos_t &raw, const feedrate_t &fr_mm_s=0.0f);
+    FORCE_INLINE static void do_blocking_move_to_xy(const xyz_pos_t &raw, const feedrate_t &fr_mm_s=0.0f) {
+      do_blocking_move_to(raw.x, raw.y, current_position.z, fr_mm_s);
+    }
+    FORCE_INLINE static void do_blocking_move_to_xy(const xyze_pos_t &raw, const feedrate_t &fr_mm_s=0.0f) {
+      do_blocking_move_to(raw.x, raw.y, current_position.z, fr_mm_s);
+    }
+
+    static void do_blocking_move_to_xy_z(const xy_pos_t &raw, const float &z, const feedrate_t &fr_mm_s=0.0f);
+    FORCE_INLINE static void do_blocking_move_to_xy_z(const xyz_pos_t &raw, const float &z, const feedrate_t &fr_mm_s=0.0f) {
+      do_blocking_move_to_xy_z(xy_pos_t(raw), z, fr_mm_s);
+    }
+    FORCE_INLINE static void do_blocking_move_to_xy_z(const xyze_pos_t &raw, const float &z, const feedrate_t &fr_mm_s=0.0f) {
+      do_blocking_move_to_xy_z(xy_pos_t(raw), z, fr_mm_s);
     }
 
     /**
      * Home all axes according to settings
      */
-    static void home(const bool homeX=false, const bool homeY=false, const bool homeZ=false);
+    static void home(uint8_t axis_bits=0);
 
     /**
      * Home an individual linear axis
      */
-    static void do_homing_move(const AxisEnum axis, const float distance, const float fr_mm_s=0.0);
+    static void do_homing_move(const AxisEnum axis, const float distance, const feedrate_t fr_mm_s=0.0f);
 
     /**
      * Prepare a linear move in a Cartesian setup.
@@ -110,8 +128,29 @@ class Core_Mechanics: public Mechanics {
      */
     static void set_axis_is_at_home(const AxisEnum axis);
 
+    /**
+     * Return Home position
+     */
+    static float axis_home_pos(const AxisEnum axis);
+    static float x_home_pos();
+    static float y_home_pos();
+    static float z_home_pos();
+
+    /**
+     * Check position is reachable
+     */
     static bool position_is_reachable(const float &rx, const float &ry);
+    static inline bool position_is_reachable(const xy_pos_t &pos) { return position_is_reachable(pos.x, pos.y); }
+
+    /**
+     * Return whether the given position is within the bed, and whether the nozzle
+     * can reach the position required to put the probe at the given position.
+     *
+     * Example: For a probe offset of -10,+10, then for the probe to reach 0,0 the
+     *          nozzle must be be able to reach +10,-10.
+     */
     static bool position_is_reachable_by_probe(const float &rx, const float &ry);
+    static inline bool position_is_reachable_by_probe(const xy_pos_t &pos) { return position_is_reachable_by_probe(pos.x, pos.y); }
 
     /**
      * Report current position to host
@@ -133,7 +172,7 @@ class Core_Mechanics: public Mechanics {
     #endif
 
     #if HAS_NEXTION_LCD && ENABLED(NEXTION_GFX)
-      static void Nextion_gfx_clear();
+      static void nextion_gfx_clear();
     #endif
 
   private: /** Private Function */

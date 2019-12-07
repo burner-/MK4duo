@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,31 +23,27 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if EXTRUDERS > 0
+#define CODE_M221
 
-  #define CODE_M221
+/**
+ * M221: Set extrusion percentage (M221 T0 S95)
+ */
+inline void gcode_M221() {
 
-  /**
-   * M221: Set extrusion percentage (M221 T0 S95)
-   */
-  inline void gcode_M221(void) {
+  if (commands.get_target_tool(221)) return;
 
-    if (commands.get_target_tool(221)) return;
-
-    if (parser.seenval('S')) {
-      tools.flow_percentage[TARGET_EXTRUDER] = parser.value_int();
-      tools.refresh_e_factor(TARGET_EXTRUDER);
-    }
-    else {
-      SERIAL_SM(ECHO, "E");
-      SERIAL_CHR('0' + TARGET_EXTRUDER);
-      SERIAL_MV(" Flow: ", tools.flow_percentage[TARGET_EXTRUDER]);
-      SERIAL_CHR('%');
-      SERIAL_EOL();
-    }
+  if (parser.seenval('S')) {
+    extruders[toolManager.extruder.target]->flow_percentage = parser.value_int();
+    extruders[toolManager.extruder.target]->refresh_e_factor();
   }
-
-#endif // EXTRUDERS > 0
+  else {
+    SERIAL_SM(ECHO, "E");
+    SERIAL_CHR(DIGIT(toolManager.extruder.target));
+    SERIAL_MV(" Flow: ", extruders[toolManager.extruder.target]->flow_percentage);
+    SERIAL_CHR('%');
+    SERIAL_EOL();
+  }
+}

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,22 +23,26 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if BEDS > 0
+#if HAS_BEDS
 
 #define CODE_M140
 
 /**
  * M140: Set Bed temperature
  */
-inline void gcode_M140(void) {
+inline void gcode_M140() {
+
+  if (printer.debugDryrun() || printer.debugSimulation()) return;
+
   const uint8_t b = parser.byteval('T');
-  if (WITHIN(b, 0 , BEDS - 1)) {
-    if (printer.debugDryrun() || printer.debugSimulation()) return;
-    if (parser.seenval('S')) beds[b].setTarget(parser.value_celsius());
+  if (WITHIN(b, 0 , tempManager.heater.beds - 1) && beds[b]) {
+    if (parser.seenval('S')) beds[b]->set_target_temp(parser.value_celsius());
+    if (parser.seenval('R')) beds[b]->set_idle_temp(parser.value_celsius());
   }
+
 }
 
 #endif

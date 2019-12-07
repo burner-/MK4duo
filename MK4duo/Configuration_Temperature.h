@@ -2,7 +2,7 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
  * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
@@ -224,10 +224,10 @@
  * Max 1000 Hz                                                         *
  *                                                                     *
  ***********************************************************************/
-#define HOTEND_PWM_FREQUENCY  1000
-#define BED_PWM_FREQUENCY       10
-#define CHAMBER_PWM_FREQUENCY   10
-#define COOLER_PWM_FREQUENCY    10
+#define HOTEND_PWM_FREQUENCY  250
+#define BED_PWM_FREQUENCY     100
+#define CHAMBER_PWM_FREQUENCY 100
+#define COOLER_PWM_FREQUENCY  100
 /***********************************************************************/
 
 
@@ -241,16 +241,12 @@
 // Put to false following line to disable PID and enable bang-bang.
 #define PIDTEMP true
 
-#define PID_MAX       255 // Limits current to nozzle while in PID mode;        255 = full current
-#define PID_DRIVE_MIN  40 // Limits min current to nozzle while PID is active;    0 = no current
-#define PID_DRIVE_MAX 230 // Limits max current to nozzle while PID is active;  255 = full current
+#define POWER_MAX       255 // Limits current to nozzle;                                    255 = full current
+#define POWER_DRIVE_MIN  40 // Limits min current to nozzle while PID/BANG_BANG is active;    0 = no current
+#define POWER_DRIVE_MAX 230 // Limits max current to nozzle while PID/BANG_BANG is active;  255 = full current
 
 #define HOTEND_HYSTERESIS 2       // (degC) range of +/- temperatures considered "close" to the target one
 #define HOTEND_CHECK_INTERVAL 100 // ms between checks in bang-bang control
-
-// If the temperature difference between the target temperature and the actual temperature
-// is more then PID FUNCTIONAL RANGE then the PID will be shut off and the heater will be set to min/max.
-#define PID_FUNCTIONAL_RANGE 10
 
 #define PID_AUTOTUNE_MENU // Add PID Autotune to the LCD "Temperature" menu to run M303 and apply the result.
 
@@ -272,16 +268,9 @@
  ***********************************************************************
  *                                                                     *
  * PID Tuning Guide here: http://reprap.org/wiki/PID_Tuning            *
- * Select PID or bang-bang with PIDTEMPBED.                            *
- * If bang-bang, BED LIMIT SWITCHING will enable hysteresis            *
  *                                                                     *
  ***********************************************************************/
-// Put true to enable PID on the bed. It uses the same frequency PWM as the hotend.
-// which is fine for driving a square wave into a resistive load and does not significantly impact you FET heating.
-// This also works fine on a Fotek SSR-10DA Solid State Relay into a 250W heater.
-// If your configuration is significantly different than this and you don't understand the issues involved, you probably
-// shouldn't use bed PID until someone else verifies your hardware works.
-// If this is enabled, find your own PID constants below.
+// Put to false following line to disable PID and enable bang-bang.
 #define PIDTEMPBED false
 
 #define BED_HYSTERESIS        1 // Only disable heating if T>target+BED_HYSTERESIS and enable heating if T<target-BED_HYSTERESIS
@@ -304,30 +293,18 @@
  ***********************************************************************
  *                                                                     *
  * PID Tuning Guide here: http://reprap.org/wiki/PID_Tuning            *
- * Select PID or bang-bang with PIDTEMPCHAMBER.                        *
- * If bang-bang, CHAMBER_LIMIT_SWITCHING will enable hysteresis        *
  *                                                                     *
  ***********************************************************************/
-// Put true to enable PID on the chamber. It uses the same frequency PWM as the hotend.
-// This also works fine on a Fotek SSR-10DA Solid State Relay into a 250W heater.
-// If your configuration is significantly different than this and you don't understand the issues involved, you probably
-// shouldn't use chamber PID until someone else verifies your hardware works.
-// If this is enabled, find your own PID constants below.
+// Put to false following line to disable PID and enable bang-bang.
 #define PIDTEMPCHAMBER false
 
-// This sets the max power delivered to the chamber.
-// all forms of chamber control obey this (PID, bang-bang, bang-bang with hysteresis)
-// setting this to anything other than 255 enables a form of PWM to the chamber,
-// so you shouldn't use it unless you are OK with PWM on your chamber.  (see the comment on enabling PIDTEMPCHAMBER)
-#define CHAMBER_PID_MAX       255   // Limits current to chamber while in PID mode;       255 = full current
-#define CHAMBER_PID_DRIVE_MIN  80   // Limits min current to chamber while PID is active;   0 = no current
-#define CHAMBER_PID_DRIVE_MAX 255   // Limits max current to chamber while PID is active; 255 = full current
+#define CHAMBER_POWER_MAX       255 // Limits current to chamber;                                   255 = full current
+#define CHAMBER_POWER_DRIVE_MIN  80 // Limits min current to chamber while PID/BANG_BANG is active;   0 = no current
+#define CHAMBER_POWER_DRIVE_MAX 255 // Limits max current to chamber while PID/BANG_BANG is active; 255 = full current
 
 #define CHAMBER_HYSTERESIS        2 // Only disable heating if T>target+CHAMBER HYSTERESIS and enable heating if T<target-CHAMBER HYSTERESIS
 #define CHAMBER_CHECK_INTERVAL  500 // ms between checks in bang-bang control
 
-// 120v 250W silicone heater into 4mm borosilicate (MendelMax 1.5+)
-// from FOPDT model - kp=.39 Tp=405 Tdead=66, Tc set to 79.2, aggressive factor of .15 (vs .1, 1, 10)
 //      CHAMBER     {CHAMBER0,CHAMBER1,CHAMBER2,CHAMBER3}
 #define CHAMBER_Kp  {10,10,10,10}
 #define CHAMBER_Ki  {1,1,1,1}
@@ -340,31 +317,18 @@
  ***********************************************************************
  *                                                                     *
  * PID Tuning Guide here: http://reprap.org/wiki/PID_Tuning            *
- * Select PID or bang-bang with PIDTEMPCOOLER.                         *
- * If bang-bang, COOLER_LIMIT_SWITCHING will enable hysteresis         *
  *                                                                     *
  ***********************************************************************/
-// Put true to enable PID on the cooler. It uses the same frequency PWM as the hotend.
-// if you use a software PWM or the frequency you select if using an hardware PWM
-// This also works fine on a Fotek SSR-10DA Solid State Relay into a 250W cooler.
-// If your configuration is significantly different than this and you don't understand the issues involved, you probably
-// shouldn't use cooler PID until someone else verifies your hardware works.
-// If this is enabled, find your own PID constants below.
+// Put to false following line to disable PID and enable bang-bang.
 #define PIDTEMPCOOLER false
 
-// This sets the max power delivered to the chamber.
-// all forms of chamber control obey this (PID, bang-bang, bang-bang with hysteresis)
-// setting this to anything other than 255 enables a form of PWM to the chamber,
-// so you shouldn't use it unless you are OK with PWM on your chamber.  (see the comment on enabling PIDTEMPCHAMBER)
-#define COOLER_PID_MAX       255   // Limits current to chamber while in PID mode;       255 = full current
-#define COOLER_PID_DRIVE_MIN  80   // Limits min current to chamber while PID is active;   0 = no current
-#define COOLER_PID_DRIVE_MAX 255   // Limits max current to chamber while PID is active; 255 = full current
+#define COOLER_POWER_MAX       255   // Limits current to chamber;                                    255 = full current
+#define COOLER_POWER_DRIVE_MIN  80   // Limits min current to chamber while PID/BANG_BANG is active;    0 = no current
+#define COOLER_POWER_DRIVE_MAX 255   // Limits max current to chamber while PID/BANG_BANG is active;  255 = full current
 
 #define COOLER_HYSTERESIS        2 // only disable heating if T<target-COOLER_HYSTERESIS and enable heating if T>target+COOLER_HYSTERESIS
 #define COOLER_CHECK_INTERVAL  500 // ms between checks in bang-bang control
 
-// 120v 250W silicone heater into 4mm borosilicate (MendelMax 1.5+)
-// from FOPDT model - kp=.39 Tp=405 Tdead=66, Tc set to 79.2, aggressive factor of .15 (vs .1, 1, 10)
 #define COOLER_Kp  10
 #define COOLER_Ki  1
 #define COOLER_Kd  300

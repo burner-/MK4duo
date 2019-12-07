@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_SERVOS
@@ -36,7 +36,7 @@
    *  L<min>
    *  U<max>
    */
-  inline void gcode_M281(void) {
+  inline void gcode_M281() {
 
     if (!parser.seen('P')) return;
     const int servo_index = parser.value_int();
@@ -44,7 +44,7 @@
     if (WITHIN(servo_index, 0, NUM_SERVOS - 1)) {
       if (parser.seen('L')) servo[servo_index].angle[0] = parser.value_int();
       if (parser.seen('U')) servo[servo_index].angle[1] = parser.value_int();
-      servo[servo_index].print_parameters();
+      servo[servo_index].print_M281();
     }
     else {
       SERIAL_SMV(ER, "Servo ", servo_index);

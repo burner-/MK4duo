@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,16 +23,16 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if DISABLED(EMERGENCY_PARSER)
 
-  #define CODE_M112
+#define CODE_M112
 
-  /**
-   * M112: Emergency Stop
-   */
-  inline void gcode_M112(void) { printer.kill(); }
+/**
+ * M112: Full Shutdown
+ */
+inline void gcode_M112() { printer.kill(PSTR("M112 Shutdown"), true); }
 
 #endif

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,53 +23,50 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_TEMP_HOTEND
 
-  #define CODE_M109
+#define CODE_M109
 
-  /**
-   * M109: Sxxx Wait for hotend(s) to reach temperature. Waits only when heating.
-   *       Rxxx Wait for hotend(s) to reach temperature. Waits when heating and cooling.
-   */
-  inline void gcode_M109(void) {
+/**
+ * M109: Sxxx Wait for hotend(s) to reach temperature. Waits only when heating.
+ *       Rxxx Wait for hotend(s) to reach temperature. Waits when heating and cooling.
+ */
+inline void gcode_M109() {
 
-    if (commands.get_target_tool(109)) return;
+  if (commands.get_target_tool(109)) return;
 
-    if (printer.debugDryrun() || printer.debugSimulation()) return;
+  if (printer.debugDryrun() || printer.debugSimulation()) return;
 
-    #if ENABLED(SINGLENOZZLE)
-      if (TARGET_EXTRUDER != tools.active_extruder) return;
-    #endif
-
-    const bool no_wait_for_cooling = parser.seenval('S');
-    if (no_wait_for_cooling || parser.seenval('R')) {
-      const int16_t temp = parser.value_celsius();
-      hotends[TARGET_HOTEND].setTarget(temp);
-
-      #if ENABLED(DUAL_X_CARRIAGE)
-        if (mechanics.dxc_is_duplicating() && TARGET_EXTRUDER == 0)
-          hotends[1].setTarget(temp ? temp + mechanics.duplicate_extruder_temp_offset : 0);
-      #endif
-
-      const bool heating = hotends[TARGET_HOTEND].isHeating();
-      if (heating || !no_wait_for_cooling) {
-        #if HOTENDS > 1
-          lcdui.status_printf_P(0, heating ? PSTR("H%i " MSG_HEATING) : PSTR("H%i " MSG_COOLING), TARGET_EXTRUDER);
-        #else
-          lcdui.set_status_P(heating ? PSTR("H " MSG_HEATING) : PSTR("H " MSG_COOLING));
-        #endif
-      }
+  const bool no_wait_for_cooling = parser.seenval('S');
+  if (no_wait_for_cooling || parser.seenval('R')) {
+    const int16_t temp = parser.value_celsius();
+    if (tempManager.heater.hotends == 1) {
+      extruders[toolManager.extruder.target]->singlenozzle_temp = temp;
+      if (toolManager.extruder.target != toolManager.extruder.active) return;
     }
-    else return;
+    hotends[toolManager.target_hotend()]->set_target_temp(temp);
 
-    #if ENABLED(AUTOTEMP)
-      planner.autotemp_M104_M109();
+    #if ENABLED(DUAL_X_CARRIAGE)
+      if (mechanics.dxc_is_duplicating() && toolManager.extruder.target == 0)
+        hotends[1]->set_target_temp(temp ? temp + mechanics.duplicate_extruder_temp_offset : 0);
     #endif
 
-    hotends[TARGET_HOTEND].wait_for_target(no_wait_for_cooling);
+    #if HAS_LCD
+      if (hotends[toolManager.target_hotend()]->isHeating() || !no_wait_for_cooling)
+        nozzle.set_heating_message();
+    #endif
+
   }
+  else return;
+
+  #if ENABLED(AUTOTEMP)
+    planner.autotemp_M104_M109();
+  #endif
+
+  hotends[toolManager.target_hotend()]->wait_for_target(no_wait_for_cooling);
+}
 
 #endif // HAS_TEMP_HOTEND

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,17 +25,21 @@
 Sound sound;
 
 /** Public Parameters */
-SoundModeEnum Sound::mode = SOUND_MODE_ON;
+sound_data_t Sound::data;
 
 /** Private Parameters */
-millis_s Sound::tone_ms;
+short_timer_t Sound::tone_timer;
 
 /** Protected Parameters */
 Circular_Queue<tone_t, TONE_QUEUE_LENGTH> Sound::buffer;
 
 /** Public Function */
+void Sound::factory_parameters() {
+  data.mode = SOUND_MODE_ON;
+}
+ 
 void Sound::playtone(const uint16_t duration, const uint16_t frequency/*=0*/) {
-  if (mode == SOUND_MODE_MUTE) return;
+  if (data.mode == SOUND_MODE_MUTE) return;
   while (buffer.isFull()) printer.idle(true);
   tone_t tone = { duration, frequency };
   buffer.enqueue(tone);
@@ -45,11 +49,11 @@ void Sound::spin() {
 
   static tone_t tone = { 0, 0 };
 
-  if (!tone_ms) {
+  if (!tone_timer.isRunning()) {
     if (buffer.isEmpty()) return;
 
     tone = buffer.dequeue();
-    tone_ms = millis();
+    tone_timer.start();
 
     if (tone.frequency > 0) {
       #if ENABLED(LCD_USE_I2C_BUZZER)
@@ -63,28 +67,28 @@ void Sound::spin() {
       #endif
     }
   }
-  else if (expired(&tone_ms, tone.duration)) reset();
+  else if (tone_timer.expired(tone.duration)) reset();
 
 }
 
 void Sound::cyclestate() {
-  switch (mode) {
+  switch (data.mode) {
     case SOUND_MODE_ON:
-      mode = SOUND_MODE_SILENT;
+      data.mode = SOUND_MODE_SILENT;
       break;
     case SOUND_MODE_SILENT:
-      mode = SOUND_MODE_MUTE;
+      data.mode = SOUND_MODE_MUTE;
       break;
     case SOUND_MODE_MUTE:
-      mode = SOUND_MODE_ON;
+      data.mode = SOUND_MODE_ON;
       break;
     default:
-      mode = SOUND_MODE_ON;
+      data.mode = SOUND_MODE_ON;
   }
 }
 
 void Sound::feedback(const bool good/*=true*/) {
-  if (mode != SOUND_MODE_ON) return;
+  if (data.mode != SOUND_MODE_ON) return;
 
   if (good) {
     playtone(100, NOTE_E5);

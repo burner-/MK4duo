@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,35 +26,35 @@
 
 #include "../../../MK4duo.h"
 
-#if HAS_LCD_MENU && (ENABLED(PROBE_MANUALLY) || MECH(DELTA))
+#if HAS_LCD_MENU && (HAS_PROBE_MANUALLY || MECH(DELTA))
 
-  void _man_probe_pt(const float &rx, const float &ry) {
-    mechanics.do_blocking_move_to(rx, ry, MANUAL_PROBE_HEIGHT);
+  void _man_probe_pt(const xy_pos_t &xy) {
+    mechanics.do_blocking_move_to_xy_z(xy, MANUAL_PROBE_HEIGHT);
     lcdui.synchronize();
-    move_menu_scale = MESH_EDIT_Z_STEP;
+    move_menu_scale = LCD_Z_STEP;
     lcdui.goto_screen(lcd_move_z);
   }
 
 #endif
 
-#if HAS_LCD_MENU && ENABLED(PROBE_MANUALLY)
+#if HAS_LCD_MENU && HAS_PROBE_MANUALLY
 
-  float lcd_probe_pt(const float &rx, const float &ry) {
-    _man_probe_pt(rx, ry);
-    printer.keepalive(PausedforUser);
+  float lcd_probe_pt(const xy_pos_t &xy) {
+    _man_probe_pt(xy);
+    PRINTER_KEEPALIVE(PausedforUser);
     lcdui.defer_status_screen();
     printer.setWaitForUser(true);
+    host_action.prompt_do(PROMPT_USER_CONTINUE, PSTR("Delta Calibration in progress"), PSTR("Continue"));
     while (printer.isWaitForUser()) printer.idle();
-    printer.keepalive(InHandler);
     lcdui.goto_previous_screen_no_defer();
-    return mechanics.current_position[Z_AXIS];
+    return mechanics.current_position.z;
   }
 
 #endif
 
 #if HAS_LCD_MENU && ENABLED(LCD_BED_LEVELING)
 
-#if ENABLED(PROBE_MANUALLY) || ENABLED(MESH_BED_LEVELING)
+#if HAS_PROBE_MANUALLY || ENABLED(MESH_BED_LEVELING)
 
   //
   // Motion > Level Bed handlers
@@ -88,13 +88,13 @@
     if (!lcdui.wait_for_bl_move) {
       #if MANUAL_PROBE_HEIGHT > 0 && DISABLED(MESH_BED_LEVELING)
         // Display "Done" screen and wait for moves to complete
-        line_to_z(MANUAL_PROBE_HEIGHT);
-        lcdui.synchronize(PSTR(MSG_LEVEL_BED_DONE));
+        mechanics.do_blocking_move_to_z(MANUAL_PROBE_HEIGHT, MMM_TO_MMS(manual_feedrate_mm_m.z));
+        lcdui.synchronize(GET_TEXT(MSG_LEVEL_BED_DONE));
       #endif
       lcdui.goto_previous_screen_no_defer();
       sound.feedback();
     }
-    if (lcdui.should_draw()) draw_menu_item_static(LCD_HEIGHT >= 4 ? 1 : 0, PSTR(MSG_LEVEL_BED_DONE));
+    if (lcdui.should_draw()) MenuItem_static::draw(LCD_HEIGHT >= 4 ? 1 : 0, GET_TEXT(MSG_LEVEL_BED_DONE));
     lcdui.refresh(LCDVIEW_CALL_REDRAW_NEXT);
   }
 
@@ -104,7 +104,6 @@
   // Step 7: Get the Z coordinate, click goes to the next point or exits
   //
   void _lcd_level_bed_get_z() {
-    lcdui.encoder_direction_normal();
 
     if (lcdui.use_click()) {
 
@@ -120,9 +119,9 @@
         lcdui.wait_for_bl_move = true;
         lcdui.goto_screen(_lcd_level_bed_done);
         #if ENABLED(MESH_BED_LEVELING)
-          commands.enqueue_and_echo_P(PSTR("G29 S2"));
-        #elif ENABLED(PROBE_MANUALLY)
-          commands.enqueue_and_echo_P(PSTR("G29 V1"));
+          commands.inject_P(PSTR("G29 S2"));
+        #elif HAS_PROBE_MANUALLY
+          commands.inject_P(PSTR("G29 V1"));
         #endif
       }
       else
@@ -135,8 +134,8 @@
     // Encoder knob or keypad buttons adjust the Z position
     //
     if (lcdui.encoderPosition) {
-      const float z = mechanics.current_position[Z_AXIS] + float((int16_t)lcdui.encoderPosition) * (MESH_EDIT_Z_STEP);
-      line_to_z(constrain(z, -(LCD_PROBE_Z_RANGE) * 0.5f, (LCD_PROBE_Z_RANGE) * 0.5f));
+      const float z = mechanics.current_position.z + float(int32_t(lcdui.encoderPosition)) * (LCD_Z_STEP);
+      lcd_line_to_z(constrain(z, -(LCD_PROBE_Z_RANGE) * 0.5f, (LCD_PROBE_Z_RANGE) * 0.5f));
       lcdui.refresh(LCDVIEW_CALL_REDRAW_NEXT);
       lcdui.encoderPosition = 0;
     }
@@ -145,8 +144,9 @@
     // Draw on first display, then only on Z change
     //
     if (lcdui.should_draw()) {
-      const float v = mechanics.current_position[Z_AXIS];
-      draw_edit_screen(PSTR(MSG_MOVE_Z), ftostr43sign(v + (v < 0 ? -0.0001f : 0.0001f), '+'));
+      const float v = mechanics.current_position.z;
+      MenuItemBase::itemIndex = NO_INDEX;
+      MenuEditItemBase::draw_edit_screen(GET_TEXT(MSG_MOVE_Z), ftostr43sign(v + (v < 0 ? -0.0001f : 0.0001f), '+'));
     }
   }
 
@@ -156,8 +156,9 @@
   void _lcd_level_bed_moving() {
     if (lcdui.should_draw()) {
       char msg[10];
-      sprintf_P(msg, PSTR("%i / %u"), (int)(manual_probe_index + 1), total_probe_points);
-      draw_edit_screen(PSTR(MSG_LEVEL_BED_NEXT_POINT), msg);
+      sprintf_P(msg, PSTR("%i / %u"), int(manual_probe_index + 1), total_probe_points);
+      MenuItemBase::itemIndex = NO_INDEX;
+      MenuEditItemBase::draw_edit_screen(GET_TEXT(MSG_LEVEL_BED_NEXT_POINT), msg);
     }
     lcdui.refresh(LCDVIEW_CALL_NO_REDRAW);
     if (!lcdui.wait_for_bl_move) lcdui.goto_screen(_lcd_level_bed_get_z);
@@ -172,9 +173,9 @@
     // G29 Records Z, moves, and signals when it pauses
     lcdui.wait_for_bl_move = true;
     #if ENABLED(MESH_BED_LEVELING)
-      commands.enqueue_and_echo_P(manual_probe_index ? PSTR("G29 S2") : PSTR("G29 S1"));
-    #elif ENABLED(PROBE_MANUALLY)
-      commands.enqueue_and_echo_P(PSTR("G29 V1"));
+      commands.inject_P(manual_probe_index ? PSTR("G29 S2") : PSTR("G29 S1"));
+    #elif HAS_PROBE_MANUALLY
+      commands.inject_P(PSTR("G29 V1"));
     #endif
   }
 
@@ -183,7 +184,7 @@
   //         Move to the first probe position
   //
   void _lcd_level_bed_homing_done() {
-    if (lcdui.should_draw()) draw_edit_screen(PSTR(MSG_LEVEL_BED_WAITING));
+    if (lcdui.should_draw()) MenuItem_static::draw(1, GET_TEXT(MSG_LEVEL_BED_WAITING));
     if (lcdui.use_click()) {
       manual_probe_index = 0;
       _lcd_level_goto_next_point();
@@ -205,7 +206,7 @@
     lcdui.defer_status_screen();
     mechanics.unsetHomedAll();
     lcdui.goto_screen(_lcd_level_bed_homing);
-    commands.enqueue_and_echo_P(PSTR("G28"));
+    commands.inject_P(G28_CMD);
   }
 
 #endif // PROBE_MANUALLY || MESH_BED_LEVELING
@@ -220,10 +221,10 @@
   void menu_edit_mesh() {
     static uint8_t xind, yind; // =0
     START_MENU();
-    MENU_BACK(MSG_BED_LEVELING);
-    MENU_ITEM_EDIT(int8, MSG_MESH_X, &xind, 0, GRID_MAX_POINTS_X - 1);
-    MENU_ITEM_EDIT(int8, MSG_MESH_Y, &yind, 0, GRID_MAX_POINTS_Y - 1);
-    MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float43, MSG_MESH_EDIT_Z, &Z_VALUES(xind, yind), -(LCD_PROBE_Z_RANGE) * 0.5, (LCD_PROBE_Z_RANGE) * 0.5, refresh_planner);
+    BACK_ITEM(MSG_BED_LEVELING);
+    EDIT_ITEM(int8, MSG_MESH_X, &xind, 0, GRID_MAX_POINTS_X - 1);
+    EDIT_ITEM(int8, MSG_MESH_Y, &yind, 0, GRID_MAX_POINTS_Y - 1);
+    EDIT_ITEM_FAST(float43, MSG_MESH_EDIT_Z, &Z_VALUES(xind, yind), -(LCD_PROBE_Z_RANGE) * 0.5, (LCD_PROBE_Z_RANGE) * 0.5, refresh_planner);
     END_MENU();
   }
 
@@ -245,60 +246,61 @@
  */
 void menu_bed_leveling() {
   START_MENU();
-  MENU_BACK(MSG_MOTION);
+  BACK_ITEM(MSG_MOTION);
 
   const bool is_homed = mechanics.isHomedAll();
 
   // Auto Home if not using manual probing
   #if DISABLED(PROBE_MANUALLY) && DISABLED(MESH_BED_LEVELING)
-    if (!is_homed) MENU_ITEM(gcode, MSG_AUTO_HOME, PSTR("G28"));
+    if (!is_homed) GCODES_ITEM(MSG_AUTO_HOME, G28_CMD);
   #endif
 
   // Level Bed
-  #if ENABLED(PROBE_MANUALLY) || ENABLED(MESH_BED_LEVELING)
+  #if HAS_PROBE_MANUALLY || ENABLED(MESH_BED_LEVELING)
     // Manual leveling uses a guided procedure
-    MENU_ITEM(submenu, MSG_LEVEL_BED, _lcd_level_bed_continue);
+    SUBMENU(MSG_LEVEL_BED, _lcd_level_bed_continue);
   #else
     // Automatic leveling can just run the G-code
-    MENU_ITEM(gcode, MSG_LEVEL_BED, is_homed ? PSTR("G29") : PSTR("G28\nG29"));
+    GCODES_ITEM(MSG_LEVEL_BED, is_homed ? PSTR("G29") : PSTR("G28\nG29"));
   #endif
 
   #if ENABLED(MESH_EDIT_MENU)
     if (bedlevel.leveling_is_valid())
-      MENU_ITEM(submenu, MSG_EDIT_MESH, menu_edit_mesh);
+      SUBMENU(MSG_EDIT_MESH, menu_edit_mesh);
   #endif
 
   // Homed and leveling is valid? Then leveling can be toggled.
   if (is_homed && bedlevel.leveling_is_valid()) {
     bool new_level_state = bedlevel.flag.leveling_active;
-    MENU_ITEM_EDIT_CALLBACK(bool, MSG_BED_LEVELING, &new_level_state, lcd_toggle_bed_leveling);
+    EDIT_ITEM(bool, MSG_BED_LEVELING, &new_level_state, []{ bedlevel.set_bed_leveling_enabled(!bedlevel.flag.leveling_active); });
   }
 
   // Z Fade Height
   #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
-    MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float3, MSG_Z_FADE_HEIGHT, &lcd_z_fade_height, 0, 100, lcd_set_z_fade_height);
+    editable.decimal = bedlevel.z_fade_height;
+    EDIT_ITEM_FAST(float3, MSG_Z_FADE_HEIGHT, &editable.decimal, 0, 100, []{ bedlevel.set_z_fade_height(editable.decimal); });
   #endif
 
   //
   // Mesh Bed Leveling Z-Offset
   //
   #if ENABLED(MESH_BED_LEVELING)
-    MENU_ITEM_EDIT(float43, MSG_BED_Z, &mbl.z_offset, -1, 1);
+    EDIT_ITEM(float43, MSG_BED_Z, &mbl.data.z_offset, -1, 1);
   #endif
 
   #if ENABLED(BABYSTEP_ZPROBE_OFFSET)
-    MENU_ITEM(submenu, MSG_ZPROBE_ZOFFSET, lcd_babystep_zoffset);
+    SUBMENU(MSG_ZPROBE_ZOFFSET, lcd_babystep_zoffset);
   #elif HAS_BED_PROBE
-    MENU_ITEM_EDIT(float52, MSG_ZPROBE_ZOFFSET, &probe.data.offset[Z_AXIS], Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX);
+    EDIT_ITEM(float52, MSG_ZPROBE_ZOFFSET, &probe.data.offset.z, Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX);
   #endif
 
   #if ENABLED(LEVEL_BED_CORNERS)
-    MENU_ITEM(submenu, MSG_LEVEL_CORNERS, lcd_level_bed_corners);
+    SUBMENU(MSG_LEVEL_CORNERS, lcd_level_bed_corners);
   #endif
 
   #if ENABLED(EEPROM_SETTINGS)
-    MENU_ITEM(function, MSG_LOAD_EEPROM, lcd_load_settings);
-    MENU_ITEM(function, MSG_STORE_EEPROM, lcd_store_settings);
+    ACTION_ITEM(MSG_LOAD_EEPROM, []{ eeprom.load(); });
+    ACTION_ITEM(MSG_STORE_EEPROM, []{ eeprom.store(); });
   #endif
 
   END_MENU();

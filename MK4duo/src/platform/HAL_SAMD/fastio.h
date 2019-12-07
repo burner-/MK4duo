@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,13 +20,15 @@
  *
  */
 
+#pragma once
+
 /**
  * Description: Fast IO functions for Arduino Due and compatible (SAM3X8E)
  *
  * Contributors:
- *  Copyright (C) 2014 Bob Cousins bobcousins42@googlemail.com
- *  Copyright (C) 2015-2016 Nico Tonnhofer wurstnase.reprap@gmail.com
- *  Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ *  Copyright (c) 2014 Bob Cousins bobcousins42@googlemail.com
+ *  Copyright (c) 2015-2016 Nico Tonnhofer wurstnase.reprap@gmail.com
+ *  Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 // **************************************************************************
@@ -35,9 +37,6 @@
 //
 // ARDUINO_ARCH_SAM
 // **************************************************************************
-
-#ifndef _HAL_FASTIO_SAMD_H_
-#define _HAL_FASTIO_SAMD_H_
 
 #include <Arduino.h>
 
@@ -65,24 +64,11 @@
 // Read a pin
 FORCE_INLINE static bool READ(const uint8_t pin) {
   return !!(PORT->Group[g_APinDescription[pin].ulPort].IN.reg & (1ul << g_APinDescription[pin].ulPin));
-  //return digitalRead(pin);
-}
-FORCE_INLINE static bool READ_VAR(const uint8_t pin) {
-  return !!(PORT->Group[g_APinDescription[pin].ulPort].IN.reg & (1ul << g_APinDescription[pin].ulPin));
-  //return digitalRead(pin);
 }
 
 // write to a pin
 // On some boards pins > 0x100 are used. These are not converted to atomic actions. An critical section is needed.
 FORCE_INLINE static void WRITE(const uint8_t pin, const bool flag) {
-  //digitalWrite(pin,flag);
-  if (flag)  
-    PORT->Group[g_APinDescription[pin].ulPort].OUTSET.reg = (1ul << g_APinDescription[pin].ulPin);
-  else    
-    PORT->Group[g_APinDescription[pin].ulPort].OUTCLR.reg = (1ul << g_APinDescription[pin].ulPin);
-}
-FORCE_INLINE static void WRITE_VAR(const uint8_t pin, const bool flag) {
-  //digitalWrite(pin,flag);
   if (flag)  
     PORT->Group[g_APinDescription[pin].ulPort].OUTSET.reg = (1ul << g_APinDescription[pin].ulPin);
   else    
@@ -121,5 +107,3 @@ FORCE_INLINE static bool USEABLE_HARDWARE_PWM(const pin_t pin) {
   else
     return false;
 }
-
-#endif  /* _HAL_FASTIO_SAMD_H_ */

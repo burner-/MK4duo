@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,46 +23,42 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if EXTRUDERS > 0 && HAS_FILAMENT_SENSOR
+#if HAS_FILAMENT_SENSOR
 
-  #define CODE_M412
+#define CODE_M412
 
-  /**
-   * M412: Enable or disable Filament Runout detection
-   *  S[bool]   Enable / Disable Sensor control
-   *  H[bool]   Enable / Disable Host control
-   *  R[bool]   Reset control
-   *  D[float]  Distance mm
-   *
-   */
-  inline void gcode_M412(void) {
+/**
+ * M412: Enable or disable Filament Runout detection
+ *  S[bool]   Enable / Disable Sensor control
+ *  H[bool]   Enable / Disable Host control
+ *  R[bool]   Reset control
+ *  D[float]  Distance mm
+ *
+ */
+inline void gcode_M412() {
 
-    #if DISABLED(DISABLE_M503)
-      // No arguments? Show M412 report.
-      if (!parser.seen("DHRS")) {
-        SERIAL_STR(ECHO);
-        SERIAL_EONOFF("Filament runout", filamentrunout.isEnabled());
-        #if FILAMENT_RUNOUT_DISTANCE_MM > 0
-          SERIAL_EMV("Filament runout distance (mm): ", filamentrunout.runout_distance());
-        #endif
-        return;
-      }
-    #endif
+  #if DISABLED(DISABLE_M503)
+    // No arguments? Show M412 report.
+    if (parser.seen_any()) {
+      filamentrunout.print_M412();
+      return;
+    }
+  #endif
 
-    const bool  seenR = parser.seen('R'),
-                seenS = parser.seen('S');
+  const bool  seenR = parser.seen('R'),
+              seenS = parser.seen('S');
 
-    if (seenR || seenS) filamentrunout.reset();
-    if (seenS) filamentrunout.setEnabled(parser.value_bool());
-    if (parser.seen('H')) filamentrunout.setHostHandling(parser.value_bool());
+  if (seenR || seenS) filamentrunout.reset();
+  if (seenS) filamentrunout.sensor.setEnabled(parser.value_bool());
+  if (parser.seen('H')) filamentrunout.sensor.setHostHandling(parser.value_bool());
 
-    #if FILAMENT_RUNOUT_DISTANCE_MM > 0
-      if (parser.seen('D')) filamentrunout.set_runout_distance(parser.value_linear_units());
-    #endif
+  #if FILAMENT_RUNOUT_DISTANCE_MM > 0
+    if (parser.seen('D')) filamentrunout.set_runout_distance(parser.value_linear_units());
+  #endif
 
-  }
+}
 
-#endif // EXTRUDERS > 0 && HAS_EXT_ENCODER
+#endif // HAS_EXT_ENCODER

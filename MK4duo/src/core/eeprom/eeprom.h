@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,29 +21,40 @@
  */
 #pragma once
 
+union eeprom_flag_t {
+  bool all;
+  struct {
+    bool  error       : 1;
+    bool  validating  : 1;
+    bool  bit_2       : 1;
+    bool  bit_3       : 1;
+    bool  bit_4       : 1;
+    bool  bit_5       : 1;
+    bool  bit_6       : 1;
+    bool  bit_7       : 1;
+  };
+  eeprom_flag_t() { all = false; }
+};
+
 class EEPROM {
 
   public: /** Constructor */
 
     EEPROM() {}
 
-  public: /** Public Parameters */
-
   private: /** Private Parameters */
 
     #if HAS_EEPROM
 
-      static bool eeprom_error,
-                  validating;
+      static eeprom_flag_t flag;
  
       #if ENABLED(AUTO_BED_LEVELING_UBL)  // Eventually make these available if any leveling system
                                           // That can store is enabled
-        static uint16_t meshes_begin;
         static const uint16_t meshes_end; // 128 is a placeholder for the size of the MAT; the MAT will always
                                           // live at the very end of the eeprom
-
       #endif
-    #endif
+
+    #endif // HAS_EEPROM
 
   public: /** Public Function */
 
@@ -65,27 +76,29 @@ class EEPROM {
     static uint16_t datasize();
 
     static void reset();
+    static void clear();      // Clear EEPROM and reset
     static bool store();      // Return 'true' if data was stored ok
 
     #if HAS_EEPROM
+
       static bool load();     // Return 'true' if data was loaded ok
       static bool validate(); // Return 'true' if EEPROM data is ok
 
       #if ENABLED(AUTO_BED_LEVELING_UBL) // Eventually make these available if any leveling system
                                          // That can store is enabled
-        FORCE_INLINE static uint16_t  meshes_start_index()  { return meshes_begin; }
-        FORCE_INLINE static uint16_t  meshes_end_index()    { return meshes_end; }
+        static uint16_t meshes_start_index();
+        FORCE_INLINE static uint16_t  meshes_end_index() { return meshes_end; }
         static uint16_t calc_num_meshes();
         static int mesh_slot_offset(const int8_t slot);
         static void store_mesh(const int8_t slot);
         static void load_mesh(const int8_t slot, void * const into=NULL);
-
-        //static void delete_mesh();    // necessary if we have a MAT
-        //static void defrag_meshes();  // "
       #endif
+
     #else
+
       FORCE_INLINE static bool load() { reset(); Print_Settings(); return true; }
-    #endif
+
+    #endif // !HAS_EEPROM
 
     #if DISABLED(DISABLE_M503)
       static void Print_Settings();
@@ -98,8 +111,10 @@ class EEPROM {
     static void post_process();
 
     #if HAS_EEPROM
+
       static bool _load();
       static bool size_error(const uint16_t size);
+
     #endif
 
 };

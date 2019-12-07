@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(LIN_ADVANCE)
@@ -33,20 +33,31 @@
 /**
  * M900: Set Linear Advance K-factor
  *
+ *  T<tools>    Set extruder
  *  K<factor>   Set advance K factor
  */
-inline void gcode_M900(void) {
+inline void gcode_M900() {
+
+  if (commands.get_target_tool(900)) return;
+
+  #if DISABLED(DISABLE_M503)
+    // No arguments? Show M218 report.
+    if (parser.seen_any()) {
+      toolManager.print_M900();
+      return;
+    }
+  #endif
+
   if (parser.seenval('K')) {
     const float newK = parser.floatval('K');
     if (WITHIN(newK, 0, 10)) {
       planner.synchronize();
-      planner.extruder_advance_K = newK;
+      extruders[toolManager.extruder.target]->data.advance_K = newK;
     }
     else
       SERIAL_EM("?K value out of range (0-10).");
   }
-  else
-    SERIAL_LMV(ECHO, "Advance K=", planner.extruder_advance_K);
+
 }
 
 #endif // ENABLED(LIN_ADVANCE)

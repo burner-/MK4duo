@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -191,14 +191,6 @@
 // The BLTouch probe uses a Hall effect sensor and emulates a servo.
 // The default connector is SERVO 0.
 //#define BLTOUCH
-// Minimum Command delay (ms). Enable and increase if needed
-//#define BLTOUCH_DELAY 500
-// BLTouch high speed
-//#define BLTOUCH_HIGH_SPEED_MODE
-// BLTouch V3.0 and newer smart series
-// For genuine BLTouch 3.0 sensors. Clones may be confused by 3.0 command angles. YMMV.
-// If the pin trigger is not detected, first try swapping the black and white wires then toggle this.
-//#define BLTOUCH_FORCE_5V_MODE
 
 // If you have TMC2130 or TMC5130 you can use StallGuard2 to probe the bed with the nozzle.
 //
@@ -236,6 +228,7 @@
 #define Z_PROBE_SPEED_FAST 120
 // Speed for the "accurate" probe of each point, in mm/min
 #define Z_PROBE_SPEED_SLOW 60
+
 // Z Probe repetitions, median for best result
 #define Z_PROBE_REPETITIONS 1
 
@@ -266,13 +259,15 @@
 // Add a bed leveling sub-menu for ABL or MBL.
 // Include a guided procedure if manual probing is enabled.
 //#define LCD_BED_LEVELING
-#define MESH_EDIT_Z_STEP 0.025  // (mm) Step size while manually probing Z axis.
-#define LCD_PROBE_Z_RANGE 4     // (mm) Z Range centered on Z MIN POS for LCD Z adjustment
-//#define MESH_EDIT_MENU        // Add a menu to edit mesh points
+#define LCD_Z_STEP 0.025      // (mm) Step size while manually probing Z axis.
+#define LCD_PROBE_Z_RANGE 4   // (mm) Z Range centered on Z MIN POS for LCD Z adjustment
+//#define MESH_EDIT_MENU      // Add a menu to edit mesh points
 
 // Add a menu item to move between bed corners for manual bed adjustment
 //#define LEVEL_BED_CORNERS
-#define LEVEL_CORNERS_INSET 30    // (mm) An inset for corner leveling
+#define LEVEL_CORNERS_INSET  30   // (mm) An inset for corner leveling
+#define LEVEL_CORNERS_Z_HOP   4.0 // (mm) Move nozzle up before moving between corners
+#define LEVEL_CORNERS_HEIGHT  0.0 // (mm) Z height of nozzle at leveling points
 //#define LEVEL_CENTER_TOO        // Move to the center after the last corner
 /*****************************************************************************************/
 
@@ -459,8 +454,8 @@
 // enable a graphics overly while editing the mesh from auto-level
 //#define MESH_EDIT_GFX_OVERLAY
 
-// Mesh inset margin on print area
-#define MESH_INSET 10
+// The Z probe minimum outer margin (to validate G29 parameters).
+#define MIN_PROBE_EDGE 10
 
 // Enable the G26 Mesh Validation Pattern tool.
 //#define G26_MESH_VALIDATION
@@ -488,15 +483,6 @@
 /** END MESH BED LEVELING or AUTO BED LEVELING LINEAR or AUTO BED LEVELING BILINEAR or UNIFIED BED LEVELING **/
 
 /** START AUTO BED LEVELING LINEAR or AUTO BED LEVELING BILINEAR **/
-// Set the boundaries for probing (where the probe can reach).
-#define LEFT_PROBE_BED_POSITION 20
-#define RIGHT_PROBE_BED_POSITION 180
-#define FRONT_PROBE_BED_POSITION 20
-#define BACK_PROBE_BED_POSITION 180
-
-// The Z probe minimum outer margin (to validate G29 parameters).
-#define MIN_PROBE_EDGE 10
-
 // Probe along the Y axis, advancing X after each column
 //#define PROBE_Y_FIRST
 
@@ -506,17 +492,6 @@
 // Number of subdivisions between probe points
 #define BILINEAR_SUBDIVISIONS 3
 /** END AUTO_BED_LEVELING_LINEAR or AUTO_BED_LEVELING_BILINEAR **/
-
-/** START AUTO_BED_LEVELING_3POINT or UNIFIED BED LEVELING **/
-// 3 arbitrary points to probe.
-// A simple cross-product is used to estimate the plane of the bed.
-#define PROBE_PT_1_X 15
-#define PROBE_PT_1_Y 180
-#define PROBE_PT_2_X 15
-#define PROBE_PT_2_Y 15
-#define PROBE_PT_3_X 180
-#define PROBE_PT_3_Y 15
-/** END AUTO_BED_LEVELING_3POINT or UNIFIED BED LEVELING **/
 
 // Commands to execute at the end of G29 probing.
 // Useful to retract or move the Z probe out of the way.
@@ -572,18 +547,24 @@
  * Override with M92                                                                     *
  *                                                                                       *
  *****************************************************************************************/
-// Default steps per unit               X,  Y,    Z,  E0...(per extruder)
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {80, 80, 3200, 625, 625, 625, 625}
+// Default steps per unit               X,  Y,  Z
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {80, 80, 3200}
+// Default steps per unit               E0, ...(per extruder)
+#define DEFAULT_AXIS_STEPS_PER_UNIT_E {625, 625, 625, 625}
 /*****************************************************************************************/
 
 
 /*****************************************************************************************
  ********************************** Axis feedrate ****************************************
  *****************************************************************************************/
-//                                       X,   Y, Z,  E0...(per extruder). (mm/sec)
-#define DEFAULT_MAX_FEEDRATE          {300, 300, 2, 100, 100, 100, 100}
+//                                       X,   Y, Z (mm/sec)
+#define DEFAULT_MAX_FEEDRATE          {300, 300, 2}
+//                                      E0, ...(per extruder). (mm/sec)
+#define DEFAULT_MAX_FEEDRATE_E        {100, 100, 100, 100}
 // Feedrates for manual moves along        X,     Y,     Z,  E from panel
 #define MANUAL_FEEDRATE               {50*60, 50*60, 4*60, 10*60}
+// (mm) Smallest manual Z move (< 0.1mm)
+#define SHORT_MANUAL_Z_MOVE           0.025
 // Minimum feedrate
 #define DEFAULT_MIN_FEEDRATE          0.0
 #define DEFAULT_MIN_TRAVEL_FEEDRATE   0.0
@@ -597,8 +578,10 @@
 /*****************************************************************************************
  ******************************** Axis acceleration **************************************
  *****************************************************************************************/
-//  Maximum start speed for accelerated moves.    X,    Y,  Z,   E0...(per extruder)
-#define DEFAULT_MAX_ACCELERATION              {3000, 3000, 50, 1000, 1000, 1000, 1000}
+//  Maximum start speed for accelerated moves.    X,    Y,  Z
+#define DEFAULT_MAX_ACCELERATION              {3000, 3000, 50}
+//  Maximum start speed for accelerated moves.   E0, ...(per extruder)
+#define DEFAULT_MAX_ACCELERATION_E            {1000, 1000, 1000, 1000}
 //  Maximum acceleration in mm/s^2 for retracts   E0... (per extruder)
 #define DEFAULT_RETRACT_ACCELERATION          {10000, 10000, 10000, 10000}
 //  X, Y, Z and E* maximum acceleration in mm/s^2 for printing moves
@@ -624,7 +607,7 @@
 #define DEFAULT_YJERK 10.0
 #define DEFAULT_ZJERK  0.4
 // E0... (mm/sec) per extruder
-#define DEFAULT_EJERK                   {5.0, 5.0, 5.0, 5.0}
+#define DEFAULT_EJERK {5.0, 5.0, 5.0, 5.0}
 /*****************************************************************************************/
 
 
@@ -635,6 +618,9 @@
 #define HOMING_FEEDRATE_X (50*60)
 #define HOMING_FEEDRATE_Y (50*60)
 #define HOMING_FEEDRATE_Z (2*60)
+
+// Slow Homing feature reduce Acceleration and Jerk only for homing
+//#define SLOW_HOMING
 
 // Homing hits each endstop, retracts by these distances, then does a slower bump.
 #define X_HOME_BUMP_MM 5
@@ -656,7 +642,10 @@
  * For the other hotends it is their distance from the hotend 0.                         *
  *                                                                                       *
  *****************************************************************************************/
-#define HOTEND_OFFSET_X {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the X axis
-#define HOTEND_OFFSET_Y {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the Y axis
-#define HOTEND_OFFSET_Z {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the Z axis
+// (in mm) for each hotend, offset of the hotend on the X axis
+#define HOTEND_OFFSET_X {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
+// (in mm) for each hotend, offset of the hotend on the Y axis
+#define HOTEND_OFFSET_Y {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
+// (in mm) for each hotend, offset of the hotend on the Z axis
+#define HOTEND_OFFSET_Z {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
 /*****************************************************************************************/

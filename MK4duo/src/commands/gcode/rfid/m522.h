@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(RFID_MODULE)
@@ -33,7 +33,7 @@
 /**
  * M522: Read or Write on card. M522 T<extruders> R<read> or W<write> L<list>
  */
-inline void gcode_M522(void) {
+inline void gcode_M522() {
 
   if (commands.get_target_tool(522)) return;
 
@@ -44,15 +44,15 @@ inline void gcode_M522(void) {
     #if HAS_NEXTION_LCD
       rfid_setText("Put RFID on tag!");
     #endif
-    rfid522.Spool_must_read[TARGET_EXTRUDER] = true;
+    rfid522.Spool_must_read[toolManager.extruder.target] = true;
   }
   if (parser.seen('W')) {
-    if (rfid522.Spool_ID[TARGET_EXTRUDER] != 0) {
+    if (rfid522.Spool_ID[toolManager.extruder.target] != 0) {
       SERIAL_EM("Put RFID on tag!");
       #if HAS_NEXTION_LCD
         rfid_setText("Put RFID on tag!");
       #endif
-      rfid522.Spool_must_write[TARGET_EXTRUDER] = true;
+      rfid522.Spool_must_write[toolManager.extruder.target] = true;
     }
     else {
       SERIAL_LM(ER, "You have not read this Spool!");
@@ -62,7 +62,7 @@ inline void gcode_M522(void) {
     }
   }
 
-  if (parser.seen('L')) rfid522.print_info(TARGET_EXTRUDER);
+  if (parser.seen('L')) rfid522.print_info(toolManager.extruder.target);
 }
 
 #endif // RFID_MODULE

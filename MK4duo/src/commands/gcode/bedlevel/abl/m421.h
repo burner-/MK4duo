@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
@@ -37,7 +37,7 @@
    *   M421 I<xindex> J<yindex> Z<linear>
    *   M421 I<xindex> J<yindex> Q<offset>
    */
-  inline void gcode_M421(void) {
+  inline void gcode_M421() {
     int8_t ix = parser.intval('I', -1), iy = parser.intval('J', -1);
     const bool  hasI = ix >= 0,
                 hasJ = iy >= 0,
@@ -45,10 +45,10 @@
                 hasQ = !hasZ && parser.seen('Q');
 
     if (!hasI || !hasJ || !(hasZ || hasQ)) {
-      SERIAL_LM(ER, MSG_ERR_M421_PARAMETERS);
+      SERIAL_LM(ER, MSG_HOST_ERR_M421_PARAMETERS);
     }
       else if (!WITHIN(ix, 0, GRID_MAX_POINTS_X - 1) || !WITHIN(iy, 0, GRID_MAX_POINTS_Y - 1)) {
-      SERIAL_LM(ER, MSG_ERR_MESH_XY);
+      SERIAL_LM(ER, MSG_HOST_ERR_MESH_XY);
     }
 
     if (hasI && hasJ && !(hasZ || hasQ)) {

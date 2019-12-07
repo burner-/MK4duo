@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M85
@@ -31,11 +31,11 @@
 /**
  * M85: Set inactivity shutdown timer with parameter S<seconds>. To disable set zero (default)
  */
-inline void gcode_M85(void) {
+inline void gcode_M85() {
   if (parser.seenval('S')) {
-    printer.max_inactive_time = parser.value_byte();
-    printer.max_inactivity_ms = millis();
+    printer.max_inactive_time = parser.value_ushort();
+    printer.max_inactivity_timer.start();
   }
   else
-    SERIAL_EMV("M85 S", printer.max_inactive_time);
+    SERIAL_EMV("M85 S", int(printer.max_inactive_time));
 }

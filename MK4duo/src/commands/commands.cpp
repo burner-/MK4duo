@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * commands.cpp
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #include "../../MK4duo.h"
@@ -34,33 +34,27 @@ Commands commands;
 /** Public Parameters */
 Circular_Queue<gcode_t, BUFSIZE> Commands::buffer_ring;
 
-long  Commands::gcode_LastN = 0;
+long Commands::gcode_last_N = 0;
 
 /** Private Parameters */
-long  Commands::gcode_N = 0;
+long Commands::gcode_N = 0;
 
 int Commands::serial_count[NUM_SERIAL] = { 0 };
 
 PGM_P Commands::injected_commands_P = nullptr;
 
-millis_s Commands::last_command_ms = 0;
+short_timer_t Commands::last_command_timer;
 
 /** Public Function */
 void Commands::flush_and_request_resend() {
   Com::serialFlush();
-  SERIAL_LV(RESEND, gcode_LastN + 1);
+  SERIAL_LV(RESEND, gcode_last_N + 1);
   ok_to_send();
 }
 
 void Commands::get_available() {
-
   if (buffer_ring.isFull()) return;
-
-  // if any immediate commands remain, don't get other commands yet
-  if (drain_injected_P()) return;
-
   get_serial();
-
   #if HAS_SD_SUPPORT
     get_sdcard();
   #endif
@@ -68,12 +62,15 @@ void Commands::get_available() {
 
 void Commands::advance_queue() {
 
+  // Process immediate commands
+  if (process_injected()) return;
+
+  // Return if the G-code buffer is empty
   if (!buffer_ring.count()) return;
 
   #if HAS_SD_SUPPORT
 
     if (card.isSaving()) {
-      SERIAL_EM("Sono in Saving!");
       gcode_t command = buffer_ring.peek();
       if (is_M29(command.gcode)) {
         // M29 closes the file
@@ -113,33 +110,27 @@ void Commands::clear_queue() {
   buffer_ring.clear();
 }
 
-void Commands::enqueue_and_echo_P(PGM_P const pgcode) {
+void Commands::inject_P(PGM_P const pgcode) {
   injected_commands_P = pgcode;
-  (void)drain_injected_P(); // first command executed asap (when possible)
 }
 
-bool Commands::enqueue_and_echo(const char * cmd) {
+void Commands::enqueue_one_now(const char * cmd) {
+  while (!enqueue_one(cmd)) printer.idle();
+}
 
-  if (*cmd == 0 || *cmd == '\n' || *cmd == '\r')
-    return true;
-
-  if (enqueue(cmd)) {
-    SERIAL_SMT(ECHO, MSG_ENQUEUEING, cmd);
-    SERIAL_CHR('"');
-    SERIAL_EOL();
-    return true;
+void Commands::enqueue_now_P(PGM_P const pgcode) {
+  size_t i = 0;
+  PGM_P p = pgcode;
+  for (;;) {
+    char c;
+    while ((c = pgm_read_byte(&p[i])) && c != '\n') i++;
+    char cmd[i + 1];
+    memcpy_P(cmd, p, i);
+    cmd[i] = '\0';
+    enqueue_one_now(cmd);
+    if (!c) break;
+    p += i + 1;
   }
-
-  return false;
-}
-
-void Commands::enqueue_and_echo_now_P(PGM_P const cmd) {
-  enqueue_and_echo_P(cmd);
-  while (drain_injected_P()) printer.idle();
-}
-
-void Commands::enqueue_and_echo_now(const char * cmd) {
-  while (!enqueue_and_echo(cmd)) printer.idle();
 }
 
 void Commands::process_now_P(PGM_P pgcode) {
@@ -174,38 +165,38 @@ void Commands::process_now(char * gcode) {
 
 void Commands::get_destination() {
 
-  bool seen[XYZE] = { false, false, false, false };
+  xyze_bool_t seen{false};
 
   #if ENABLED(IDLE_OOZING_PREVENT)
-    if (parser.seen(axis_codes[E_AXIS])) printer.IDLE_OOZING_retract(false);
+    if (parser.seen(axis_codes.e)) toolManager.IDLE_OOZING_retract(false);
   #endif
 
   LOOP_XYZE(i) {
     if ((seen[i] = parser.seen(axis_codes[i]))) {
       const float v = parser.value_axis_units((AxisEnum)i);
-      mechanics.destination[i] = (printer.axis_relative_modes[i] || printer.isRelativeMode())
-        ? mechanics.current_position[i] + v
-        : (i == E_AXIS) ? v : mechanics.logical_to_native(v, (AxisEnum)i);
+      mechanics.destination[i] = mechanics.axis_is_relative(AxisEnum(i))
+        ? mechanics.current_position[i] + v : (i == E_AXIS)
+        ? v : LOGICAL_TO_NATIVE(v, (AxisEnum)i);
     }
     else
       mechanics.destination[i] = mechanics.current_position[i];
   }
 
   #if HAS_SD_RESTART
-    if ((seen[E_AXIS] || seen[Z_AXIS]) && IS_SD_PRINTING()) restart.save_job();
+    if (restart.enabled && IS_SD_PRINTING() && (seen.e || seen.z)) restart.save_job();
   #endif
 
   if (parser.linearval('F') > 0)
     mechanics.feedrate_mm_s = MMM_TO_MMS(parser.value_feedrate());
 
   if (parser.seen('P'))
-    mechanics.destination[E_AXIS] = (parser.value_axis_units(E_AXIS) * tools.density_percentage[tools.previous_extruder] / 100) + mechanics.current_position[E_AXIS];
+    mechanics.destination.e = (parser.value_axis_units(E_AXIS) * extruders[toolManager.extruder.previous]->density_percentage * 0.01f) + mechanics.current_position.e;
 
   if (!printer.debugDryrun() && !printer.debugSimulation()) {
-    const float diff = mechanics.destination[E_AXIS] - mechanics.current_position[E_AXIS];
+    const float diff = mechanics.destination.e - mechanics.current_position.e;
     print_job_counter.incFilamentUsed(diff);
     #if ENABLED(RFID_MODULE)
-      rfid522.RfidData[tools.active_extruder].data.lenght -= diff;
+      rfid522.data[toolManager.extruder.active].data.lenght -= diff;
     #endif
   }
 
@@ -214,83 +205,67 @@ void Commands::get_destination() {
   #endif
 
   #if HAS_NEXTION_LCD && ENABLED(NEXTION_GFX)
-    #if MECH(DELTA)
-      if ((seen[X_AXIS] || seen[Y_AXIS]) && seen[E_AXIS])
-        gfx_line_to(mechanics.destination[X_AXIS] + (X_MAX_BED), mechanics.destination[Y_AXIS] + (Y_MAX_BED), mechanics.destination[Z_AXIS]);
-      else
-        gfx_cursor_to(mechanics.destination[X_AXIS] + (X_MAX_BED), mechanics.destination[Y_AXIS] + (Y_MAX_BED), mechanics.destination[Z_AXIS]);
-    #else
-      if ((seen[X_AXIS] || seen[Y_AXIS]) && seen[E_AXIS])
-        gfx_line_to(mechanics.destination[X_AXIS], mechanics.destination[Y_AXIS], mechanics.destination[Z_AXIS]);
-      else
-        gfx_cursor_to(mechanics.destination[X_AXIS], mechanics.destination[Y_AXIS], mechanics.destination[Z_AXIS]);
-    #endif
+    if ((seen.x || seen.y) && seen.e)
+      nexlcd.gfx_line_to(mechanics.destination);
+    else
+      nexlcd.gfx_cursor_to(mechanics.destination);
   #endif
 }
 
 bool Commands::get_target_tool(const uint16_t code) {
   if (parser.seenval('T')) {
     const int8_t t = parser.value_byte();
-    if (t >= EXTRUDERS) {
+    if (t >= toolManager.extruder.total) {
       SERIAL_SMV(ECHO, "M", code);
-      SERIAL_EMV(" " MSG_INVALID_EXTRUDER " ", t);
+      SERIAL_EMV(" " MSG_HOST_INVALID_EXTRUDER " ", t);
       return true;
     }
-    tools.target_extruder = t;
+    toolManager.extruder.target = t;
   }
   else
-    tools.target_extruder = tools.active_extruder;
+    toolManager.extruder.target = toolManager.extruder.active;
+
+  return false;
+}
+
+bool Commands::get_target_driver(const uint16_t code) {
+  if (parser.seenval('T')) {
+    const int8_t t = parser.value_byte();
+    if (t >= MAX_DRIVER_E) {
+      SERIAL_SMV(ECHO, "M", code);
+      SERIAL_EMV(" " MSG_HOST_INVALID_DRIVER " ", t);
+      return true;
+    }
+    toolManager.extruder.target = t;
+  }
+  else
+    toolManager.extruder.target = 0;
 
   return false;
 }
 
 Heater* Commands::get_target_heater() {
-  const int8_t h = parser.intval('H');
-  if (WITHIN(h, 0 , HOTENDS - 1)) return &hotends[h];
 
+  const int8_t h  = parser.intval('H');
   const uint8_t t = parser.byteval('T');
-  #if BEDS > 0
-    if (h == -1 && WITHIN(t, 0 , BEDS - 1)) return &beds[t];
+
+  #if HAS_HOTENDS
+    if (WITHIN(h, 0 , tempManager.heater.hotends - 1)) return hotends[h];
   #endif
-  #if CHAMBERS > 0
-    if (h == -2 && WITHIN(t, 0 , CHAMBERS - 1)) return &chambers[t];
+  #if HAS_BEDS
+    if (h == -1 && WITHIN(t, 0 , tempManager.heater.beds - 1)) return beds[t];
   #endif
-  #if COOLERS > 0
-    if (h == -3 && WITHIN(t, 0 , COOLERS - 1)) return &coolers[t];
+  #if HAS_CHAMBERS
+    if (h == -2 && WITHIN(t, 0 , tempManager.heater.chambers - 1)) return chambers[t];
   #endif
-  SERIAL_LM(ER, MSG_INVALID_HEATER);
+  #if HAS_COOLERS
+    if (h == -3 && WITHIN(t, 0 , tempManager.heater.coolers - 1)) return coolers[t];
+  #endif
+
+  SERIAL_LM(ER, MSG_HOST_INVALID_HEATER);
   return nullptr;
 
 }
-
-#if ENABLED(COLOR_MIXING_EXTRUDER)
-  bool Commands::get_target_driver(const uint16_t code) {
-    if (parser.seenval('T')) {
-      const int8_t t = parser.value_byte();
-      if (t >= DRIVER_EXTRUDERS) {
-        SERIAL_SMV(ECHO, "M", code);
-        SERIAL_EMV(" " MSG_INVALID_DRIVER " ", t);
-        return true;
-      }
-      tools.target_extruder = t;
-    }
-    else
-      tools.target_extruder = 0;
-
-    return false;
-  }
-#endif
-
-#if FAN_COUNT > 0
-  bool Commands::get_target_fan(uint8_t &f) {
-    f = parser.seen('P') ? parser.value_byte() : 0;
-    if (WITHIN(f, 0 , FAN_COUNT - 1)) return true;
-    else {
-      SERIAL_LM(ER, "Invalid Fan");
-      return false;
-    }
-  }
-#endif
 
 /** Private Function */
 void Commands::ok_to_send() {
@@ -310,8 +285,8 @@ void Commands::ok_to_send() {
       while (NUMERIC_SIGNED(*p))
         SERIAL_CHR(*p++);
     }
-    SERIAL_MV(" P", BLOCK_BUFFER_SIZE - planner.moves_planned() - 1, DEC);
-    SERIAL_MV(" B", BUFSIZE - buffer_ring.count(), DEC);
+    SERIAL_MV(" P", BLOCK_BUFFER_SIZE - planner.moves_planned() - 1);
+    SERIAL_MV(" B", BUFSIZE - buffer_ring.count());
   #endif
 
   SERIAL_EOL();
@@ -325,21 +300,15 @@ void Commands::get_serial() {
 
   #if HAS_DOOR_OPEN
     if (READ(DOOR_OPEN_PIN) != endstops.isLogic(DOOR_OPEN)) {
-      printer.keepalive(DoorOpen);
+      PRINTER_KEEPALIVE(DoorOpen);
       return;  // do nothing while door is open
     }
   #endif
 
-  // Buffer Ring is full
-  if (buffer_ring.isFull()) {
-    printer.keepalive(InProcess);
-    return;
-  }
-
   // If the command buffer is empty for too long,
   // send "wait" to indicate MK4duo is still waiting.
   #if NO_TIMEOUTS > 0
-    if (buffer_ring.isEmpty() && !Com::serialDataAvailable() && expired(&last_command_ms, NO_TIMEOUTS)) {
+    if (buffer_ring.isEmpty() && !Com::serialDataAvailable() && last_command_timer.expired(NO_TIMEOUTS)) {
       SERIAL_STR(WT);
       SERIAL_EOL();
     }
@@ -354,8 +323,8 @@ void Commands::get_serial() {
 
       int c;
 
-      last_command_ms = millis();
-      printer.max_inactivity_ms = millis();
+      last_command_timer.start();
+      printer.max_inactivity_timer.start();
 
       if ((c = Com::serialRead(i)) < 0) continue;
 
@@ -369,7 +338,7 @@ void Commands::get_serial() {
         serial_comment_mode[i] = false;                      // end of line == end of comment
 
         // Skip empty lines and comments
-        if (!serial_count[i]) { printer.check_periodical_actions(); continue; }
+        if (!serial_count[i]) continue;
 
         serial_line_buffer[i][serial_count[i]] = 0;       // Terminate string
         serial_count[i] = 0;                              // Reset buffer
@@ -390,8 +359,8 @@ void Commands::get_serial() {
 
           gcode_N = strtol(npos + 1, nullptr, 10);
 
-          if (gcode_N != gcode_LastN + 1 && !M110) {
-            gcode_line_error(PSTR(MSG_ERR_LINE_NO), i);
+          if (gcode_N != gcode_last_N + 1 && !M110) {
+            gcode_line_error(PSTR(MSG_HOST_ERR_LINE_NO), i);
             return;
           }
 
@@ -400,21 +369,21 @@ void Commands::get_serial() {
             uint8_t checksum = 0, count = uint8_t(apos - command);
             while (count) checksum ^= command[--count];
             if (strtol(apos + 1, nullptr, 10) != checksum) {
-              gcode_line_error(PSTR(MSG_ERR_CHECKSUM_MISMATCH), i);
+              gcode_line_error(PSTR(MSG_HOST_ERR_CHECKSUM_MISMATCH), i);
               return;
             }
           }
           else {
-            gcode_line_error(PSTR(MSG_ERR_NO_CHECKSUM), i);
+            gcode_line_error(PSTR(MSG_HOST_ERR_NO_CHECKSUM), i);
             return;
           }
 
-          gcode_LastN = gcode_N;
+          gcode_last_N = gcode_N;
         }
         #if HAS_SD_SUPPORT
           // Pronterface "M29" and "M29 " has no line number
           else if (card.isSaving() && !is_M29(command)) {
-            gcode_line_error(PSTR(MSG_ERR_NO_CHECKSUM), i);
+            gcode_line_error(PSTR(MSG_HOST_ERR_NO_CHECKSUM), i);
             return;
           }
         #endif
@@ -433,7 +402,7 @@ void Commands::get_serial() {
               #if ENABLED(G5_BEZIER)
                 case 5:
               #endif
-                SERIAL_LM(ER, MSG_ERR_STOPPED);
+                SERIAL_LM(ER, MSG_HOST_ERR_STOPPED);
                 LCD_MESSAGEPGM(MSG_STOPPED);
                 break;
             }
@@ -484,15 +453,8 @@ void Commands::get_serial() {
 
     #if HAS_DOOR_OPEN
       if (READ(DOOR_OPEN_PIN) != endstops.isLogic(DOOR_OPEN)) {
-        printer.keepalive(DoorOpen);
+        PRINTER_KEEPALIVE(DoorOpen);
         return;  // do nothing while door is open
-      }
-    #endif
-
-    #if HAS_POWER_CHECK
-      if (READ(POWER_CHECK_PIN) != endstops.isLogic(POWER_CHECK)) {
-        card.setAbortSDprinting(true);
-        return;
       }
     #endif
 
@@ -511,8 +473,8 @@ void Commands::get_serial() {
       const int16_t n = card.get();
       char sd_char = (char)n;
       card_eof = card.eof();
-      last_command_ms = millis();
-      printer.max_inactivity_ms = millis();
+      last_command_timer.start();
+      printer.max_inactivity_timer.start();
       if (card_eof || n == -1
           || sd_char == '\n'  || sd_char == '\r'
           || ((sd_char == '#' || sd_char == ':') && !sd_comment_mode)
@@ -524,12 +486,12 @@ void Commands::get_serial() {
           if (IS_SD_PRINTING())
             sd_count = 0; // If a sub-file was printing, continue from call point
           else {
-            SERIAL_EM(MSG_FILE_PRINTED);
+            SERIAL_EM(MSG_HOST_FILE_PRINTED);
             #if ENABLED(PRINTER_EVENT_LEDS)
               LCD_MESSAGEPGM(MSG_INFO_COMPLETED_PRINTS);
               leds.set_green();
               #if HAS_RESUME_CONTINUE
-                enqueue_and_echo_P(PSTR("M0 S"
+                inject_P(PSTR("M0 S"
                   #if HAS_LCD
                     "1800"
                   #else
@@ -537,26 +499,30 @@ void Commands::get_serial() {
                   #endif
                 ));
               #else
-                printer.safe_delay(2000);
+                HAL::delayMilliseconds(2000);
                 leds.set_off();
               #endif
             #endif // ENABLED(PRINTER_EVENT_LEDS)
           }
         }
         else if (n == -1) {
-          SERIAL_LM(ER, MSG_SD_ERR_READ);
+          SERIAL_LM(ER, MSG_HOST_SD_ERR_READ);
         }
         if (sd_char == '#') stop_buffering = true;
 
         sd_comment_mode = false; // for new command
 
         // Skip empty lines and comments
-        if (!sd_count) { printer.check_periodical_actions(); continue; }
+        if (!sd_count) continue;
 
         sd_line_buffer[sd_count] = '\0'; // terminate string
         sd_count = 0; // clear sd line buffer
 
         enqueue(sd_line_buffer, false, -2); // Port -2 for SD non answer and no send ok.
+
+        #if HAS_SD_RESTART
+          restart.cmd_sdpos = card.getIndex();
+        #endif
 
       }
       else if (sd_count >= MAX_CMD_SIZE - 1) {
@@ -585,7 +551,7 @@ void Commands::process_next() {
     SERIAL_LT(ECHO, cmd.gcode);
   }
 
-  printer.reset_move_ms(); // Keep steppers powered
+  printer.reset_move_timer(); // Keep steppers powered
 
   // Parse the next command in the buffer_ring
   parser.parse(cmd.gcode);
@@ -598,7 +564,7 @@ void Commands::unknown_error() {
     gcode_t tmp = buffer_ring.peek();
     SERIAL_PORT(tmp.s_port);
   #endif
-  SERIAL_SMV(ECHO, MSG_UNKNOWN_COMMAND, parser.command_ptr);
+  SERIAL_SMV(ECHO, MSG_HOST_UNKNOWN_COMMAND, parser.command_ptr);
   SERIAL_CHR('"');
   SERIAL_EOL();
   SERIAL_PORT(-1);
@@ -608,11 +574,26 @@ void Commands::gcode_line_error(PGM_P err, const int8_t port) {
   SERIAL_PORT(port);
   SERIAL_STR(ER);
   SERIAL_STR(err);
-  SERIAL_EV(gcode_LastN);
+  SERIAL_EV(gcode_last_N);
   while (Com::serialRead(port) != -1);
   flush_and_request_resend();
   serial_count[port] = 0;
   SERIAL_PORT(-1);
+}
+
+bool Commands::enqueue_one(const char * cmd) {
+
+  if (*cmd == 0 || *cmd == '\n' || *cmd == '\r')
+    return true;
+
+  if (enqueue(cmd)) {
+    SERIAL_SMT(ECHO, MSG_HOST_ENQUEUEING, cmd);
+    SERIAL_CHR('"');
+    SERIAL_EOL();
+    return true;
+  }
+
+  return false;
 }
 
 bool Commands::enqueue(const char * cmd, bool say_ok/*=false*/, int8_t port/*=-2*/) {
@@ -621,22 +602,34 @@ bool Commands::enqueue(const char * cmd, bool say_ok/*=false*/, int8_t port/*=-2
   strcpy(temp_cmd.gcode, cmd);
   temp_cmd.s_port = port;
   temp_cmd.send_ok = say_ok;
+  #if HAS_SD_RESTART
+    restart.set_sdpos();
+  #endif
   buffer_ring.enqueue(temp_cmd);
   return true;
 }
 
-bool Commands::drain_injected_P() {
-  if (injected_commands_P != nullptr) {
-    size_t i = 0;
-    char c, cmd[30];
-    strncpy_P(cmd, injected_commands_P, sizeof(cmd) - 1);
-    cmd[sizeof(cmd) - 1] = '\0';
-    while ((c = cmd[i]) && c != '\n') i++; // find the end of this gcode command
-    cmd[i] = '\0';
-    if (enqueue_and_echo(cmd))     // success?
-      injected_commands_P = c ? injected_commands_P + i + 1 : nullptr; // next command or done
+bool Commands::process_injected() {
+
+  if (injected_commands_P == nullptr) return false;
+
+  char c;
+  size_t i = 0;
+  while ((c = pgm_read_byte(&injected_commands_P[i])) && c != '\n') i++;
+
+  // Extract current command and move pointer to next command
+  char cmd[i + 1];
+  memcpy_P(cmd, injected_commands_P, i);
+  cmd[i] = '\0';
+  injected_commands_P = c ? injected_commands_P + i + 1 : nullptr;
+
+  // Execute command if non-blank
+  if (i) {
+    parser.parse(cmd);
+    process_parsed();
   }
-  return (injected_commands_P != nullptr);    // return whether any more remain
+
+  return true;
 }
 
 /**
@@ -653,7 +646,7 @@ bool Commands::drain_injected_P() {
 
 void Commands::process_parsed(const bool say_ok/*=true*/) {
 
-  printer.keepalive(InHandler);
+  PRINTER_KEEPALIVE(InHandler);
 
   #if ENABLED(FASTER_GCODE_EXECUTE) || ENABLED(ARDUINO_ARCH_SAM)
 
@@ -706,16 +699,12 @@ void Commands::process_parsed(const bool say_ok/*=true*/) {
         }
 
         // With M105 "ok" already sended
-        if (code_num == 105) {
-          printer.keepalive(NotBusy);
-          return;
-        }
+        if (code_num == 105) return;
+
       }
       break;
 
-      case 'T':
-        gcode_T(parser.codenum); // Tn: Tool Change
-      break;
+      case 'T': gcode_T(parser.codenum); break;
 
       default: unknown_error();
     }
@@ -1345,7 +1334,7 @@ void Commands::process_parsed(const bool say_ok/*=true*/) {
           case 104: gcode_M104(); break;
         #endif
         #if ENABLED(CODE_M105)
-          case 105: gcode_M105(); printer.keepalive(NotBusy); return;
+          case 105: gcode_M105(); return;
         #endif
         #if ENABLED(CODE_M106)
           case 106: gcode_M106(); break;
@@ -4040,15 +4029,12 @@ void Commands::process_parsed(const bool say_ok/*=true*/) {
       }
       break;
 
-      case 'T': gcode_T(parser.codenum);
-      break;
+      case 'T': gcode_T(parser.codenum); break;
 
       default: unknown_error();
     }
 
   #endif
-
-  printer.keepalive(NotBusy);
 
   if (say_ok) ok_to_send();
 

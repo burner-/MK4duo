@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 
 MemoryStore memorystore;
 
+bool MemoryStore::access_start() { return false; }
 bool MemoryStore::access_write() { return false; }
 
 bool MemoryStore::write_data(int &pos, const uint8_t *value, size_t size, uint16_t *crc) {
@@ -41,7 +42,7 @@ bool MemoryStore::write_data(int &pos, const uint8_t *value, size_t size, uint16
     if (v != eeprom_read_byte(p)) {
       eeprom_write_byte(p, v);
       if (eeprom_read_byte(p) != v) {
-        SERIAL_LM(ECHO, MSG_ERR_EEPROM_WRITE);
+        SERIAL_LM(ECHO, MSG_HOST_ERR_EEPROM_WRITE);
         return true;
       }
     }
@@ -66,6 +67,6 @@ bool MemoryStore::read_data(int &pos, uint8_t *value, size_t size, uint16_t *crc
 
 size_t MemoryStore::capacity() { return EEPROM_SIZE + 1; }
 
-#endif HAS_EEPROM
+#endif // HAS_EEPROM
 
 #endif // __AVR__

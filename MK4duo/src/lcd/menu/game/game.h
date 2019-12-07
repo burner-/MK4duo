@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,18 +65,32 @@ class LcdGame {
 };
 
 #if ENABLED(GAME_BRICKOUT)
-  class BrickoutGame : LcdGame { public: static void enter_game(); static void game_screen(); };
-  extern BrickoutGame brickout;
+  #include "brickout.h"
 #endif
 #if ENABLED(GAME_INVADERS)
-  class InvadersGame : LcdGame { public: static void enter_game(); static void game_screen(); };
-  extern InvadersGame invaders;
-#endif
-#if ENABLED(GAME_SNAKE)
-  class SnakeGame : LcdGame { public: static void enter_game(); static void game_screen(); };
-  extern SnakeGame snake;
+  #include "invaders.h"
 #endif
 #if ENABLED(GAME_MAZE)
-  class MazeGame : LcdGame { public: static void enter_game(); static void game_screen(); };
-  extern MazeGame maze;
+  #include "maze.h"
 #endif
+#if ENABLED(GAME_SNAKE)
+  #include "snake.h"
+#endif
+
+// Pool game data to save SRAM
+union game_data_t {
+  #if ENABLED(GAME_BRICKOUT)
+    brickout_data_t brickout;
+  #endif
+  #if ENABLED(GAME_INVADERS)
+    invaders_data_t invaders;
+  #endif
+  #if ENABLED(GAME_MAZE)
+    maze_data_t maze;
+  #endif
+  #if ENABLED(GAME_SNAKE)
+    snake_data_t snake;
+  #endif
+};
+
+extern game_data_t game_data;

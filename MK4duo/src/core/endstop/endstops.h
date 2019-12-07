@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,19 +25,46 @@
  *  endstops.h - manages endstops
  */
 
-union flagendstop_t {
-  uint8_t all;
-  struct {
-    bool  Enabled         : 1;
-    bool  Globally        : 1;
-    bool  SoftEndstop     : 1;
-    bool  ProbeEnabled    : 1;
-    bool  G38EndstopHit   : 1;
-    bool  MonitorEnabled  : 1;
-    bool  bit6            : 1;
-    bool  bit7            : 1;
+struct endstop_flag_t {
+  bool  Enabled         : 1;
+  bool  Globally        : 1;
+  bool  SoftEndstop     : 1;
+  bool  ProbeEnabled    : 1;
+  bool  G38EndstopHit   : 1;
+  bool  MonitorEnabled  : 1;
+  bool  bit6            : 1;
+  bool  bit7            : 1;
+};
+
+#if ENABLED(SPI_ENDSTOPS)
+  union tmc_spi_flag_t {
+    bool any;
+    struct {
+      bool  x:1;
+      bool  y:1;
+      bool  z:1;
+    };
+    tmc_spi_flag_t() { any = false; }
   };
-  flagendstop_t() { all = 0x00; }
+#endif
+
+// Struct Endstop data
+struct endstop_data_t {
+  uint16_t  logic_flag,
+            pullup_flag;
+  #if ENABLED(X_TWO_ENDSTOPS)
+    float   x2_endstop_adj;
+  #endif
+  #if ENABLED(Y_TWO_ENDSTOPS)
+    float   y2_endstop_adj;
+  #endif
+  #if ENABLED(Z_TWO_ENDSTOPS)
+    float   z2_endstop_adj;
+  #endif
+  #if ENABLED(Z_THREE_ENDSTOPS)
+    float   z2_endstop_adj,
+            z3_endstop_adj;
+  #endif
 };
 
 class Endstops {
@@ -48,31 +75,21 @@ class Endstops {
 
   public: /** Public Parameters */
 
-    static flagendstop_t  flag;
+    static endstop_data_t data;
+
+    static endstop_flag_t flag;
 
     #if MECH(DELTA)
       static float  soft_endstop_radius_2;
     #else
-      static axis_limits_t soft_endstop[XYZ];
+      static xyz_limit_float_t soft_endstop;
     #endif
 
-    #if ENABLED(X_TWO_ENDSTOPS)
-      static float  x2_endstop_adj;
-    #endif
-    #if ENABLED(Y_TWO_ENDSTOPS)
-      static float  y2_endstop_adj;
-    #endif
-    #if ENABLED(Z_TWO_ENDSTOPS)
-      static float  z2_endstop_adj;
-    #endif
-    #if ENABLED(Z_THREE_ENDSTOPS)
-      static float  z2_endstop_adj,
-                    z3_endstop_adj;
-    #endif
+    static uint16_t live_state;
 
-    static uint16_t logic_flag,
-                    pullup_flag,
-                    live_state;
+    #if ENABLED(SPI_ENDSTOPS)
+      static tmc_spi_flag_t tmc_spi_homing;
+    #endif
 
   private: /** Private Parameters */
 
@@ -113,11 +130,6 @@ class Endstops {
     static void update();
 
     /**
-     * Get Endstop hit state.
-     */
-    FORCE_INLINE static uint8_t trigger_state() { return hit_state; }
-
-    /**
      * Print logical and pullup
      */
     static void report();
@@ -130,26 +142,31 @@ class Endstops {
     // If the last move failed to trigger an endstop, call kill
     static void validate_homing_move();
 
-    // Clear endstops (i.e., they were hit intentionally) to suppress the report
-    FORCE_INLINE static void hit_on_purpose() { hit_state = 0; }
-
     // Constrain the given coordinates to the software endstops.
-    static void apply_motion_limits(float target[XYZ]);
+    static void apply_motion_limits(xyz_pos_t &target);
     static void update_software_endstops(const AxisEnum axis);
 
     #if ENABLED(PINS_DEBUGGING)
       static void run_monitor();
     #endif
 
+    /**
+     * Get Endstop hit state.
+     */
+    FORCE_INLINE static uint8_t trigger_state() { return hit_state; }
+
+    // Clear endstops state
+    FORCE_INLINE static void hit_on_purpose() { hit_state = 0; }
+
     FORCE_INLINE static void setLogic(const EndstopEnum endstop, const bool logic) {
-      SET_BIT(logic_flag, endstop, logic);
+      SET_BIT_TO(data.logic_flag, endstop, logic);
     }
-    FORCE_INLINE static bool isLogic(const EndstopEnum endstop) { return TEST(logic_flag, endstop); }
+    FORCE_INLINE static bool isLogic(const EndstopEnum endstop) { return TEST(data.logic_flag, endstop); }
 
     FORCE_INLINE static void setPullup(const EndstopEnum endstop, const bool pullup) {
-      SET_BIT(pullup_flag, endstop, pullup);
+      SET_BIT_TO(data.pullup_flag, endstop, pullup);
     }
-    FORCE_INLINE static bool isPullup(const EndstopEnum endstop) { return TEST(pullup_flag, endstop); }
+    FORCE_INLINE static bool isPullup(const EndstopEnum endstop) { return TEST(data.pullup_flag, endstop); }
 
     // Flag bit 0 Endstop enabled
     FORCE_INLINE static void setEnabled(const bool onoff) {
@@ -203,6 +220,11 @@ class Endstops {
     FORCE_INLINE static bool abort_enabled() {
       return (isEnabled() || isProbeEnabled());
     }
+
+    #if ENABLED(SPI_ENDSTOPS)
+      static bool tmc_spi_homing_check();
+      static void clear_state();
+    #endif
 
   private: /** Private Function */
 

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,15 +23,17 @@
 
 #if ENABLED(ENDSTOP_INTERRUPTS_FEATURE)
 
-  // One ISR for all Endstop Interrupts
-  void endstop_ISR(void) { endstops.update(); }
+// One ISR for all Endstop Interrupts
+void endstop_ISR() { endstops.update(); }
 
-  #if ENABLED(ARDUINO_ARCH_SAM)
-    #include "../HAL_DUE/endstop_interrupts.h"
-  #elif ENABLED(__AVR__)
-    #include "../HAL_AVR/endstop_interrupts.h"
-  #else
-    #error "Unsupported Platform!"
-  #endif
+#if ENABLED(__AVR__)
+  #include "../HAL_AVR/endstop_interrupts.h"
+#elif ENABLED(ARDUINO_ARCH_SAM)
+  #include "../HAL_DUE/endstop_interrupts.h"
+#elif ENABLED(ARDUINO_ARCH_STM32)
+  #include "../HAL_STM32/endstop_interrupts.h"
+#else
+  #error "Unsupported Platform!"
+#endif
 
 #endif // ENABLED(ENDSTOP_INTERRUPTS_FEATURE)

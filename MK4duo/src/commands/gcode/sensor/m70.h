@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_POWER_CONSUMPTION_SENSOR
@@ -37,7 +37,7 @@
  * A - Isert readed DC Current value (Ampere)
  * W - Insert readed AC Wattage value (Watt)
  */
-inline void gcode_M70(void) {
+inline void gcode_M70() {
   if (parser.seen('Z')) {
     SERIAL_EMV("Actual POWER_ZERO:", POWER_ZERO, 7);
     SERIAL_EMV("New POWER_ZERO:", powerManager.raw_analog2voltage(), 7);

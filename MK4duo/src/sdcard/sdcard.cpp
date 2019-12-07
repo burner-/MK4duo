@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
  */
 
 #include "../../MK4duo.h"
+#include "sanitycheck.h"
 
 #if HAS_SD_SUPPORT
 
@@ -96,7 +97,7 @@ LsActionEnum SDCard::lsAction   = LS_Count;
       #if ENABLED(SDSORT_DYNAMIC_RAM)
         uint8_t *SDCard::isDir;
       #elif ENABLED(SDSORT_CACHE_NAMES) || DISABLED(SDSORT_USES_STACK)
-        uint8_t SDCard::isDir[(SDSORT_LIMIT + 7)>>3];
+        uint8_t SDCard::isDir[(SDSORT_LIMIT + 7) >> 3];
       #endif
     #endif
 
@@ -135,16 +136,17 @@ LsActionEnum SDCard::lsAction   = LS_Count;
 /** Public Function */
 
 void SDCard::mount() {
-  if (isDetected()) return;
+
+  if (isMounted()) return;
 
   if (root.isOpen()) root.close();
 
-  if (!fat.begin(SDSS, SPI_SPEED)
-    #if ENABLED(LCD_SDSS) && (LCD_SDSS != SDSS)
+  if (!fat.begin(SS_PIN, SPI_SPEED)
+    #if ENABLED(LCD_SDSS) && (LCD_SDSS != SS_PIN)
       && !fat.begin(LCD_SDSS, SPI_SPEED)
     #endif
   ) {
-    SERIAL_LM(ER, MSG_SD_INIT_FAIL);
+    SERIAL_LM(ER, MSG_HOST_SD_INIT_FAIL);
     if (fat.card()->errorCode()) {
       SERIAL_MV("SD initialization failed.\n"
                 "Do not reformat the card!\n"
@@ -154,6 +156,7 @@ void SDCard::mount() {
                 "Is there a wiring/soldering problem?\n"
                 "errorCode: ", int(fat.card()->errorCode())
                 );
+      SERIAL_EOL();
       return;
     }
     if (fat.vol()->fatType() == 0) {
@@ -167,13 +170,14 @@ void SDCard::mount() {
     return;
   }
   else {
-    setDetect(true);
-    SERIAL_LM(ECHO, MSG_SD_CARD_OK);
+    setMounted(true);
+    SERIAL_LM(ECHO, MSG_HOST_SD_CARD_OK);
   }
 
   fat.chdir();
   root.openRoot(fat.vol());
   setroot();
+  flag.WorkdirIsRoot = true;
 
   #if HAS_EEPROM_SD
     import_eeprom();
@@ -185,8 +189,8 @@ void SDCard::mount() {
 }
 
 void SDCard::unmount() {
-  setDetect(false);
-  setSDprinting(false);
+  setMounted(false);
+  setPrinting(false);
 }
 
 void SDCard::ls() {
@@ -194,9 +198,9 @@ void SDCard::ls() {
   root.ls();
 }
 
-void SDCard::getfilename(uint16_t nr, PGM_P const match/*=NULL*/) {
+void SDCard::getfilename(uint16_t nr, PGM_P const match/*=nullptr*/) {
   #if ENABLED(SDCARD_SORT_ALPHA) && ENABLED(SDSORT_CACHE_NAMES)
-    if (match != NULL) {
+    if (match != nullptr) {
       while (nr < sort_count) {
         if (strcasecmp(match, sortshort[nr]) == 0) break;
         nr++;
@@ -213,7 +217,7 @@ void SDCard::getfilename(uint16_t nr, PGM_P const match/*=NULL*/) {
   lsDive(workDir, match);
 }
 
-void SDCard::getAbsFilename(char* name) {
+void SDCard::getAbsFilename(char * name) {
 
   *name++ = '/';
   uint8_t cnt = 1;
@@ -232,24 +236,24 @@ void SDCard::getAbsFilename(char* name) {
 }
 
 void SDCard::startFileprint() {
-  if (isDetected()) {
-    setSDprinting(true);
+  if (isMounted()) {
+    setPrinting(true);
     #if ENABLED(SDCARD_SORT_ALPHA)
       flush_presort();
     #endif
   }
 }
 
-void SDCard::openAndPrintFile(PGM_P name) {
+void SDCard::openAndPrintFile(const char * name) {
   char cmd[4 + strlen(name) + 1]; // Room for "M23 ", filename, and null
-  sprintf_P(cmd, PSTR("M23 %s"), name);
+  sprintf_P(cmd, M23_CMD, name);
   for (char *c = &cmd[4]; *c; c++) *c = tolower(*c);
-  commands.enqueue_and_echo_now(cmd);
-  commands.enqueue_and_echo_P(PSTR("M24"));
+  commands.enqueue_one_now(cmd);
+  commands.enqueue_now_P(M24_CMD);
 }
 
-void SDCard::stopSDPrint() {
-  setSDprinting(false);
+void SDCard::stop_print() {
+  setPrinting(false);
   if (isFileOpen()) gcode_file.close();
 }
 
@@ -268,25 +272,25 @@ void SDCard::write_command(char* buf) {
   end[3] = '\0';
   gcode_file.write(begin);
   if (gcode_file.getWriteError()) {
-    SERIAL_LM(ER, MSG_SD_ERR_WRITE_TO_FILE);
+    SERIAL_LM(ER, MSG_HOST_SD_ERR_WRITE_TO_FILE);
   }
 }
 
-void SDCard::printStatus() {
-  if (isFileOpen() && isSDprinting()) {
-    SERIAL_MV(MSG_SD_PRINTING_BYTE, sdpos);
-    SERIAL_EMV(MSG_SD_SLASH, fileSize);
+void SDCard::print_status() {
+  if (isPrinting()) {
+    SERIAL_MV(MSG_HOST_SD_PRINTING_BYTE, sdpos);
+    SERIAL_EMV(MSG_HOST_SD_SLASH, fileSize);
   }
   else
-    SERIAL_EM(MSG_SD_NOT_PRINTING);
+    SERIAL_EM(MSG_HOST_SD_NOT_PRINTING);
 }
 
-void SDCard::startWrite(char *filename, const bool silent/*=false*/) {
-  if (!isDetected()) return;
+void SDCard::startWrite(char * filename, const bool silent/*=false*/) {
+  if (!isMounted()) return;
 
   fat.chdir();
   if (!gcode_file.open(filename, FILE_WRITE)) {
-    SERIAL_LMT(ER, MSG_SD_OPEN_FILE_FAIL, filename);
+    SERIAL_LMT(ER, MSG_HOST_SD_OPEN_FILE_FAIL, filename);
   }
   else {
     setSaving(true);
@@ -294,29 +298,29 @@ void SDCard::startWrite(char *filename, const bool silent/*=false*/) {
       emergency_parser.disable();
     #endif
     if (!silent) {
-      SERIAL_EMT(MSG_SD_WRITE_TO_FILE, filename);
+      SERIAL_EMT(MSG_HOST_SD_WRITE_TO_FILE, filename);
       lcdui.set_status(filename);
     }
   }
 }
 
-void SDCard::deleteFile(char *filename) {
-  if (!isDetected()) return;
-  setSDprinting(false);
+void SDCard::deleteFile(char * filename) {
+  if (!isMounted()) return;
+  setPrinting(false);
   gcode_file.close();
   if (fat.remove(filename)) {
-    SERIAL_EMT(MSG_SD_FILE_DELETED, filename);
+    SERIAL_EMT(MSG_HOST_SD_FILE_DELETED, filename);
   }
   else {
     if (fat.rmdir(filename)) {
-      SERIAL_EMT(MSG_SD_FILE_DELETED, filename);
+      SERIAL_EMT(MSG_HOST_SD_FILE_DELETED, filename);
       sdpos = 0;
       #if ENABLED(SDCARD_SORT_ALPHA)
         presort();
       #endif
     }
     else
-      SERIAL_EM(MSG_SD_FILE_DELETION_ERR);
+      SERIAL_EM(MSG_HOST_SD_FILE_DELETION_ERR);
   }
 }
 
@@ -324,18 +328,18 @@ void SDCard::finishWrite() {
   gcode_file.sync();
   gcode_file.close();
   setSaving(false);
-  SERIAL_EM(MSG_SD_FILE_SAVED);
+  SERIAL_EM(MSG_HOST_SD_FILE_SAVED);
 }
 
-void SDCard::makeDirectory(char *filename) {
-  if (!isDetected()) return;
-  setSDprinting(false);
+void SDCard::makeDirectory(char * filename) {
+  if (!isMounted()) return;
+  setPrinting(false);
   gcode_file.close();
   if (fat.mkdir(filename)) {
-    SERIAL_EM(MSG_SD_DIRECTORY_CREATED);
+    SERIAL_EM(MSG_HOST_SD_DIRECTORY_CREATED);
   }
   else {
-    SERIAL_EM(MSG_SD_CREATION_FAILED);
+    SERIAL_EM(MSG_HOST_SD_CREATION_FAILED);
   }
 }
 
@@ -351,7 +355,7 @@ void SDCard::closeFile() {
 void SDCard::printingHasFinished() {
   planner.synchronize();
   gcode_file.close();
-  setSDprinting(false);
+  setPrinting(false);
 
   #if HAS_SD_RESTART
     restart.purge_job();
@@ -364,7 +368,7 @@ void SDCard::printingHasFinished() {
   print_job_counter.stop();
 
   if (print_job_counter.duration() > 60)
-    commands.enqueue_and_echo_P(PSTR("M31"));
+    commands.inject_P(PSTR("M31"));
 
   #if ENABLED(SDCARD_SORT_ALPHA)
     presort();
@@ -383,10 +387,11 @@ void SDCard::chdir(PGM_P relpath) {
   SdFile *parent = workDir.isOpen() ? &workDir : &root;
 
   if (!newDir.open(parent, relpath, O_READ)) {
-    SERIAL_LMT(ECHO, MSG_SD_CANT_ENTER_SUBDIR, relpath);
+    SERIAL_LMT(ECHO, MSG_HOST_SD_CANT_ENTER_SUBDIR, relpath);
   }
   else {
     workDir = newDir;
+    flag.WorkdirIsRoot = false;
     if (workDirDepth < SD_MAX_FOLDER_DEPTH)
       workDirParents[workDirDepth++] = workDir;
     #if ENABLED(SDCARD_SORT_ALPHA)
@@ -402,11 +407,11 @@ void SDCard::beginautostart() {
 
 void SDCard::checkautostart() {
   /*
-  if (autostart_index < 0 || isSDprinting()) return;
+  if (autostart_index < 0 || isPrinting()) return;
 
-  if (!isDetected()) mount();
+  if (!isMounted()) mount();
   
-  if (isDetected()
+  if (isMounted()
     #if HAS_SD_RESTART
       && !restart.valid() // Don't run auto#.g when a restart file exists
     #endif
@@ -430,6 +435,7 @@ void SDCard::checkautostart() {
 
 void SDCard::setroot() {
   workDir = root;
+  flag.WorkdirIsRoot = true;
   #if ENABLED(SDCARD_SORT_ALPHA)
     presort();
   #endif
@@ -456,7 +462,7 @@ void SDCard::printEscapeChars(PGM_P s) {
 bool SDCard::selectFile(PGM_P filename, const bool silent/*=false*/) {
   PGM_P fname = filename;
 
-  if (!isDetected()) return false;
+  if (!isMounted()) return false;
 
   gcode_file.close();
   if (gcode_file.open(&workDir, filename, O_READ)) {
@@ -469,8 +475,8 @@ bool SDCard::selectFile(PGM_P filename, const bool silent/*=false*/) {
     sdpos = 0;
 
     if (!silent) {
-      SERIAL_MT(MSG_SD_FILE_OPENED, fname);
-      SERIAL_EMV(MSG_SD_SIZE, fileSize);
+      SERIAL_MT(MSG_HOST_SD_FILE_OPENED, fname);
+      SERIAL_EMV(MSG_HOST_SD_SIZE, fileSize);
     }
 
     for (uint16_t c = 0; c < sizeof(fileName); c++)
@@ -484,7 +490,7 @@ bool SDCard::selectFile(PGM_P filename, const bool silent/*=false*/) {
     return true;
   }
   else {
-    if (!silent) SERIAL_LMT(ER, MSG_SD_OPEN_FILE_FAIL, fname);
+    if (!silent) SERIAL_LMT(ER, MSG_HOST_SD_OPEN_FILE_FAIL, fname);
     return false;
   }
 }
@@ -496,6 +502,7 @@ int8_t SDCard::updir() {
       presort();
     #endif
   }
+  if (!workDirDepth) flag.WorkdirIsRoot = true;
   return workDirDepth;
 }
 
@@ -522,28 +529,28 @@ uint16_t SDCard::get_num_Files() {
 
   void SDCard::open_restart_file(const bool read) {
 
-    if (!isDetected() || restart.job_file.isOpen()) return;
+    if (!isMounted() || restart.job_file.isOpen()) return;
 
     if (!restart.job_file.open(fat.vwd(), restart_file_name, read ? O_READ : (O_RDWR | O_CREAT | O_SYNC)))
-      SERIAL_LMT(ER, MSG_SD_OPEN_FILE_FAIL, restart_file_name);
-    else if (!read)
-      SERIAL_EMT(MSG_SD_WRITE_TO_FILE, restart_file_name);
+      SERIAL_LMT(ER, MSG_HOST_SD_OPEN_FILE_FAIL, restart_file_name);
+    else if (!read) {
+      if (printer.debugFeature()) DEBUG_EMT(MSG_HOST_SD_WRITE_TO_FILE, restart_file_name);
+    }
   }
 
   void SDCard::delete_restart_file() {
     if (exist_restart_file()) {
       restart.job_file.remove(fat.vwd(), restart_file_name);
-      DEBUG_SM(DEB, " File restart delete");
-      DEBUG_STR(restart.job_file.open(fat.vwd(), restart_file_name, O_READ) ? PSTR(" failed.\n") : PSTR("d.\n"));
+      if (printer.debugFeature()) {
+        DEBUG_SM(DEB, " File restart delete");
+        DEBUG_STR(exist_restart_file() ? PSTR(" failed.\n") : PSTR("d.\n"));
+      }
     }
   }
 
   bool SDCard::exist_restart_file() {
     const bool exist = restart.job_file.open(fat.vwd(), restart_file_name, O_READ);
-    DEBUG_SM(DEB, " File restart ");
     if (exist) restart.job_file.close();
-    else DEBUG_MSG("not ");
-    DEBUG_EM("exist");
     return exist;
   }
 
@@ -552,25 +559,25 @@ uint16_t SDCard::get_num_Files() {
 #if HAS_EEPROM_SD
 
   void SDCard::import_eeprom() {
-    if (!isDetected()) mount();
-    if (!isDetected()) SERIAL_LM(ER, MSG_NO_CARD);
-    if (!eeprom_file.open("eeprom", O_RDWR | O_CREAT | O_SYNC) ||
-      eeprom_file.read(memorystore.eeprom_data, EEPROM_SIZE) != EEPROM_SIZE) {
-      DEBUG_LM(DEB, MSG_SD_OPEN_FILE_FAIL "eeprom");
-    }
-    else DEBUG_LM(DEB, "EEPROM read from sd card.");
+    if (!eeprom_file.open(EEPROM_FILE_NAME, O_READ) ||
+        !eeprom_file.read(memorystore.eeprom_data, EEPROM_SIZE) == EEPROM_SIZE
+    ) SERIAL_LM(ECHO, MSG_HOST_SD_OPEN_FILE_FAIL EEPROM_FILE_NAME);
+    else SERIAL_LM(ECHO, "EEPROM read from sd card.");
+    eeprom_file.close();
   }
 
   void SDCard::write_eeprom() {
-    bool failed = false;
-    if (!isDetected()) {
-      SERIAL_LM(ER, MSG_NO_CARD);
+    if (!isMounted()) {
+      SERIAL_LM(ER, "No SD Card");
       return;
     }
-    if (!eeprom_file.seekSet(0)) failed = true;
-    if (!failed && !eeprom_file.write(memorystore.eeprom_data, EEPROM_SIZE) == EEPROM_SIZE)
-      failed = true;
-    if (failed) SERIAL_LM(ER, "Could not write eeprom to sd card");
+
+    if (!eeprom_file.open(EEPROM_FILE_NAME, O_RDWR | O_CREAT | O_SYNC) ||
+        !eeprom_file.seekSet(0) ||
+        !eeprom_file.write(memorystore.eeprom_data, EEPROM_SIZE) == EEPROM_SIZE
+    ) SERIAL_LM(ER, "Could not write eeprom to sd card");
+
+    eeprom_file.close();
   }
 
 #endif
@@ -613,7 +620,7 @@ uint16_t SDCard::get_num_Files() {
 
       // Never sort more than the max allowed
       // If you use folders to organize, 20 may be enough
-      if (fileCnt > SDSORT_LIMIT) fileCnt = SDSORT_LIMIT;
+      NOMORE(fileCnt, uint16_t(SDSORT_LIMIT));
 
       // Sort order is always needed. May be static or dynamic.
       #if ENABLED(SDSORT_DYNAMIC_RAM)
@@ -791,7 +798,7 @@ uint16_t SDCard::get_num_Files() {
 
     card.unmount();
 
-    if (!sd.begin(SDSS, SPI_SPEED)) {
+    if (!sd.begin(SS_PIN, SPI_SPEED)) {
       SERIAL_LM(ER, "SD initialization failure!");
       return;
     }

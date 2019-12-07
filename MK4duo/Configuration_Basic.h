@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,6 +83,58 @@
 #define BAUDRATE_2 250000
 
 /**
+ * The number of linear motions that can be in the plan at any give time.
+ * THE BLOCK BUFFER SIZE NEEDS TO BE A POWER OF 2 (i.g. 8, 16, 32) because shifts
+ * and ors are used to do the ring-buffering.
+ * For Arduino DUE setting to 32.
+ */
+#define BLOCK_BUFFER_SIZE 16
+
+/**
+ * The ASCII buffer for receiving from the serial:
+ * For Arduino DUE setting bufsize to 8.
+ */
+#define MAX_CMD_SIZE 96
+#define BUFSIZE 4
+
+/**
+ * Transmission to Host Buffer Size
+ * To save 386 bytes of PROGMEM (and TX_BUFFER_SIZE+3 bytes of RAM) set to 0.
+ * To buffer a simple "ok" you need 4 bytes.
+ * For ADVANCED OK (M105) you need 32 bytes.
+ * For debug-echo: 128 bytes for the optimal speed.
+ * Other output doesn't need to be that speedy.
+ * 0, 2, 4, 8, 16, 32, 64, 128, 256
+ */
+#define TX_BUFFER_SIZE 0
+
+/**
+ * Host Receive Buffer Size
+ * Without XON/XOFF flow control (see SERIAL XON XOFF below) 32 bytes should be enough.
+ * To use flow control, set this buffer size to at least 1024 bytes.
+ * 0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048
+ */
+#define RX_BUFFER_SIZE 128
+
+/**
+ * Enable to have the controller send XON/XOFF control characters to
+ * the host to signal the RX buffer is becoming full.
+ */
+//#define SERIAL_XON_XOFF
+
+/**
+ * Enable this option to collect and display the maximum
+ * RX queue usage after transferring a file to SD.
+ */
+//#define SERIAL_STATS_MAX_RX_QUEUED
+
+/**
+ * Enable this option to collect and display the number
+ * of dropped bytes after a file transfer to SD.
+ */
+//#define SERIAL_STATS_DROPPED_RX
+
+/**
  * User-specified version info of this build to display in [Pronterface, etc] terminal window during
  * startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
  * build by the user have been successfully uploaded into firmware.
@@ -156,29 +208,20 @@
  *************************** Mechanism type ****************************
  ***********************************************************************
  *                                                                     *
- * CARTESIAN      - Prusa, Mendel, etc                                 *
- * COREXY         - H-Bot/Core XY (x_motor = x+y, y_motor = x-y)       *
- * COREYX         - H-Bot/Core YX (x_motor = y+x, y_motor = y-x)       *
- * COREXZ         - H-Bot/Core XZ (x_motor = x+z, z_motor = x-z)       *
- * COREZX         - H-Bot/Core ZX (x_motor = z+x, z_motor = z-x)       *
- * COREYZ         - H-Bot/Core YZ (y_motor = y+z, z_motor = y-z)       *
- * COREZY         - H-Bot/Core ZY (y_motor = z+y, z_motor = z-y)       *
- * DELTA          - Rostock, Kossel, RostockMax, Cerberus, etc         *
- * MORGAN_SCARA   - SCARA classic                                      *
- * MAKERARM_SCARA - SCARA Makerfarm                                    *
+ * MECH_CARTESIAN       - Prusa, Mendel, etc                           *
+ * MECH_COREXY          - H-Bot/Core XY (x_motor = x+y, y_motor = x-y) *
+ * MECH_COREYX          - H-Bot/Core YX (x_motor = y+x, y_motor = y-x) *
+ * MECH_COREXZ          - H-Bot/Core XZ (x_motor = x+z, z_motor = x-z) *
+ * MECH_COREZX          - H-Bot/Core ZX (x_motor = z+x, z_motor = z-x) *
+ * MECH_COREYZ          - H-Bot/Core YZ (y_motor = y+z, z_motor = y-z) *
+ * MECH_COREZY          - H-Bot/Core ZY (y_motor = z+y, z_motor = z-y) *
+ * MECH_DELTA           - Rostock, Kossel, RostockMax, Cerberus, etc   *
+ * MECH_MORGAN_SCARA    - SCARA classic                                *
+ * MECH_MAKERARM_SCARA  - SCARA Makerfarm                              *
+ * MECH_MUVE3D          - Muve 3D with serial projector                *
  *                                                                     *
  ***********************************************************************/
 #define MECHANISM MECH_CARTESIAN
-//#define MECHANISM MECH_COREXY
-//#define MECHANISM MECH_COREYX
-//#define MECHANISM MECH_COREXZ
-//#define MECHANISM MECH_COREZX
-//#define MECHANISM MECH_COREYZ
-//#define MECHANISM MECH_COREZY
-//#define MECHANISM MECH_DELTA
-//#define MECHANISM MECH_MORGAN_SCARA
-//#define MECHANISM MECH_MAKERARM_SCARA
-//#define MECHANISM MECH_MUVE3D
 /***********************************************************************/
 
 
@@ -187,20 +230,21 @@
  *************************************************************************************
  *                                                                                   *
  * The following define selects which power supply you have.                         *
- * Please choose the one that matches your setup and set to POWER_SUPPLY:            *
+ * Please choose the one that matches your setup and set to POWER SUPPLY:            *
  * 0 Normal power                                                                    *
- * 1 ATX                                                                             *
- * 2 X-Box 360 203 Watts (the blue wire connected to PS_ON and the red wire to VCC)  *
+ * 1 POWER WITH PS-ON TO GND (ATX)                                                   *
+ * 2 POWER WITH PS-ON TO VCC (X-BOX 360)                                             *
  *                                                                                   *
  *************************************************************************************/
 #define POWER_SUPPLY 1
+//#define POWER_NAME "Generic"
 
 // Define this to have the electronics keep the power supply off on startup.
 // If you don't know what this is leave it.
 #define PS_DEFAULT_OFF false
 // Define delay after power on in seconds
 #define DELAY_AFTER_POWER_ON 1
-// Define time for automatic power off if not needed in second (max 60 seconds)
+// Define time for automatic power off if not needed in second
 #define POWER_TIMEOUT 600
 /*************************************************************************************/
 

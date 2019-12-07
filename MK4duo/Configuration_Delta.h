@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,7 +75,8 @@
 // Make delta curves from many straight lines (linear interpolation).
 // This is a trade-off between visible corners (not enough segments)
 // and processor overload (too many expensive sqrt calls).
-#define DELTA_SEGMENTS_PER_SECOND 200
+#define DELTA_SEGMENTS_PER_SECOND_PRINT 200
+#define DELTA_SEGMENTS_PER_SECOND_MOVE   50
 
 // Subsegment per line 10 - xxx
 #define DELTA_SEGMENTS_PER_LINE 20
@@ -245,12 +246,6 @@
 // The BLTouch probe uses a Hall effect sensor and emulates a servo.
 // The default connector is SERVO 0.
 //#define BLTOUCH
-// Minimum Command delay (ms). Enable and increase if needed
-//#define BLTOUCH_DELAY 500
-// BLTouch V3.0 and newer smart series
-// For genuine BLTouch 3.0 sensors. Clones may be confused by 3.0 command angles. YMMV.
-// If the pin trigger is not detected, first try swapping the black and white wires then toggle this.
-//#define BLTOUCH_FORCE_5V_MODE
 
 // Allen key retractable z-probe as seen on many Kossel delta printers - http://reprap.org/wiki/Kossel#Automatic_bed_leveling_probe
 // Deploys by touching z-axis belt. Retracts by pushing the probe down.
@@ -315,7 +310,7 @@
 // Enable if probing seems unreliable. Heaters and/or fans - consistent with the
 // options selected below - will be disabled during probing so as to minimize
 // potential EM interference by quieting/silencing the source of the 'noise' (the change
-// in current flowing through the wires).  This is likely most useful to users of the
+// in current flowing through the wires). This is likely most useful to users of the
 // BLTouch probe, but may also help those with inductive or other probe types.
 //#define PROBING_HEATERS_OFF       // Turn heaters off when probing
 //#define PROBING_FANS_OFF          // Turn fans off when probing
@@ -323,7 +318,7 @@
 // Add a bed leveling sub-menu for ABL or MBL.
 // Include a guided procedure if manual probing is enabled.
 //#define LCD_BED_LEVELING
-#define MESH_EDIT_Z_STEP 0.025  // Step size while manually probing Z axis.
+#define LCD_Z_STEP 0.025        // Step size while manually probing Z axis.
 #define LCD_PROBE_Z_RANGE 4     // Z Range centered on Z MIN POS for LCD Z adjustment
 //#define MESH_EDIT_MENU        // Add a menu to edit mesh points
 /*****************************************************************************************/
@@ -488,6 +483,9 @@
 //#define DELTA_AUTO_CALIBRATION_1
 //#define DELTA_AUTO_CALIBRATION_2
 
+#define DELTA_AUTO_CALIBRATION_1_DEFAULT_FACTOR 6
+#define DELTA_AUTO_CALIBRATION_1_DEFAULT_POINTS 7
+
 #define DELTA_AUTO_CALIBRATION_2_DEFAULT_POINTS 4
 /*****************************************************************************************/
 
@@ -535,18 +533,24 @@
  * Override with M92                                                                     *
  *                                                                                       *
  *****************************************************************************************/
-// Default steps per unit               X,  Y,  Z,  E0...(per extruder)
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {80, 80, 80, 625, 625, 625, 625}
+// Default steps per unit               X,  Y,  Z
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {80, 80, 80}
+// Default steps per unit               E0, ...(per extruder)
+#define DEFAULT_AXIS_STEPS_PER_UNIT_E {625, 625, 625, 625}
 /*****************************************************************************************/
 
 
 /*****************************************************************************************
  ********************************** Axis feedrate ****************************************
  *****************************************************************************************/
-//                                       X,   Y,   Z,  E0...(per extruder). (mm/sec)
-#define DEFAULT_MAX_FEEDRATE          {500, 500, 500, 100, 100, 100, 100}
+//                                       X,   Y, Z (mm/sec)
+#define DEFAULT_MAX_FEEDRATE          {300, 300, 300}
+//                                      E0, ...(per extruder). (mm/sec)
+#define DEFAULT_MAX_FEEDRATE_E        {100, 100, 100, 100}
 // Feedrates for manual moves along        X,     Y,     Z,  E from panel
 #define MANUAL_FEEDRATE               {50*60, 50*60, 50*60, 10*60}
+// (mm) Smallest manual Z move (< 0.1mm)
+#define SHORT_MANUAL_Z_MOVE           0.025
 // Minimum feedrate
 #define DEFAULT_MIN_FEEDRATE          0.0
 #define DEFAULT_MIN_TRAVEL_FEEDRATE   0.0
@@ -560,8 +564,10 @@
 /*****************************************************************************************
  ******************************** Axis acceleration **************************************
  *****************************************************************************************/
-//  Maximum start speed for accelerated moves.    X,    Y,    Z,   E0...(per extruder)
-#define DEFAULT_MAX_ACCELERATION              {5000, 5000, 5000, 1000, 1000, 1000, 1000}
+//  Maximum start speed for accelerated moves.    X,    Y,  Z
+#define DEFAULT_MAX_ACCELERATION              {3000, 3000, 3000}
+//  Maximum start speed for accelerated moves.   E0, ...(per extruder)
+#define DEFAULT_MAX_ACCELERATION_E            {1000, 1000, 1000, 1000}
 //  Maximum acceleration in mm/s^2 for retracts   E0... (per extruder)
 #define DEFAULT_RETRACT_ACCELERATION          {10000, 10000, 10000, 10000}
 //  X, Y, Z and E* maximum acceleration in mm/s^2 for printing moves
@@ -596,8 +602,13 @@
  *****************************************************************************************/
 // delta homing speeds must be the same on xyz. Homing speeds (mm/m)
 #define HOMING_FEEDRATE_XYZ (100*60)
+
+// Slow Homing feature reduce Acceleration and Jerk only for homing
+//#define SLOW_HOMING
+
 // homing hits the endstop, then retracts by this distance, before it tries to slowly bump again:
 #define XYZ_HOME_BUMP_MM 5
+
 // Re-Bump Speed Divisor (Divides the Homing Feedrate)
 #define XYZ_BUMP_DIVISOR 10
 /*****************************************************************************************/
@@ -613,7 +624,10 @@
  * For the other hotends it is their distance from the hotend 0.                         *
  *                                                                                       *
  *****************************************************************************************/
-#define HOTEND_OFFSET_X {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the X axis
-#define HOTEND_OFFSET_Y {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the Y axis
-#define HOTEND_OFFSET_Z {0.0, 0.0, 0.0, 0.0} // (in mm) for each hotend, offset of the hotend on the Z axis
+// (in mm) for each hotend, offset of the hotend on the X axis
+#define HOTEND_OFFSET_X {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
+// (in mm) for each hotend, offset of the hotend on the Y axis
+#define HOTEND_OFFSET_Y {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
+// (in mm) for each hotend, offset of the hotend on the Z axis
+#define HOTEND_OFFSET_Z {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
 /*****************************************************************************************/

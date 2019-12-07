@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,12 +23,12 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if ENABLED(PINS_DEBUGGING)
 
-#include "../../../utility/pinsdebug.h"
+#include "../../../platform/common/pinsdebug.h"
 
 #define CODE_M43
 
@@ -51,9 +51,9 @@ inline void toggle_pins() {
       report_pin_state_extended(pin, I_flag, true, "Pulsing   ");
       HAL::pinMode(pin, OUTPUT);
       for (int16_t j = 0; j < repeat; j++) {
-        HAL::digitalWrite(pin, 0); printer.safe_delay(wait);
-        HAL::digitalWrite(pin, 1); printer.safe_delay(wait);
-        HAL::digitalWrite(pin, 0); printer.safe_delay(wait);
+        HAL::digitalWrite(pin, 0); HAL::delayMilliseconds(wait);
+        HAL::digitalWrite(pin, 1); HAL::delayMilliseconds(wait);
+        HAL::digitalWrite(pin, 0); HAL::delayMilliseconds(wait);
       }
     }
     SERIAL_EOL();
@@ -89,7 +89,7 @@ inline void toggle_pins() {
  *  M43 S       - Servo probe test or BLTouch test
  *                  P<index> - Probe index (optional - defaults to 0)
  */
-inline void gcode_M43(void) {
+inline void gcode_M43() {
 
   // 'T' must be first. It uses 'S' and 'E' differently.
   if (parser.seen('T')) return toggle_pins();
@@ -105,7 +105,7 @@ inline void gcode_M43(void) {
 
   // 'S' Run servo probe test and return
   if (parser.seen('S')) {
-    #if ENABLED(BLTOUCH)
+    #if HAS_BLTOUCH
       return bltouch.test();
     #else
       return probe.servo_test();
@@ -141,8 +141,8 @@ inline void gcode_M43(void) {
     }
 
     #if HAS_RESUME_CONTINUE
+      PRINTER_KEEPALIVE(PausedforUser);
       printer.setWaitForUser(true);
-      printer.keepalive(PausedforUser);
     #endif
 
     for(;;) {
@@ -162,10 +162,10 @@ inline void gcode_M43(void) {
       }
 
       #if HAS_RESUME_CONTINUE
-        if (!printer.isWaitForUser()) { printer.keepalive(InHandler); break; }
+        if (!printer.isWaitForUser()) break;
       #endif
 
-      printer.safe_delay(500);
+      HAL::delayMilliseconds(500);
     }
   }
   else {
@@ -186,9 +186,9 @@ inline void gcode_M43(void) {
  *
  *  M43 S - Servo probe test or BLTouch test
  */
-inline void gcode_M43(void) {
+inline void gcode_M43() {
   if (parser.seen('S')) {
-    #if ENABLED(BLTOUCH)
+    #if HAS_BLTOUCH
       return bltouch.test();
     #else
       return probe.servo_test();

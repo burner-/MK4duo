@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M86
@@ -31,9 +31,9 @@
 /**
  * M86: Set safety timer expiration with parameter M[minutes]. To disable set zero
  */
-inline void gcode_M86(void) {
+inline void gcode_M86() {
   if (parser.seenval('M'))
-    printer.safety_time = parser.value_byte();
+    printer.safety_time = parser.value_ushort();
   else
-    SERIAL_EMV("M86 M", printer.safety_time);
+    SERIAL_EMV("M86 M", int(printer.safety_time));
 }

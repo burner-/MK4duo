@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,15 +19,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
 /**
  * sanitycheck.h
  *
  * Test configuration values for errors at compile-time.
  */
-
-#ifndef _FILAMENT_SANITYCHECK_H_
-#define _FILAMENT_SANITYCHECK_H_
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR) && !PIN_EXISTS(FILWIDTH)
   #error "DEPENDENCY ERROR: You have to set FILWIDTH_PIN to a valid pin if you enable FILAMENT_WIDTH_SENSOR."
@@ -56,5 +54,3 @@
     #error "DEPENDENCY ERROR: Missing setting DEFAULT_MEASURED_FILAMENT_DIA."
   #endif
 #endif
-
-#endif /* _FILAMENT_SANITYCHECK_H_ */

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M204
@@ -37,13 +37,13 @@
  *
  *  Also sets minimum segment time in ms (B20000) to prevent buffer under-runs and M20 minimum mechanics.feedrate_mm_s
  */
-inline void gcode_M204(void) {
+inline void gcode_M204() {
 
   if (commands.get_target_tool(204)) return;
 
   #if DISABLED(DISABLE_M503)
     // No arguments? Show M204 report.
-    if (!parser.seen("SPRVE")) {
+    if (parser.seen_any()) {
       mechanics.print_M204();
       return;
     }
@@ -56,7 +56,7 @@ inline void gcode_M204(void) {
     mechanics.data.acceleration = parser.value_linear_units();
 
   if (parser.seen('R'))
-    mechanics.data.retract_acceleration[TARGET_EXTRUDER] = parser.value_linear_units();
+    extruders[toolManager.extruder.target]->data.retract_acceleration = parser.value_linear_units();
 
   if (parser.seen('V'))
     mechanics.data.travel_acceleration = parser.value_linear_units();

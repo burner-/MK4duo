@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
  */
 
 #include "../../../MK4duo.h"
+#include "sanitycheck.h"
 
 #if HAS_SD_RESTART
 
@@ -31,11 +32,12 @@ SdFile Restart::job_file;
 
 restart_job_t Restart::job_info;
 
-bool Restart::enabled;
+bool  Restart::enabled;
+
+uint32_t  Restart::cmd_sdpos      = 0,
+          Restart::sdpos[BUFSIZE] = { 0 };  
 
 /** Public Function */
-void Restart::init_job() { memset(&job_info, 0, sizeof(job_info)); }
-
 void Restart::enable(const bool onoff) {
   enabled = onoff;
   changed();
@@ -50,17 +52,23 @@ void Restart::changed() {
 
 void Restart::check() {
   if (enabled) {
-    if (!card.isDetected()) card.mount();
-    if (card.isDetected()) {
+    card.mount();
+    if (card.isMounted()) {
       load_job();
       if (!valid()) return purge_job();
-      commands.enqueue_and_echo_P(PSTR("M800 S"));
+      commands.inject_P(PSTR("M800 S"));
     }
   }
 }
 
+void Restart::start_job() {
+  card.getAbsFilename(job_info.fileName);
+  cmd_sdpos = 0;
+  ZERO(sdpos);
+}
+
 void Restart::purge_job() {
-  init_job();
+  clear_job();
   card.delete_restart_file();
 }
 
@@ -73,52 +81,53 @@ void Restart::load_job() {
   debug_info(PSTR("Load"));
 }
 
-/**
- * Save the current job state to the restart file
- */
 void Restart::save_job(const bool force_save/*=false*/, const bool save_count/*=true*/) {
 
-  static millis_s save_restart_ms = millis();
+  static short_timer_t save_restart_timer(millis());
 
   // Did Z change since the last call?
-  if (expired(&save_restart_ms, millis_s((SD_RESTART_FILE_SAVE_TIME) * 1000U)) || force_save
-      || mechanics.current_position[Z_AXIS] > job_info.current_position[Z_AXIS]
+  if (save_restart_timer.expired((SD_RESTART_FILE_SAVE_TIME) * 1000) || force_save
+      || mechanics.current_position.z > job_info.axis_position_mm.z
   ) {
 
     if (!++job_info.valid_head) ++job_info.valid_head; // non-zero in sequence
     job_info.valid_foot = job_info.valid_head;
 
     // Mechanics state
-    COPY_ARRAY(job_info.current_position, mechanics.current_position);
+    LOOP_XYZE(axis) job_info.axis_position_mm[axis] = planner.get_axis_position_mm(AxisEnum(axis));
     #if ENABLED(WORKSPACE_OFFSETS)
-      COPY_ARRAY(job_info.home_offset, mechanics.home_offset);
-      COPY_ARRAY(job_info.position_shift, mechanics.position_shift);
+      job_info.home_offset = mechanics.data.home_offset;
+      job_info.position_shift = mechanics.position_shift;
     #endif
     job_info.feedrate = uint16_t(MMS_TO_MMM(mechanics.feedrate_mm_s));
 
     // Heater
-    #if HOTENDS > 0
+    #if HAS_HOTENDS
       LOOP_HOTEND()
-        job_info.target_temperature[h] = hotends[h].target_temperature;
+        if (hotends[h]) job_info.target_temperature[h] = hotends[h]->deg_target();
     #endif
-    #if BEDS > 0
+    #if HAS_BEDS
       LOOP_BED()
-        job_info.bed_target_temperature[h] = beds[h].target_temperature;
+        if (beds[h]) job_info.bed_target_temperature[h] = beds[h]->deg_target();
     #endif
-    #if CHAMBERS > 0
+    #if HAS_CHAMBERS
       LOOP_CHAMBER()
-        job_info.chamber_target_temperature[h] = chambers[h].target_temperature;
+        if (chambers[h]) job_info.chamber_target_temperature[h] = chambers[h]->deg_target();
     #endif
-
-    #if FAN_COUNT > 0
+    #if HAS_FAN
       LOOP_FAN()
-        job_info.fan_speed[f] = fans[f].speed;
+        if (fans[f]) job_info.fan_speed[f] = fans[f]->speed;
     #endif
 
     // Extruders
-    #if EXTRUDERS > 1
-      job_info.active_extruder = tools.active_extruder;
+    #if MAX_EXTRUDER > 1
+      job_info.active_extruder = toolManager.extruder.active;
     #endif
+
+    LOOP_EXTRUDER() {
+      job_info.flow_percentage[e]     = extruders[e]->flow_percentage;
+      job_info.density_percentage[e]  = extruders[e]->density_percentage;
+    }
 
     // Leveling      
     #if HAS_LEVELING
@@ -134,41 +143,28 @@ void Restart::save_job(const bool force_save/*=false*/, const bool save_count/*=
       memcpy(&job_info.gradient, &mixer.gradient, sizeof(job_info.gradient));
     #endif
 
-    //relative mode
-    job_info.relative_mode = printer.isRelativeMode();
-    job_info.relative_modes_e = printer.axis_relative_modes[E_AXIS];
-
-    // Commands in the queue
-    job_info.buffer_head = commands.buffer_ring.head();
-    job_info.buffer_count = save_count ? commands.buffer_ring.count() : 0;
-    for (uint8_t index = 0; index < BUFSIZE; index++) {
-      gcode_t temp_cmd;
-      temp_cmd = commands.buffer_ring.peek(index);
-      strncpy(job_info.buffer_ring[index], temp_cmd.gcode, sizeof(job_info.buffer_ring[index]) - 1);
-    }
+    // Relative axis modes
+    job_info.axis_relative_modes = mechanics.axis_relative_modes;
 
     // Elapsed print job time
     job_info.print_job_counter_elapsed = print_job_counter.duration();
-
-    // SD file e position
-    if (!job_info.just_restart) {
-      card.getAbsFilename(job_info.fileName);
-      job_info.just_restart = true;
-    }
-    job_info.sdpos = card.getIndex();
 
     write_job();
   }
 }
 
-/**
- * Resume the saved print job
- */
 void Restart::resume_job() {
 
   #define RESTART_ZRAISE 2
 
-  char cmd[40], str1[16];
+  char cmd[MAX_CMD_SIZE + 16], str1[16], str2[16];
+
+  // Save job_info.sdpos because stepper ISR overwrites it
+  const uint32_t save_sdpos = job_info.sdpos;
+
+  #if HAS_LCD
+    lcdui.status_printf_P(0, GET_TEXT(MSG_RESUMING));
+  #endif
 
   #if HAS_LEVELING
     // Make sure leveling is off before any G92 and G28
@@ -178,7 +174,7 @@ void Restart::resume_job() {
   // Reset E, raise Z, home XY...
   commands.process_now_P(PSTR("G92.9 E0"));
   #if Z_HOME_DIR > 0
-    commands.process_now_P(PSTR("G28"));
+    commands.process_now_P(G28_CMD);
   #else
     commands.process_now_P(PSTR("G92.9 Z0"));
     mechanics.home_flag.ZHomed = true;
@@ -194,35 +190,47 @@ void Restart::resume_job() {
   #endif
 
   // Set temperature
-  #if CHAMBERS > 0
+  #if HAS_CHAMBERS
     LOOP_CHAMBER() {
-      chambers[h].setTarget(job_info.chamber_target_temperature[h]);
-      chambers[h].wait_for_target(true);
+      if (chambers[h]) {
+        chambers[h]->set_target_temp(job_info.chamber_target_temperature[h]);
+        chambers[h]->wait_for_target(true);
+      }
     }
   #endif
-  #if BEDS > 0
+  #if HAS_BEDS
     LOOP_BED() {
-      beds[h].setTarget(job_info.bed_target_temperature[h]);
-      beds[h].wait_for_target(true);
+      if (beds[h]) {
+        beds[h]->set_target_temp(job_info.bed_target_temperature[h]);
+        beds[h]->wait_for_target(true);
+      }
     }
   #endif
-  #if HOTENDS > 0
+  #if HAS_HOTENDS
     LOOP_HOTEND() {
-      hotends[h].setTarget(job_info.target_temperature[h]);
-      hotends[h].wait_for_target(true);
+      if (hotends[h]) {
+        hotends[h]->set_target_temp(job_info.target_temperature[h]);
+        hotends[h]->wait_for_target(true);
+      }
     }
   #endif
 
   // Set fan
-  #if FAN_COUNT > 0
-    LOOP_FAN() fans[f].speed = job_info.fan_speed[f];
+  #if HAS_FAN
+    LOOP_FAN() {
+      if (fans[f]) fans[f]->speed = job_info.fan_speed[f];
+    }
   #endif
+
+  LOOP_EXTRUDER() {
+    extruders[e]->flow_percentage     = job_info.flow_percentage[e];
+    extruders[e]->density_percentage  = job_info.density_percentage[e];
+  }
 
   // Set leveling
   #if HAS_LEVELING
     if (job_info.z_fade_height || job_info.leveling) {
-      dtostrf(job_info.z_fade_height, 1, 1, str1);
-      sprintf_P(cmd, PSTR("M420 S%i Z%s"), int(job_info.leveling), str1);
+      sprintf_P(cmd, PSTR("M420 S%i Z%s"), int(job_info.leveling), dtostrf(job_info.z_fade_height, 1, 1, str1));
       commands.process_now(cmd);
     }
   #endif
@@ -236,29 +244,46 @@ void Restart::resume_job() {
     commands.process_now_P(PSTR("G1 E" STRINGIFY(SD_RESTART_FILE_PURGE_LEN) " F200"));
   #endif
   #if SD_RESTART_FILE_RETRACT_LEN > 0
-    sprintf_P(cmd, PSTR("G1 E%d F3000"), SD_RESTART_FILE_PURGE_LEN - SD_RESTART_FILE_RETRACT_LEN);
+    sprintf_P(cmd, PSTR("G1 E%d F3000"), SD_RESTART_FILE_PURGE_LEN - (SD_RESTART_FILE_RETRACT_LEN));
     commands.process_now(cmd);
+  #endif
+
+  // For DELTA must inversetrasform coordinate
+  #if MECH(DELTA)
+    mechanics.InverseTransform(
+      job_info.axis_position_mm.x,
+      job_info.axis_position_mm.y,
+      job_info.axis_position_mm.z,
+      job_info.axis_position_mm
+    );
   #endif
 
   #if Z_HOME_DIR > 0
     // Move back to the saved XYZ
-    char str2[16], str3[16];
-    dtostrf(job_info.current_position[X_AXIS], 1, 3, str1);
-    dtostrf(job_info.current_position[Y_AXIS], 1, 3, str2);
-    dtostrf(job_info.current_position[Z_AXIS], 1, 3, str3);
-    sprintf_P(cmd, PSTR("G1 X%s Y%s Z%s F3000"), str1, str2, str3);
+    char str3[16];
+    sprintf_P(cmd, PSTR("G1 X%s Y%s Z%s F3000"),
+      dtostrf(job_info.axis_position_mm.x, 1, 3, str1),
+      dtostrf(job_info.axis_position_mm.y, 1, 3, str2),
+      dtostrf(job_info.axis_position_mm.z, 1, 3, str3)
+    );
     commands.process_now(cmd);
   #else
     // Move back to the saved XY
-    char str2[16];
-    dtostrf(job_info.current_position[X_AXIS], 1, 3, str1);
-    dtostrf(job_info.current_position[Y_AXIS], 1, 3, str2);
-    sprintf_P(cmd, PSTR("G1 X%s Y%s F3000"), str1, str2);
+    sprintf_P(cmd, PSTR("G1 X%s Y%s F3000"),
+      dtostrf(job_info.axis_position_mm.x, 1, 3, str1),
+      dtostrf(job_info.axis_position_mm.y, 1, 3, str2)
+    );
     commands.process_now(cmd);
     // Move back to the saved Z
-    dtostrf(job_info.current_position[Z_AXIS], 1, 3, str1);
-    sprintf_P(cmd, PSTR("G1 Z%s F200"), str1);
+    dtostrf(job_info.axis_position_mm.z, 1, 3, str1);
+    commands.process_now_P(PSTR("G1 Z0 F200"));
+    sprintf_P(cmd, PSTR("G92.9 Z%s"), str1);
     commands.process_now(cmd);
+  #endif
+
+  // Un-retract
+  #if SD_RESTART_FILE_PURGE_LEN > 0
+    commands.process_now_P(PSTR("G1 E" STRINGIFY(SD_RESTART_FILE_PURGE_LEN) " F3000"));
   #endif
 
   // Restore the feedrate
@@ -266,38 +291,33 @@ void Restart::resume_job() {
   commands.process_now(cmd);
 
   // Restore E position
-  dtostrf(job_info.current_position[E_AXIS], 1, 3, str1);
-  sprintf_P(cmd, PSTR("G92.9 E%s"), str1);
+  sprintf_P(cmd, PSTR("G92.9 E%s"), dtostrf(job_info.axis_position_mm.e, 1, 3, str1));
   commands.process_now(cmd);
 
   // Relative mode
-  printer.setRelativeMode(job_info.relative_mode);
-  printer.axis_relative_modes[E_AXIS] = job_info.relative_modes_e;
+  mechanics.axis_relative_modes = job_info.axis_relative_modes;
 
   #if ENABLED(WORKSPACE_OFFSETS)
     LOOP_XYZ(i) {
-      mechanics.home_offset[i] = job_info.home_offset[i];
-      mechanics.position_shift[i] = job_info.position_shift[i];
+      mechanics.data.home_offset[i] = job_info.home_offset[i];
+      mechanics.position_shift[i]   = job_info.position_shift[i];
       mechanics.update_workspace_offset((AxisEnum)i);
     }
   #endif
 
-  // Process commands from the old pending queue
-  uint8_t h = job_info.buffer_head, c = job_info.buffer_count;
-  for (; c--; h = (h + 1) % BUFSIZE)
-    commands.process_now(job_info.buffer_ring[h]);
-
   // Resume the SD file from the last position
   char *fn = job_info.fileName;
   while (*fn == '/') fn++;
-  sprintf_P(cmd, PSTR("M23 %s"), fn);
+  sprintf_P(cmd, M23_CMD, fn);
   commands.process_now(cmd);
-  sprintf_P(cmd, PSTR("M24 S%lu T%lu"), job_info.sdpos, job_info.print_job_counter_elapsed);
+  sprintf_P(cmd, PSTR("M24 S%ld T%ld"), save_sdpos, job_info.print_job_counter_elapsed);
   commands.process_now(cmd);
 
 }
 
 /** Private Function */
+void Restart::clear_job() { memset(&job_info, 0, sizeof(job_info)); }
+
 void Restart::write_job() {
   bool failed = false;
 
@@ -320,8 +340,8 @@ void Restart::write_job() {
     SERIAL_EMV(" Valid Foot:", (int)job_info.valid_foot);
     if (job_info.valid_head) {
       if (job_info.valid_head == job_info.valid_foot) {
-        SERIAL_MSG("current_position");
-        LOOP_XYZE(i) SERIAL_MV(": ", job_info.current_position[i]);
+        SERIAL_MSG("current_position.x");
+        LOOP_XYZE(i) SERIAL_MV(": ", job_info.axis_position_mm[i]);
         SERIAL_EOL();
         SERIAL_MSG("target_temperature");
         LOOP_HOTEND() SERIAL_MV(": ", job_info.target_temperature[h]);
@@ -333,9 +353,6 @@ void Restart::write_job() {
           SERIAL_EMV("leveling: ", int(job_info.leveling));
           SERIAL_EMV(" z_fade_height: ", int(job_info.z_fade_height));
         #endif
-        SERIAL_EMV("buffer_head: ", job_info.buffer_head);
-        SERIAL_EMV("buffer_count: ", job_info.buffer_count);
-        for (uint8_t i = 0; i < job_info.buffer_count; i++) SERIAL_EMT("> ", job_info.buffer_ring[i]);
         SERIAL_EMT("Filename: ", job_info.fileName);
         SERIAL_EMV("sdpos: ", job_info.sdpos);
         SERIAL_EMV("print_job_counter_elapsed: ", job_info.print_job_counter_elapsed);

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_AD8495 || HAS_AD595
@@ -39,9 +39,9 @@
  *
  *    O<offset> P<gain>
  */
-inline void gcode_M595(void) {
+inline void gcode_M595() {
 
-  Heater *act = commands.get_target_heater();
+  Heater * const act = commands.get_target_heater();
 
   if (!act) return;
 
@@ -53,9 +53,9 @@ inline void gcode_M595(void) {
     }
   #endif
 
-  act->sensor.ad595_offset = parser.floatval('O');
-  act->sensor.ad595_gain   = parser.floatval('P', 1);
-  if (act->sensor.ad595_gain == 0) act->sensor.ad595_gain = 1.0;
+  act->data.sensor.ad595_offset = parser.floatval('O');
+  act->data.sensor.ad595_gain   = parser.floatval('P', 1);
+  if (act->data.sensor.ad595_gain == 0) act->data.sensor.ad595_gain = 1.0;
 
 }
 

@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,18 +33,18 @@
 
 void menu_game() {
   START_MENU();
-  MENU_BACK(MSG_MAIN);
+  BACK_ITEM(MSG_MAIN);
   #if ENABLED(GAME_BRICKOUT)
-    MENU_ITEM(submenu, MSG_BRICKOUT, brickout.enter_game);
+    SUBMENU(MSG_BRICKOUT, brickout.enter_game);
   #endif
   #if ENABLED(GAME_INVADERS)
-    MENU_ITEM(submenu, MSG_INVADERS, invaders.enter_game);
+    SUBMENU(MSG_INVADERS, invaders.enter_game);
   #endif
   #if ENABLED(GAME_SNAKE)
-    MENU_ITEM(submenu, MSG_SNAKE, snake.enter_game);
+    SUBMENU(MSG_SNAKE, snake.enter_game);
   #endif
   #if ENABLED(GAME_MAZE)
-    MENU_ITEM(submenu, MSG_MAZE, maze.enter_game);
+    SUBMENU(MSG_MAZE, maze.enter_game);
   #endif
   END_MENU();
 }

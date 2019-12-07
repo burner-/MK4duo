@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_SD_SUPPORT
@@ -34,11 +34,11 @@
 /**
  * M21: Mount SD Card
  */
-inline void gcode_M21(void) { card.mount(); }
+inline void gcode_M21() { card.mount(); }
 
 /**
  * M22: Unmount SD Card
  */
-inline void gcode_M22(void) { card.unmount(); }
+inline void gcode_M22() { card.unmount(); }
 
 #endif // HAS_SD_SUPPORT

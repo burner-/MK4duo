@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,13 +21,16 @@
  */
 
 #include "../../../MK4duo.h"
+#include "sanitycheck.h"
 
 #if HAS_POWER_SWITCH || HAS_POWER_CONSUMPTION_SENSOR || HAS_POWER_CHECK
 
 Power powerManager;
 
 /** Public Parameters */
-flagpower_t Power::flag;
+#if HAS_POWER_CHECK
+  power_data_t Power::data;
+#endif
 
 #if HAS_POWER_CONSUMPTION_SENSOR
   int16_t   Power::current_raw_powconsumption = 0;    // Holds measured power consumption
@@ -37,16 +40,15 @@ flagpower_t Power::flag;
 
 /** Private Parameters */
 #if HAS_POWER_SWITCH
-  bool        Power::powersupply_on   = false;
+  bool        Power::powersupply_on = false;
   #if (POWER_TIMEOUT > 0)
-    millis_s  Power::last_Power_On_ms = 0;
+    long_timer_t  Power::last_power_on_timer;
   #endif
 #endif
 
 /** Public Function */
 #if HAS_POWER_SWITCH || HAS_POWER_CHECK
 
-  /** Public Function */
   void Power::init() {
     #if HAS_POWER_CHECK
       SET_INPUT(POWER_CHECK_PIN);
@@ -71,87 +73,60 @@ flagpower_t Power::flag;
       HAL::setInputPullup(POWER_CHECK_PIN, isPullup());
     }
 
-    void Endstops::report() {
+    void Power::report() {
       SERIAL_LOGIC("POWER CHECK Logic", isLogic());
       SERIAL_LOGIC(" Pullup", isPullup());
     }
 
+    void Power::outage() {
+      if (IS_SD_PRINTING() && READ(POWER_CHECK_PIN) != isLogic())
+        card.setAbortSDprinting(true);
+    }
+
   #endif 
 
-  void Power::spin() {
-    if (is_power_needed())
-      power_on();
-    #if (POWER_TIMEOUT > 0)
-      else if (expired(&last_Power_On_ms, millis_s(POWER_TIMEOUT * 1000U)))
-        power_off();
-    #endif
-  }
+  #if HAS_POWER_SWITCH
 
-  void Power::power_on() {
-    #if (POWER_TIMEOUT > 0)
-      last_Power_On_ms = millis();
-    #endif
-    if (!powersupply_on) {
-      OUT_WRITE(PS_ON_PIN, PS_ON_AWAKE);
-      powersupply_on = true;
-      #if HAS_TRINAMIC
-        HAL::delayMilliseconds(100); // Wait for power to settle
-        tmc.restore();
-      #endif
-      HAL::delayMilliseconds((DELAY_AFTER_POWER_ON) * 1000UL);
-    }
-  }
-
-  void Power::power_off() {
-    if (powersupply_on) {
-      OUT_WRITE(PS_ON_PIN, PS_ON_ASLEEP);
-      powersupply_on = false;
+    void Power::spin() {
+      if (tempManager.heaters_isActive() || stepper.driver_is_enable()) power_on();
       #if (POWER_TIMEOUT > 0)
-        last_Power_On_ms = 0;
+        else if (last_power_on_timer.expired((POWER_TIMEOUT) * 1000))
+          power_off();
       #endif
     }
-  }
 
-  bool Power::is_power_needed() {
-
-    #if HEATER_COUNT > 0
-      if (thermalManager.heaters_isActive()) return true;
-    #endif
-
-    #if FAN_COUNT > 0
-      LOOP_FAN() if (fans[f].speed > 0) return true;
-    #endif
-
-    if (X_ENABLE_READ() == X_ENABLE_ON || Y_ENABLE_READ() == Y_ENABLE_ON || Z_ENABLE_READ() == Z_ENABLE_ON
-        || E0_ENABLE_READ() == E_ENABLE_ON // If any of the drivers are enabled...
-        #if DRIVER_EXTRUDERS > 1
-          || E1_ENABLE_READ() == E_ENABLE_ON
-          #if HAS_X2_ENABLE
-            || X2_ENABLE_READ() == X_ENABLE_ON
-          #endif
-          #if DRIVER_EXTRUDERS > 2
-            || E2_ENABLE_READ() == E_ENABLE_ON
-            #if DRIVER_EXTRUDERS > 3
-              || E3_ENABLE_READ() == E_ENABLE_ON
-              #if DRIVER_EXTRUDERS > 4
-                || E4_ENABLE_READ() == E_ENABLE_ON
-                #if DRIVER_EXTRUDERS > 5
-                  || E5_ENABLE_READ() == E_ENABLE_ON
-                #endif
-              #endif
-            #endif
-          #endif
+    void Power::power_on() {
+      #if (POWER_TIMEOUT > 0)
+        last_power_on_timer.start();
+      #endif
+      if (!powersupply_on) {
+        OUT_WRITE(PS_ON_PIN, PS_ON_AWAKE);
+        powersupply_on = true;
+        #if HAS_TRINAMIC
+          HAL::delayMilliseconds(100); // Wait for power to settle
+          tmc.restore();
         #endif
-    ) return true;
+        HAL::delayMilliseconds((DELAY_AFTER_POWER_ON) * 1000UL);
+      }
+    }
 
-    return false;
-  }
+    void Power::power_off() {
+      if (powersupply_on) {
+        OUT_WRITE(PS_ON_PIN, PS_ON_ASLEEP);
+        powersupply_on = false;
+        #if (POWER_TIMEOUT > 0)
+          last_power_on_timer.stop();
+        #endif
+      }
+    }
 
-#endif // HAS_POWER_SWITCH
+  #endif // HAS_POWER_SWITCH
+
+#endif // HAS_POWER_SWITCH || HAS_POWER_CHECK
 
 #if HAS_POWER_CONSUMPTION_SENSOR
 
-  // Convert raw Power Consumption to watt
+  // Convert adc_raw Power Consumption to watt
   float Power::raw_analog2voltage() {
     return ((HAL_VOLTAGE_PIN) * current_raw_powconsumption) / (AD_RANGE);
   }
@@ -186,4 +161,4 @@ flagpower_t Power::flag;
 
 #endif // HAS_POWER_CONSUMPTION_SENSOR
 
-#endif // HAS_POWER_SWITCH || HAS_POWER_CONSUMPTION_SENSOR
+#endif // HAS_POWER_SWITCH || HAS_POWER_CONSUMPTION_SENSOR || HAS_POWER_CHECK

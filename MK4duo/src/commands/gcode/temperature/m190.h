@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if BEDS > 0
+#if HAS_BEDS
 
 #define CODE_M190
 
@@ -34,20 +34,20 @@
  * M190: Sxxx Wait for bed current temp to reach target temp. Waits only when heating
  *       Rxxx Wait for bed current temp to reach target temp. Waits when heating and cooling
  */
-inline void gcode_M190(void) {
+inline void gcode_M190() {
   if (printer.debugDryrun() || printer.debugSimulation()) return;
 
   const uint8_t b = parser.byteval('T');
-  if (WITHIN(b, 0 , BEDS - 1)) {
+  if (WITHIN(b, 0 , tempManager.heater.beds - 1)) {
     const bool no_wait_for_cooling = parser.seen('S');
     if (no_wait_for_cooling || parser.seen('R'))
-      beds[b].setTarget(parser.value_celsius());
+      beds[b]->set_target_temp(parser.value_celsius());
     else return;
 
-    lcdui.set_status_P(beds[b].isHeating() ? PSTR(MSG_BED_HEATING) : PSTR(MSG_BED_COOLING));
+    lcdui.set_status_P(beds[b]->isHeating() ? GET_TEXT(MSG_BED_HEATING) : GET_TEXT(MSG_BED_COOLING));
 
-    beds[b].wait_for_target(no_wait_for_cooling);
+    beds[b]->wait_for_target(no_wait_for_cooling);
   }
 }
 
-#endif // BEDS > 0
+#endif // HAS_BEDS

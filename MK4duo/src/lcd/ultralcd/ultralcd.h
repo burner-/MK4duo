@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,54 +23,33 @@
 
 #if HAS_SPI_LCD
 
-  #if HAS_ADC_BUTTONS
-    uint8_t get_ADC_keyValue();
+#if HAS_ADC_BUTTONS
+  uint8_t get_ADC_keyValue();
+#endif
+
+#define LCD_UPDATE_INTERVAL       100
+
+#if HAS_LCD_MENU
+
+  #if HAS_GRAPHICAL_LCD
+    #define SETCURSOR(col, row)     lcd_moveto(col * (MENU_FONT_WIDTH), (row + 1) * (MENU_FONT_HEIGHT))
+    #define SETCURSOR_RJ(len, row)  lcd_moveto(LCD_PIXEL_WIDTH - (len) * (MENU_FONT_WIDTH), (row + 1) * (MENU_FONT_HEIGHT))
+    #define LCDPRINT(p)             u8g.print(p)
+    #define LCDWRITE(c)             u8g.print(c)
+  #else
+    #define SETCURSOR(col, row)     lcd_moveto(col, row)
+    #define SETCURSOR_RJ(len, row)  lcd_moveto(LCD_WIDTH - (len), row)
+    #define LCDPRINT(p)             lcd_put_u8str(p)
+    #define LCDWRITE(c)             lcd_put_wchar(c)
   #endif
 
-  #define LCD_UPDATE_INTERVAL       100
+  #include "lcdprint.h"
 
-  #if HAS_LCD_MENU
+  void _wrap_string(uint8_t &col, uint8_t &row, const char * const string, read_byte_cb_t cb_read_byte, const bool wordwrap=false);
+  inline void wrap_string_P(uint8_t &col, uint8_t &row, PGM_P const pstr, const bool wordwrap=false) { _wrap_string(col, row, pstr, read_byte_rom, wordwrap); }
+  inline void wrap_string(uint8_t &col, uint8_t &row, const char * const string, const bool wordwrap=false) { _wrap_string(col, row, string, read_byte_ram, wordwrap); }
 
-    #if HAS_GRAPHICAL_LCD
-      #define SETCURSOR(col, row)     lcd_moveto(col * (MENU_FONT_WIDTH), (row + 1) * (MENU_FONT_HEIGHT))
-      #define SETCURSOR_RJ(len, row)  lcd_moveto(LCD_PIXEL_WIDTH - (len) * (MENU_FONT_WIDTH), (row + 1) * (MENU_FONT_HEIGHT))
-      #define LCDPRINT(p)             u8g.print(p)
-      #define LCDWRITE(c)             u8g.print(c)
-    #else
-      #define SETCURSOR(col, row)     lcd_moveto(col, row)
-      #define SETCURSOR_RJ(len, row)  lcd_moveto(LCD_WIDTH - (len), row)
-      #define LCDPRINT(p)             lcd_put_u8str(p)
-      #define LCDWRITE(c)             lcd_put_wchar(c)
-    #endif
-
-    void wrap_string(uint8_t y, const char * const string);
-
-    // Manual Movement
-    constexpr float manual_feedrate_mm_m[XYZE] = MANUAL_FEEDRATE;
-    extern float move_menu_scale;
-
-    #if ENABLED(ADVANCED_PAUSE_FEATURE)
-      void lcd_pause_show_message(const PauseMessageEnum message,
-                                           const PauseModeEnum mode=PAUSE_MODE_SAME,
-                                           const uint8_t hotend=TARGET_HOTEND);
-    #endif
-
-    #if ENABLED(AUTO_BED_LEVELING_UBL)
-      void lcd_mesh_edit_setup(const float &initial);
-      float lcd_mesh_edit();
-    #endif
-
-    #if ENABLED(PROBE_MANUALLY) || MECH(DELTA)
-      void _man_probe_pt(const float &rx, const float &ry);
-    #endif
-
-    #if ENABLED(PROBE_MANUALLY)
-      float lcd_probe_pt(const float &rx, const float &ry);
-    #endif
-
-  #endif // HAS_LCD_MENU
-
-#endif // HAS_SPI_LCD
+#endif // HAS_LCD_MENU
 
 // REPRAPWORLD_KEYPAD (and ADC_KEYPAD)
 #if ENABLED(REPRAPWORLD_KEYPAD)
@@ -168,7 +147,8 @@
 
 #else
 
-  #define BUTTON_EXISTS(BN) false
+  #undef BUTTON_EXISTS
+  #define BUTTON_EXISTS(...) false
 
   // Shift register bits correspond to buttons:
   #define BL_LE 7   // Left
@@ -213,3 +193,6 @@
     #define BUTTON_CLICK()    false
   #endif
 #endif
+
+#endif // HAS_SPI_LCD
+

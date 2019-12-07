@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
  * FAN FEATURES:
  * - Fan configuration
  * EXTRUDER FEATURES:
+ * - Tool change
  * - Volumetric extrusion
  * - Filament Diameter
  * - Single nozzle
@@ -53,7 +54,7 @@
  * - Stepper auto deactivation
  * - Software endstops
  * - Endstops only for homing
- * - Abort on endstop hit feature
+ * - SD abort on endstop hit
  * - G38.2 and G38.3 Probe Target
  * - R/C Servo
  * - Late Z axis
@@ -72,6 +73,7 @@
  * - XY Frequency limit
  * - Skeinforge arc fix
  * SENSORS FEATURES:
+ * - BLTouch sensor probe
  * - Filament diameter sensor
  * - Filament Runout sensor
  * - Power consumption sensor
@@ -137,7 +139,6 @@
  *  - A5984                                                                 *
  *  - DRV8825                                                               *
  *  - LV8729                                                                *
- *  - L6470                                                                 *
  *  - TB6560                                                                *
  *  - TB6600                                                                *
  *  - TMC2100                                                               *
@@ -145,8 +146,6 @@
  *  - TMC2130_STANDALONE                                                    *
  *  - TMC2208                                                               *
  *  - TMC2208_STANDALONE                                                    *
- *  - TMC26X                                                                *
- *  - TMC26X_STANDALONE                                                     *
  *  - TMC2660                                                               *
  *  - TMC2660_STANDALONE                                                    *
  *  - TMC2160                                                               *
@@ -155,6 +154,8 @@
  *  - TMC5130_STANDALONE                                                    *
  *  - TMC5160                                                               *
  *  - TMC5160_STANDALONE                                                    *
+ *  - TMC5161                                                               *
+ *  - TMC5161_STANDALONE                                                    *
  *                                                                          *
  * See Configuration_Motor_Driver.h for configuration Motor Driver          *
  *                                                                          *
@@ -183,11 +184,12 @@
  ***********************************************************************
  *                                                                     *
  * SOFT PWM frequency and values                                       *
- *    0 -  15Hz 256 values                                             *
- *    1 -  30Hz 128 values                                             *
- *    2 -  61Hz  64 values                                             *
- *    3 - 122Hz  32 values                                             *
- *    4 - 244Hz  16 values                                             *
+ *    0 -   4Hz 256 values                                             *
+ *    1 -   8Hz 128 values                                             *
+ *    2 -  16Hz  64 values                                             *
+ *    3 -  32Hz  32 values                                             *
+ *    4 -  64Hz  16 values                                             *
+ *    5 - 128Hz   8 values                                             *
  *                                                                     *
  ***********************************************************************/
 #define SOFT_PWM_SPEED 0
@@ -230,7 +232,7 @@
 // AUTO FAN - Fans for cooling Hotend or Controller Fan
 // Put number Hotend in fan to automatically turn on/off when the associated
 // hotend temperature is above/below HOTEND AUTO FAN TEMPERATURE.
-// Or put 7 for controller fan
+// Or put 6 for Clone Fan (only DXC DUPLICATION MODE) or 7 for Controller Fan
 // -1 disables auto mode.
 // Default fan 1 is auto fan for Hotend 0
 #define AUTO_FAN { -1, -1, -1, -1, -1, -1 }
@@ -251,6 +253,33 @@
 //===========================================================================
 //============================ EXTRUDER FEATURES ============================
 //===========================================================================
+
+/***********************************************************************
+ **************************** Tool change ******************************
+ ***********************************************************************
+ *                                                                     *
+ * Universal tools change settings. Applies to all types of extruders  *
+ * If NOZZLE PARK FEATURE is active Z RAISE is replaced by             *
+ * NOZZLE PARK POINT                                                   *
+ *                                                                     *
+ ***********************************************************************/
+// Z raise distance for tools change, as needed for some extruders
+#define TOOL_CHANGE_Z_RAISE   1   // (mm)
+
+// Nozzle park on tool change (Requires NOZZLE PARK FEATURE)
+//#define TOOL_CHANGE_PARK
+
+// Never return to the previous position on tool change
+//#define TOOL_CHANGE_NO_RETURN
+
+// Retract and purge filament on tool change
+//#define TOOL_CHANGE_FIL_SWAP
+#define TOOL_CHANGE_FIL_SWAP_LENGTH          20  // (mm)
+#define TOOL_CHANGE_FIL_SWAP_PURGE            2  // (mm)
+#define TOOL_CHANGE_FIL_SWAP_RETRACT_SPEED 3000  // (mm/m)
+#define TOOL_CHANGE_FIL_SWAP_PRIME_SPEED    600  // (mm/m)
+/***********************************************************************/
+
 
 /***********************************************************************
  ************************ Volumetric extrusion *************************
@@ -417,7 +446,7 @@
  *                                                                     *
  * Prusa Multi-Material Unit v2                                        *
  *                                                                     *
- * Requires NOZZLE_PARK_FEATURE to park print head in case             *
+ * Requires NOZZLE PARK FEATURE to park print head in case             *
  * MMU unit fails.                                                     *
  * Requires EXTRUDERS = 5                                              *
  *                                                                     *
@@ -602,7 +631,7 @@
 
 
 /**************************************************************************
- ************************ Abort on endstop hit ****************************
+ ********************** SD abort on endstop hit ***************************
  **************************************************************************
  *                                                                        *
  * This option allows you to abort printing when any endstop is triggered.*
@@ -611,9 +640,7 @@
  * With ENDSTOPS ONLY FOR HOMING you must send "M120" to enable endstops. *
  *                                                                        *
  **************************************************************************/
-//#define ABORT_ON_ENDSTOP_HIT
-
-#define ABORT_ON_ENDSTOP_HIT_DEFAULT true
+//#define SD_ABORT_ON_ENDSTOP_HIT
 /**************************************************************************/
 
 
@@ -816,20 +843,20 @@
 #define X2_MAX_POS 353          // set maximum to the distance between toolheads when both heads are homed
 #define X2_HOME_DIR 1           // the second X-carriage always homes to the maximum endstop position
 #define X2_HOME_POS X2_MAX_POS  // default home position is the maximum carriage position
-// However: In this mode the HOTEND_OFFSET_X value for the second extruder provides a software
-// override for X2_HOME_POS. This also allow recalibration of the distance between the two endstops
+// However: In this mode the HOTEND OFFSET X value for the second extruder provides a software
+// override for X2 HOME POS. This also allow recalibration of the distance between the two endstops
 // without modifying the firmware (through the "M218 T1 X???" command).
 // Remember: you should set the second extruder x-offset to 0 in your slicer.
 
 // There are a few selectable movement modes for dual x-carriages using M605 S<mode>
-//    Mode 0 (DXC_FULL_CONTROL_MODE)        : Full control. The slicer has full control over both x-carriages and can achieve optimal travel results
+//    Mode 0 (DXC FULL CONTROL MODE)        : Full control. The slicer has full control over both x-carriages and can achieve optimal travel results
 //                                            as long as it supports dual x-carriages. (M605 S0)
-//    Mode 1 (DXC_AUTO_PARK_MODE)           : Auto-park mode. The firmware will automatically park and unpark the x-carriages on tool changes so
+//    Mode 1 (DXC AUTO PARK MODE)           : Auto-park mode. The firmware will automatically park and unpark the x-carriages on tool changes so
 //                                            that additional slicer support is not required. (M605 S1)
-//    Mode 2 (DXC_DUPLICATION_MODE)         : Duplication mode. The firmware will transparently make the second x-carriage and extruder copy all
+//    Mode 2 (DXC DUPLICATION MODE)         : Duplication mode. The firmware will transparently make the second x-carriage and extruder copy all
 //                                            actions of the first x-carriage. This allows the printer to print 2 arbitrary items at
 //                                            once. (2nd extruder x offset and temp offset are set using: M605 S2 [Xnnn] [Rmmm])
-//    Mode 3 (DXC_SCALED_DUPLICATION_MODE)  : Not working yet, but support routines in place
+//    Mode 3 (DXC SCALED DUPLICATION MODE)  : Not working yet, but support routines in place
 //
 
 // This is the default power-up mode which can be later using M605.
@@ -936,16 +963,31 @@
 //#define Z_STEPPER_AUTO_ALIGN
 
 // Define probe X and Y positions for Z1, Z2 [, Z3]
-#define Z_STEPPER_ALIGN_X { 10, 150, 290 }
-#define Z_STEPPER_ALIGN_Y { 290, 10, 290 }
-// Set number of iterations to align
-#define Z_STEPPER_ALIGN_ITERATIONS 3
-// Enable to restore leveling setup after operation
-#define RESTORE_LEVELING_AFTER_G34
-// Use the amplification factor to de-/increase correction step.
-// In case the stepper (spindle) position is further out than the test point
+#define Z_STEPPER_ALIGN_XY { {  10, 290 }, { 150,  10 }, { 290, 290 } }
+
+// Provide Z stepper positions for more rapid convergence in bed alignment.
+// Currently requires triple stepper drivers.
+//#define Z_STEPPER_ALIGN_KNOWN_STEPPER_POSITIONS
+// Define Stepper XY positions for Z1, Z2, Z3 corresponding to
+// the Z screw positions in the bed carriage.
+// Define one position per Z stepper in stepper driver order.
+#define Z_STEPPER_ALIGN_STEPPER_XY { { 210.7, 102.5 }, { 152.6, 220.0 }, { 94.5, 102.5 } }
+
+// Amplification factor. Used to scale the correction step up or down.
+// In case the stepper (spindle) position is further out than the test point.
 // Use a value > 1. NOTE: This may cause instability
 #define Z_STEPPER_ALIGN_AMP 1.0
+
+// Set number of iterations to align
+#define Z_STEPPER_ALIGN_ITERATIONS 3
+
+// Enable to restore leveling setup after operation
+#define RESTORE_LEVELING_AFTER_G34
+
+// On a 300mm bed a 5% grade would give a misalignment of ~1.5cm
+// (%) Maximum incline G34 will handle
+#define G34_MAX_GRADE  5
+
 // Stop criterion. If the accuracy is better than this stop iterating early
 #define Z_STEPPER_ALIGN_ACC 0.02
 /*****************************************************************************************/
@@ -977,6 +1019,64 @@
 //===========================================================================
 //============================= SENSORS FEATURES ============================
 //===========================================================================
+
+/**********************************************************************************
+ ***************************** BLTouch sensor probe *******************************
+ **********************************************************************************
+ *                                                                                *
+ * Either: Use the defaults (recommended) or: For special purposes,               *
+ * use the following DEFINES.                                                     *
+ * Do not activate settings that the probe might not understand.                  *
+ * Clones might misunderstand advanced commands.                                  *
+ *                                                                                *
+ * Note: If the probe is not deploying, check a "Reset" and "Self-Test" and then  *
+ *       check the wiring of the BROWN, RED and ORANGE wires.                     *
+ *                                                                                *
+ * Note: If the trigger signal of your probe is not being recognized,             *
+ *       it has been very often because the BLACK and WHITE wires needed to be    *
+ *       swapped. They are not "interchangeable" like they would be with a real   *
+ *       switch. So please check the wiring first.                                *
+ *                                                                                *
+ * Settings for all BLTouch and clone probes:                                     *
+ *                                                                                *
+ **********************************************************************************/
+// Safety: The probe needs time to recognize the command.
+//         Minimum command delay (ms). Enable and increase if needed.
+//#define BLTOUCH_DELAY 500
+
+// Use "HIGH SPEED" mode for probing.
+// Danger: Disable if your probe sometimes fails. Only suitable for stable well-adjusted systems.
+// This feature was designed for Delta's with very fast Z moves however higher speed cartesians may function
+// If the machine cannot raise the probe fast enough after a trigger, it may enter a fault state.
+//#define BLTOUCH_HIGH_SPEED_MODE
+
+// Feature: Switch into SW mode after a deploy. It makes the output pulse longer. Can be useful
+//          in special cases, like noisy or filtered input configurations.
+//#define BLTOUCH_FORCE_SW_MODE
+
+// Settings for BLTouch Smart 3.0 and 3.1
+// Summary:
+//   - Voltage modes: 5V and OD (Open Drain - "logic voltage free") output modes
+//   - Disable LCD voltage options
+//
+// Danger: Don't activate 5V mode unless attached to a 5V-tolerant controller!
+// V3.0 Or 3.1: Set default mode to 5V mode at MK4duo startup.
+// If disabled, OD mode is the hard-coded default on 3.0
+// On startup, MK4duo will compare its eeprom to this vale. If the selected mode
+// differs, a mode set eeprom write will be completed at initialization.
+// Use the option below to force an eeprom write to a V3.1 probe regardless.
+#define BLTOUCH_MODE_5V false
+
+// Safety: Activate if connecting a probe with an unknown voltage mode.
+// V3.0: Set a probe into mode selected above at MK4duo startup. Required for 5V mode on 3.0
+// V3.1: Force a probe with unknown mode into selected mode at MK4duo startup ( = Probe EEPROM write )
+// To preserve the life of the probe, use this once then turn it off and re-flash.
+//#define BLTOUCH_FORCE_MODE
+
+// Safety: Enable voltage mode settings in the LCD menu.
+//#define BLTOUCH_LCD_VOLTAGE_MENU
+/**********************************************************************************/
+
 
 /**********************************************************************************
  *************************** Filament diameter sensor *****************************
@@ -1574,7 +1674,15 @@
  *                                                                        *
  * Use Junction Deviation instead of traditional Jerk limiting            *
  *                                                                        *
- * By Scott Latherine @Thinkyhead  and @ejtagle                           *
+ * A = DEFAULT_ACCELERATION (acceleration for printing moves)             *
+ * V = Jerk for X and Y (values typically match)                          *
+ *                                                                        *
+ * Junction Deviation = 0.4 * V^2 / A                                     *
+ *                                                                        *
+ * Ex: If your Jerk value is 8.0 and your acceleration is 1250,           *
+ * then: 0.4 * 8.0^2/ 1250 = 0.02048 (mm)                                 *
+ *                                                                        *
+ * By Scott Latherine @Thinkyhead and @ejtagle                            *
  *                                                                        *
  **************************************************************************/
 //#define JUNCTION_DEVIATION
@@ -1606,7 +1714,7 @@
  *  0 : Smallest possible width the MCU can produce, compatible with TMC2xxx drivers   *
  *  1 : Minimum for A4988, A5984, and LV8729 stepper drivers                           *
  *  2 : Minimum for DRV8825 stepper drivers                                            *
- *  3 : Minimum for TB6600 stepper drivers                                             *
+ *  5 : Minimum for TB6600 stepper drivers                                             *
  * 30 : Minimum for TB6560 stepper drivers                                             *
  *                                                                                     *
  ***************************************************************************************/
@@ -1619,13 +1727,13 @@
  ***************************************************************************************
  *                                                                                     *
  * The maximum stepping rate (in Hz) the motor stepper driver allows                   *
- * If non defined, it defaults to 1000000 / (2 * MINIMUM STEPPER PULSE)                *
- *  500000 : Maximum for A4988 stepper driver                                          *
- *  400000 : Maximum for TMC2xxx stepper driver                                        *
- *  250000 : Maximum for DRV8825 stepper driver                                        *
- *  150000 : Maximum for TB6600 stepper driver                                         *
- *  130000 : Maximum for LV8729 stepper driver                                         *
- *   15000 : Maximum for TB6560 stepper driver                                         *
+ * If non defined, it defaults to 1Mhz / (2 * MINIMUM STEPPER PULSE)                   *
+ *  5000000 : Maximum for TMC2xxx stepper driver                                       *
+ *  1000000 : Maximum for LV8729 stepper driver                                        *
+ *   500000 : Maximum for A4988 stepper driver                                         *
+ *   250000 : Maximum for DRV8825 stepper driver                                       *
+ *   150000 : Maximum for TB6600 stepper driver                                        *
+ *    15000 : Maximum for TB6560 stepper driver                                        *
  *                                                                                     *
  ***************************************************************************************/
 #define MAXIMUM_STEPPER_RATE 500000
@@ -1804,8 +1912,8 @@
 //#define SERIAL_STATS_DROPPED_RX
 
 // Defines the number of memory slots for saving/restoring position (G60/G61)
-// The values should not be less than 2
-#define NUM_POSITON_SLOTS 2
+// The values should not be less than 1
+#define NUM_POSITON_SLOTS 1
 
 // minimum time in microseconds that a movement needs to take if the buffer is emptied.
 #define DEFAULT_MIN_SEGMENT_TIME 20000
@@ -1894,8 +2002,11 @@
 // Middle point of circle
 #define NOZZLE_CLEAN_CIRCLE_MIDDLE NOZZLE_CLEAN_START_POINT
 
-// Moves the nozzle to the initial position
+// Move the nozzle to the initial position after cleaning
 #define NOZZLE_CLEAN_GOBACK
+
+// Enable for a purge/clean station that's always at the gantry height (thus no Z move)
+//#define NOZZLE_CLEAN_NO_Z
 /****************************************************************************************/
 
 
@@ -1960,8 +2071,8 @@
 #define PAUSE_PARK_FAST_LOAD_LENGTH        5  // (mm) Load length of filament, from extruder gear to nozzle.
                                               //   For Bowden, the full length of the tube and nozzle.
                                               //   For direct drive, the full length of the nozzle.
-#define PAUSE_PARK_EXTRUDE_FEEDRATE        5  // (mm/s) Extrude feedrate (after loading). Should be slower than load feedrate.
-#define PAUSE_PARK_EXTRUDE_LENGTH         50  // (mm) Length to extrude after loading.
+#define PAUSE_PARK_PURGE_FEEDRATE          5  // (mm/s) Purge feedrate (after loading). Should be slower than load feedrate.
+#define PAUSE_PARK_PURGE_LENGTH           50  // (mm) Length to purge after loading.
                                               //   Set to 0 for manual extrusion.
                                               //   Filament can be extruded repeatedly from the Filament Change menu
                                               //   until extrusion is consistent, and to purge old filament.

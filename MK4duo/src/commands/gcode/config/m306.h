@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if HEATER_COUNT > 0
+#if HAS_HEATER
 
 #define CODE_M306
 
@@ -48,30 +48,30 @@
  *    U[bool]   Use Pid/bang bang
  *    I[bool]   Hardware Inverted
  *    R[bool]   Thermal Protection
- *    P[int]    Sensor Pin
+ *    P[int]    Heater Pin
  *    Q[bool]   PWM Hardware
  *
  */
-inline void gcode_M306(void) {
+inline void gcode_M306() {
 
-  Heater *act = commands.get_target_heater();
+  Heater * const act = commands.get_target_heater();
 
   if (!act) return;
 
   #if DISABLED(DISABLE_M503)
     // No arguments? Show M306 report.
-    if (!parser.seen("ABCFLOUIRPQ")) {
+    if (!parser.seen("ABCFLO") && !parser.seen("UIRPQ")) {
       act->print_M306();
       return;
     }
   #endif
 
-  act->pid.DriveMin = parser.intval('A', act->pid.DriveMin);
-  act->pid.DriveMax = parser.intval('B', act->pid.DriveMax);
-  act->pid.Max      = parser.intval('C', act->pid.Max);
-  act->data.mintemp = parser.intval('L', act->data.mintemp);
-  act->data.maxtemp = parser.intval('O', act->data.maxtemp);
-  act->data.freq    = MIN(parser.intval('F', act->data.freq), MAX_PWM_FREQUENCY);
+  act->data.pid.drive.min = parser.intval('A', act->data.pid.drive.min);
+  act->data.pid.drive.max = parser.intval('B', act->data.pid.drive.max);
+  act->data.pid.Max       = parser.intval('C', act->data.pid.Max);
+  act->data.temp.min      = parser.intval('L', act->data.temp.min);
+  act->data.temp.max      = parser.intval('O', act->data.temp.max);
+  act->data.freq          = MIN(parser.intval('F', act->data.freq), MAX_PWM_FREQUENCY);
 
   if (parser.seen('U'))
     act->setUsePid(parser.value_bool());
@@ -84,12 +84,10 @@ inline void gcode_M306(void) {
 
   if (parser.seen('P')) {
     // Put off the heaters
-    act->setTarget(0);
+    act->set_target_temp(0);
     act->data.pin = parser.value_pin();
   }
 
-  act->pid.update();
-
 }
 
-#endif // HEATER_COUNT > 0
+#endif // HAS_HEATER

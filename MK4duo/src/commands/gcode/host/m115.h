@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M115
@@ -31,9 +31,9 @@
 /**
  * M115: Capabilities string
  */
-inline void gcode_M115(void) {
+inline void gcode_M115() {
 
-  SERIAL_EM(MSG_M115_REPORT);
+  SERIAL_EM(MSG_HOST_M115_REPORT);
 
   // SERIAL_XON_XOFF
   #if ENABLED(SERIAL_XON_XOFF)
@@ -117,7 +117,7 @@ inline void gcode_M115(void) {
   #endif
 
   // CHAMBER_TEMPERATURE (M141, M191)
-  #if CHAMBERS > 0
+  #if HAS_CHAMBERS
     SERIAL_CAP("CHAMBER_TEMPERATURE:1");
   #else
     SERIAL_CAP("CHAMBER_TEMPERATURE:0");

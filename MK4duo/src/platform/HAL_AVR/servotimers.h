@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,8 +57,8 @@
 // Say which 16 bit timers can be used and in what order
 #if ENABLED(__AVR_ATmega1280__) || ENABLED(__AVR_ATmega2560__)
   #define _useTimer3
-  #define _useTimer4
-  #define _useTimer5
+  //#define _useTimer4
+  //#define _useTimer5
 #elif ENABLED(__AVR_ATmega32U4__)
   #define _useTimer3
 #elif ENABLED(__AVR_AT90USB646__) || ENABLED(__AVR_AT90USB1286__)

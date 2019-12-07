@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,27 +29,16 @@
 
 #if HAS_EEPROM_I2C
 
-// --------------------------------------------------------------------------
-// Includes
-// --------------------------------------------------------------------------
-
 #include "../platform.h"
-
-// --------------------------------------------------------------------------
-// Local defines
-// --------------------------------------------------------------------------
+#include <Wire.h>
 
 #ifndef EEPROM_DELAY
   #define EEPROM_DELAY 5
 #endif
 
-// --------------------------------------------------------------------------
-// Public functions
-// --------------------------------------------------------------------------
-
 static uint8_t eeprom_device_address = 0x50;
 
-static void eeprom_init(void) {
+static void eeprom_init() {
   static bool eeprom_initialised = false;
   if (!eeprom_initialised) {
     WIRE.begin();

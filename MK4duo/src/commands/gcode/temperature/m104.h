@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,48 +23,42 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if HAS_TEMP_HOTEND
+#if HAS_HOTENDS
 
-  #define CODE_M104
+#define CODE_M104
 
-  /**
-   * M104: Set hotend temperature
-   */
-  inline void gcode_M104(void) {
+/**
+ * M104: Set hotend temperature
+ */
+inline void gcode_M104() {
 
-    if (commands.get_target_tool(104)) return;
+  if (commands.get_target_tool(104)) return;
 
-    if (printer.debugDryrun() || printer.debugSimulation()) return;
+  if (printer.debugDryrun() || printer.debugSimulation()) return;
 
-    #if ENABLED(SINGLENOZZLE)
-      if (TARGET_EXTRUDER != tools.active_extruder) return;
-    #endif
-
-    if (parser.seenval('S')) {
-      const int16_t temp = parser.value_celsius();
-      hotends[TARGET_HOTEND].setTarget(temp);
-
-      #if ENABLED(DUAL_X_CARRIAGE)
-        if (mechanics.dxc_is_duplicating() && TARGET_EXTRUDER == 0)
-          hotends[1].setTarget(temp ? temp + mechanics.duplicate_extruder_temp_offset : 0);
-      #endif
-
-      if (temp > hotends[TARGET_HOTEND].current_temperature) {
-        #if HOTENDS > 1
-          lcdui.status_printf_P(0, PSTR("H%i " MSG_HEATING), TARGET_HOTEND);
-        #else
-          LCD_MESSAGEPGM("H " MSG_HEATING);
-        #endif
-      }
+  if (parser.seenval('S')) {
+    const int16_t temp = parser.value_celsius();
+    if (tempManager.heater.hotends == 1) {
+      extruders[toolManager.extruder.target]->singlenozzle_temp = temp;
+      if (toolManager.extruder.target != toolManager.extruder.active) return;
     }
+    hotends[toolManager.target_hotend()]->set_target_temp(temp);
 
-    #if ENABLED(AUTOTEMP)
-      planner.autotemp_M104_M109();
+    #if ENABLED(DUAL_X_CARRIAGE)
+      if (mechanics.dxc_is_duplicating() && toolManager.extruder.target == 0)
+        hotends[1]->set_target_temp(temp ? temp + mechanics.duplicate_extruder_temp_offset : 0);
     #endif
-
   }
 
-#endif
+  if (parser.seenval('R')) hotends[toolManager.target_hotend()]->set_idle_temp(parser.value_celsius());
+
+  #if ENABLED(AUTOTEMP)
+    planner.autotemp_M104_M109();
+  #endif
+
+}
+
+#endif // HAS_HOTENDS

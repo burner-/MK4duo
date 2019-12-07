@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,12 +30,12 @@
 
 #include "game.h"
 
-int8_t  move_dir, last_move_dir,
-        prizex, prizey,
-        prize_cnt, old_encoder;
+int8_t  move_dir, last_move_dir, // NESW0
+        prizex, prizey, prize_cnt, old_encoder;
 fixed_t playerx, playery;
 
 // Up to 50 lines, then you win!
+typedef struct { int8_t x, y; } pos_t;
 uint8_t head_ind;
 pos_t maze_walls[50] = {
   { 0, 0 }
@@ -50,7 +50,7 @@ inline void turn_player(const bool cw) {
 }
 
 // Reset the player for a new game
-void player_reset() {
+void reset_player() {
   // Init position
   playerx = BTOF(1);
   playery = BTOF(int(((LCD_PIXEL_HEIGHT - 1 - 2) - (MENU_FONT_ASCENT) + 1) / 5) / 2);
@@ -84,10 +84,7 @@ void MazeGame::game_screen() {
   u8g.setColorIndex(1);
 
   // Draw Score
-  if (PAGE_UNDER(HEADER_H)) {
-    lcd_moveto(0, HEADER_H - 1);
-    lcd_put_int(score);
-  }
+  if (PAGE_UNDER(HEADER_H)) lcd_put_int(0, HEADER_H - 1, score);
 
   // Draw the maze
   // for (uint8_t n = 0; n < head_ind; ++n) {
@@ -134,7 +131,7 @@ void MazeGame::game_screen() {
 
 void MazeGame::enter_game() {
   init_game(1, game_screen); // Game running
-  player_reset();
+  reset_player();
 }
 
 #endif // MARLIN_MAZE

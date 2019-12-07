@@ -100,19 +100,13 @@ char *dtostrf (double val, signed char width, unsigned char prec, char *sout) ;
     #error "SERIAL_PORT_2 must be different than SERIAL_PORT_1"
   #elif SERIAL_PORT_2 == -1
     #define MKSERIAL2 SerialUSB
-    #define NUM_SERIAL 2
   #elif SERIAL_PORT_2 == 0
     #define MKSERIAL2 Serial
-    #define NUM_SERIAL 2
   #elif SERIAL_PORT_2 == 1
     #define MKSERIAL2 Serial1
-    #define NUM_SERIAL 2
   #elif SERIAL_PORT_2 == 2
     #define MKSERIAL2 Serial2
-    #define NUM_SERIAL 2
   #endif
-#else
-  #define NUM_SERIAL 1
 #endif
 
 #define CRITICAL_SECTION_START	uint32_t primask=__get_PRIMASK(); __disable_irq();
@@ -166,8 +160,6 @@ char *dtostrf (double val, signed char width, unsigned char prec, char *sout) ;
 #define MAX_ANALOG_PIN_NUMBER 11
 #define ADC_TEMPERATURE_SENSOR 15
 
-#define HARDWARE_PWM true
-
 #define GET_PIN_MAP_PIN(index) index
 #define GET_PIN_MAP_INDEX(pin) pin
 #define PARSED_PIN_INDEX(code, dval) parser.intval(code, dval)
@@ -197,7 +189,7 @@ class HAL {
       static bool Analog_is_ready;
     #endif
     
-    #if HEATER_COUNT > 0
+    #if HAS_HEATER
       static ADCAveragingFilter sensorFilters[HEATER_COUNT];
     #endif
 
@@ -212,7 +204,7 @@ class HAL {
     static bool pwm_status(const pin_t pin);
     static bool tc_status(const pin_t pin);
 
-    static void analogWrite(const pin_t pin, const uint32_t value, const uint16_t freq=1000U, const bool hwpwm=true);
+    static void analogWrite(const pin_t pin, const uint32_t value, const uint16_t freq=1000U);
 
     static void Tick();
 
@@ -227,10 +219,10 @@ class HAL {
       }
     }
     FORCE_INLINE static void digitalWrite(const pin_t pin, const bool value) {
-      WRITE_VAR(pin, value);
+      WRITE(pin, value);
     }
     FORCE_INLINE static bool digitalRead(const pin_t pin) {
-      return READ_VAR(pin);
+      return READ(pin);
     }
 
     FORCE_INLINE static void delayNanoseconds(const uint32_t delayNs) {
@@ -247,7 +239,6 @@ class HAL {
         del = delayMs > 100 ? 100 : delayMs;
         delay(del);
         delayMs -= del;
-        watchdog.reset();
       }
     }
     FORCE_INLINE static unsigned long timeInMilliseconds() {

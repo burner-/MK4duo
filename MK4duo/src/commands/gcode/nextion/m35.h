@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,21 +23,16 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if HAS_NEXTION_LCD
+#if HAS_NEXTION_LCD && HAS_SD_SUPPORT
 
-  #if HAS_SD_SUPPORT
+#define CODE_M35
 
-    #define CODE_M35
+/**
+ * M35: Upload Firmware to Nextion from SD
+ */
+inline void gcode_M35() { nexlcd.UploadNewFirmware(); }
 
-    /**
-     * M35: Upload Firmware to Nextion from SD
-     */
-    inline void gcode_M35(void) {
-      UploadNewFirmware();
-    }
-  #endif
-
-#endif // HAS_NEXTION_LCD
+#endif // HAS_NEXTION_LCD && HAS_SD_SUPPORT

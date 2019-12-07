@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,10 +25,6 @@
  * sanitycheck.h
  *
  * Test configuration values for errors at compile-time.
- */
-
-/**
- * Probes
  */
 
 /**
@@ -104,19 +100,6 @@
 
 #if ENABLED(Z_PROBE_SLED) && !PIN_EXISTS(SLED)
   #error "DEPENDENCY ERROR: You have to set SLED_PIN to a valid pin if you enable Z_PROBE_SLED."
-#endif
-
-// Check auto bed leveling sub-options, especially probe points
-#if ABL_GRID
-
-  #if DISABLED(DELTA_PROBEABLE_RADIUS)
-    // Be sure points are in the right order
-    #if LEFT_PROBE_BED_POSITION > RIGHT_PROBE_BED_POSITION
-      #error "DEPENDENCY ERROR: LEFT_PROBE_BED_POSITION must be less than RIGHT_PROBE_BED_POSITION."
-    #elif FRONT_PROBE_BED_POSITION > BACK_PROBE_BED_POSITION
-      #error "DEPENDENCY ERROR: FRONT_PROBE_BED_POSITION must be less than BACK_PROBE_BED_POSITION."
-    #endif
-  #endif
 #endif
 
 // G38 Probe Target

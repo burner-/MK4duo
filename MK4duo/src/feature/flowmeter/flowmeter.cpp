@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2013 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2013 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@
  */
 
 #include "../../../MK4duo.h"
+#include "sanitycheck.h"
 
 #if ENABLED(FLOWMETER_SENSOR)
 
@@ -86,7 +87,7 @@ void FlowMeter::spin() {
   #if ENABLED(MINFLOW_PROTECTION)
     if (flow_firstread && print_job_counter.isRunning() && (flowrate < (float)MINFLOW_PROTECTION)) {
       flow_firstread = false;
-      printer.kill(PSTR(MSG_KILLED));
+      printer.kill(GET_TEXT(MSG_KILLED));
     }
   #endif
 

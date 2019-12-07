@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * gcode.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_G4
@@ -31,20 +31,11 @@
 /**
  * G4: Dwell S<seconds> or P<milliseconds>
  */
-inline void gcode_G4(void) {
-  millis_s dwell_ms = 0;
-
+inline void gcode_G4() {
+  millis_l dwell_ms = 0;
   if (parser.seenval('P')) dwell_ms = parser.value_millis();              // milliseconds to wait
   if (parser.seenval('S')) dwell_ms = parser.value_millis_from_seconds(); // seconds to wait
-
   planner.synchronize();
-
   if (!lcdui.has_status()) LCD_MESSAGEPGM(MSG_DWELL);
-
-  dwell_ms += millis();
-
-  while (millis_s(millis()) - dwell_ms < 0) {
-    printer.keepalive(InProcess);
-    printer.idle();
-  }
+  printer.safe_delay(dwell_ms);
 }

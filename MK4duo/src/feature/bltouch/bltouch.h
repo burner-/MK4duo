@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,37 +24,34 @@
 /**
  * bltouch.h
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if ENABLED(BLTOUCH)
+#if HAS_BLTOUCH
 
-#define BLTOUCH_DEPLOY       10
-#define BLTOUCH_MODE_SW      60
-#define BLTOUCH_STOW         90
-#define BLTOUCH_SELFTEST    120
-#define BLTOUCH_MODE_STORE  130
-#define BLTOUCH_MODE_5V     140
-#define BLTOUCH_MODE_OD     150
-#define BLTOUCH_RESET       160
-
-#if DISABLED(BLTOUCH_DEPLOY_DELAY)
-  #define BLTOUCH_DEPLOY_DELAY  750
-#endif
-#if DISABLED(BLTOUCH_STOW_DELAY)
-  #define BLTOUCH_STOW_DELAY    750
-#endif
+#define BLTOUCH_CMD_DEPLOY       10
+#define BLTOUCH_CMD_MODE_SW      60
+#define BLTOUCH_CMD_STOW         90
+#define BLTOUCH_CMD_SELFTEST    120
+#define BLTOUCH_CMD_MODE_STORE  130
+#define BLTOUCH_CMD_MODE_5V     140
+#define BLTOUCH_CMD_MODE_OD     150
+#define BLTOUCH_CMD_RESET       160
 
 /**
- * The following commands may require different delays.
+ * The following commands require different minimum delays.
  *
- * ANTClabs recommends 2000ms for 5V/OD commands. However it is
- * not common for other commands to immediately follow these,
- * and testing has shown that these complete in 500ms reliably.
+ * 500ms required for a reliable Reset.
  *
- * AntClabs recommends 750ms for Deploy/Stow, otherwise you will
- * not catch an alarm state until the following move command.
+ * 750ms required for Deploy/Stow, otherwise the alarm state
+ *       will not be seen until the following move command.
  */
+#define BLTOUCH_MODE_5V_DELAY     150
+#define BLTOUCH_MODE_OD_DELAY     150
+#define BLTOUCH_MODE_STORE_DELAY  150
+#define BLTOUCH_RESET_DELAY       500
+#define BLTOUCH_DEPLOY_DELAY      750
+#define BLTOUCH_STOW_DELAY        750
 
 typedef unsigned char BLTCommand;
 
@@ -64,39 +61,49 @@ class BLTouch {
 
     BLTouch() {};
 
+  public: /** Public Parameters */
+
+    static bool last_mode; // Initialized by eeprom.load, 0 = Open Drain; 1 = 5V Drain
+
   public: /** Public Function */
 
-    static void init();
+    static void init(const bool set_voltage=false);
+
+    static inline void factory_parameters() { last_mode = false; }
+
     static void test();
-    static bool triggered();
 
     static bool deploy();
     static bool stow();
-    static bool status();
 
-    FORCE_INLINE static void cmd_reset()          { (void)command(BLTOUCH_RESET);                         }
-    FORCE_INLINE static void cmd_selftest()       { (void)command(BLTOUCH_SELFTEST);                      }
+    FORCE_INLINE static void cmd_reset()          { (void)command(BLTOUCH_CMD_RESET, BLTOUCH_RESET_DELAY);            }
+    FORCE_INLINE static void cmd_selftest()       { (void)command(BLTOUCH_CMD_SELFTEST);                              }
 
-    FORCE_INLINE static void cmd_mode_SW()        { (void)command(BLTOUCH_MODE_SW);                       }
-    FORCE_INLINE static void cmd_reset_mode_SW()  { if (status()) cmd_stow(); else cmd_deploy();          }
+    FORCE_INLINE static void cmd_mode_SW()        { (void)command(BLTOUCH_CMD_MODE_SW);                               }
+    FORCE_INLINE static void cmd_reset_mode_SW()  { if (triggered()) cmd_stow(); else cmd_deploy();                   }
 
-    FORCE_INLINE static void cmd_mode_5V()        { (void)command(BLTOUCH_MODE_5V);                       }
-    FORCE_INLINE static void cmd_mode_OD()        { (void)command(BLTOUCH_MODE_OD);                       }
-    FORCE_INLINE static void cmd_mode_store()     { (void)command(BLTOUCH_MODE_STORE);                    }
+    FORCE_INLINE static void cmd_mode_5V()        { (void)command(BLTOUCH_CMD_MODE_5V, BLTOUCH_MODE_5V_DELAY);        }
+    FORCE_INLINE static void cmd_mode_OD()        { (void)command(BLTOUCH_CMD_MODE_OD, BLTOUCH_MODE_OD_DELAY);        }
+    FORCE_INLINE static void cmd_mode_store()     { (void)command(BLTOUCH_CMD_MODE_STORE, BLTOUCH_MODE_STORE_DELAY);  }
 
-    FORCE_INLINE static void cmd_deploy()         { (void)command(BLTOUCH_DEPLOY, BLTOUCH_DEPLOY_DELAY);  }
-    FORCE_INLINE static void cmd_stow()           { (void)command(BLTOUCH_STOW,   BLTOUCH_STOW_DELAY);    }
+    FORCE_INLINE static void cmd_deploy()         { (void)command(BLTOUCH_CMD_DEPLOY, BLTOUCH_DEPLOY_DELAY);          }
+    FORCE_INLINE static void cmd_stow()           { (void)command(BLTOUCH_CMD_STOW,   BLTOUCH_STOW_DELAY);            }
+
+    FORCE_INLINE static void mode_conv_5V()       { mode_conv(true); }
+    FORCE_INLINE static void mode_conv_OD()       { mode_conv(false); }
 
   private: /** Private Function */
 
     static void clear();
+    static void mode_conv(const bool M5V=false);
     static bool command(const BLTCommand cmd, const millis_s ms=BLTOUCH_DELAY);
+    static bool triggered();
 
-    FORCE_INLINE static bool cmd_deploy_alarm() { return command(BLTOUCH_DEPLOY); }
-    FORCE_INLINE static bool cmd_stow_alarm()   { return command(BLTOUCH_STOW);   }
+    FORCE_INLINE static bool cmd_deploy_alarm() { return command(BLTOUCH_CMD_DEPLOY,  BLTOUCH_DEPLOY_DELAY);  }
+    FORCE_INLINE static bool cmd_stow_alarm()   { return command(BLTOUCH_CMD_STOW,    BLTOUCH_STOW_DELAY);    }
 
 };
 
 extern BLTouch bltouch;
 
-#endif // ENABLED(BLTOUCH)
+#endif // HAS_BLTOUCH

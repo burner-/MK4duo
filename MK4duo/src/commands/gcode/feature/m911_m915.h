@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #if HAS_TRINAMIC
@@ -36,46 +36,27 @@
      * M911:  Report TMC stepper driver overtemperature pre-warn flag
      *        The flag is held by the library and persist until manually cleared by M912
      */
-    inline void gcode_M911(void) {
-      #if AXIS_HAS_TMC(X)
-        tmc.report_otpw(stepperX);
-      #endif
+    inline void gcode_M911() {
+      LOOP_DRV_XYZ() {
+        Driver* drv = driver[d];
+        if (drv && drv->tmc) tmc.report_otpw(drv);
+      }
       #if AXIS_HAS_TMC(X2)
-        tmc.report_otpw(stepperX2);
-      #endif
-      #if AXIS_HAS_TMC(Y)
-        tmc.report_otpw(stepperY);
+        tmc.report_otpw(driver.x2);
       #endif
       #if AXIS_HAS_TMC(Y2)
-        tmc.report_otpw(stepperY2);
-      #endif
-      #if AXIS_HAS_TMC(Z)
-        tmc.report_otpw(stepperZ);
+        tmc.report_otpw(driver.y2);
       #endif
       #if AXIS_HAS_TMC(Z2)
-        tmc.report_otpw(stepperZ2);
+        tmc.report_otpw(driver.z2);
       #endif
       #if AXIS_HAS_TMC(Z3)
-        tmc.report_otpw(stepperZ3);
+        tmc.report_otpw(driver.z3);
       #endif
-      #if AXIS_HAS_TMC(E0)
-        tmc.report_otpw(stepperE0);
-      #endif
-      #if AXIS_HAS_TMC(E1)
-        tmc.report_otpw(stepperE1);
-      #endif
-      #if AXIS_HAS_TMC(E2)
-        tmc.report_otpw(stepperE2);
-      #endif
-      #if AXIS_HAS_TMC(E3)
-        tmc.report_otpw(stepperE3);
-      #endif
-      #if AXIS_HAS_TMC(E4)
-        tmc.report_otpw(stepperE4);
-      #endif
-      #if AXIS_HAS_TMC(E5)
-        tmc.report_otpw(stepperE5);
-      #endif
+      LOOP_DRV_EXT() {
+        Driver* drv = driver[d];
+        if (drv && drv->tmc) tmc.report_otpw(drv);
+      }
     }
 
     #define CODE_M912
@@ -92,66 +73,51 @@
      *       M912 X E ; clear X, X2, and all E
      *       M912 E1  ; clear E1 only
      */
-    inline void gcode_M912(void) {
-      const bool  hasX = parser.seen(axis_codes[X_AXIS]),
-                  hasY = parser.seen(axis_codes[Y_AXIS]),
-                  hasZ = parser.seen(axis_codes[Z_AXIS]),
-                  hasE = parser.seen(axis_codes[E_AXIS]),
+    inline void gcode_M912() {
+      const bool  hasX = parser.seen(axis_codes.x),
+                  hasY = parser.seen(axis_codes.y),
+                  hasZ = parser.seen(axis_codes.z),
+                  hasE = parser.seen(axis_codes.e),
                   hasNone = !hasX && !hasY && !hasZ && !hasE;
 
       #if AXIS_HAS_TMC(X) || AXIS_HAS_TMC(X2)
-        const int8_t xval = int8_t(parser.byteval(axis_codes[X_AXIS], 0xFF));
+        const int8_t xval = int8_t(parser.byteval(axis_codes.x, 0xFF));
         #if AXIS_HAS_TMC(X)
-          if (hasNone || xval == 1 || (hasX && xval < 0)) tmc.clear_otpw(stepperX);
+          if (hasNone || xval == 1 || (hasX && xval < 0)) tmc.clear_otpw(driver.x);
         #endif
         #if AXIS_HAS_TMC(X2)
-          if (hasNone || xval == 2 || (hasX && xval < 0)) tmc.clear_otpw(stepperX2);
+          if (hasNone || xval == 2 || (hasX && xval < 0)) tmc.clear_otpw(driver.x2);
         #endif
       #endif
 
       #if AXIS_HAS_TMC(Y) || AXIS_HAS_TMC(Y2)
-        const int8_t yval = int8_t(parser.byteval(axis_codes[X_AXIS], 0xFF));
+        const int8_t yval = int8_t(parser.byteval(axis_codes.x, 0xFF));
         #if AXIS_HAS_TMC(Y)
-          if (hasNone || yval == 1 || (hasY && yval < 0)) tmc.clear_otpw(stepperY);
+          if (hasNone || yval == 1 || (hasY && yval < 0)) tmc.clear_otpw(driver.y);
         #endif
         #if AXIS_HAS_TMC(Y2)
-          if (hasNone || yval == 2 || (hasY && yval < 0)) tmc.clear_otpw(stepperY2);
+          if (hasNone || yval == 2 || (hasY && yval < 0)) tmc.clear_otpw(driver.y2);
         #endif
       #endif
 
       #if AXIS_HAS_TMC(Z) || AXIS_HAS_TMC(Z2) || AXIS_HAS_TMC(Z3)
-        const int8_t zval = int8_t(parser.byteval(axis_codes[Z_AXIS], 0xFF));
+        const int8_t zval = int8_t(parser.byteval(axis_codes.z, 0xFF));
         #if AXIS_HAS_TMC(Z)
-          if (hasNone || zval == 1 || (hasZ && zval < 0)) tmc.clear_otpw(stepperZ);
+          if (hasNone || zval == 1 || (hasZ && zval < 0)) tmc.clear_otpw(driver.z);
         #endif
         #if AXIS_HAS_TMC(Z2)
-          if (hasNone || zval == 2 || (hasZ && zval < 0)) tmc.clear_otpw(stepperZ2);
+          if (hasNone || zval == 2 || (hasZ && zval < 0)) tmc.clear_otpw(driver.z2);
         #endif
         #if AXIS_HAS_TMC(Z3)
-          if (hasNone || zval == 3 || (hasZ && zval < 0)) tmc.clear_otpw(stepperZ3);
+          if (hasNone || zval == 3 || (hasZ && zval < 0)) tmc.clear_otpw(driver.z3);
         #endif
       #endif
 
-      const uint8_t eval = int8_t(parser.byteval(axis_codes[E_AXIS], 0xFF));
-
-      #if AXIS_HAS_TMC(E0)
-        if (hasNone || eval == 0 || (hasE && eval < 0)) tmc.clear_otpw(stepperE0);
-      #endif
-      #if AXIS_HAS_TMC(E1)
-        if (hasNone || eval == 1 || (hasE && eval < 0)) tmc.clear_otpw(stepperE1);
-      #endif
-      #if AXIS_HAS_TMC(E2)
-        if (hasNone || eval == 2 || (hasE && eval < 0)) tmc.clear_otpw(stepperE2);
-      #endif
-      #if AXIS_HAS_TMC(E3)
-        if (hasNone || eval == 3 || (hasE && eval < 0)) tmc.clear_otpw(stepperE3);
-      #endif
-      #if AXIS_HAS_TMC(E4)
-        if (hasNone || eval == 4 || (hasE && eval < 0)) tmc.clear_otpw(stepperE4);
-      #endif
-      #if AXIS_HAS_TMC(E5)
-        if (hasNone || eval == 5 || (hasE && eval < 0)) tmc.clear_otpw(stepperE5);
-      #endif
+      const uint8_t eval = int8_t(parser.byteval(axis_codes.e, 0xFF));
+      LOOP_DRV_EXT() {
+        Driver* drv = driver.e[d];
+        if (drv && drv->tmc && (hasNone || eval == d || (hasE && eval < 0))) tmc.clear_otpw(drv);
+      }
 
     }
 
@@ -164,7 +130,7 @@
 
     #define CODE_M913
 
-    inline void gcode_M913(void) {
+    inline void gcode_M913() {
 
       if (commands.get_target_tool(913)) return;
 
@@ -176,60 +142,43 @@
         }
       #endif
 
-      #define TMC_SET_PWMTHRS(P,ST) tmc.set_pwmthrs(stepper##ST, value, mechanics.data.axis_steps_per_mm[P##_AXIS])
-      #define TMC_SET_PWMTHRS_E(E) do{ tmc.set_pwmthrs(stepperE##E, value, mechanics.data.axis_steps_per_mm[E_AXIS_N(E)]); }while(0)
+      #define TMC_SET_PWMTHRS(ST)   driver[ST##_DRV]->tmc->set_pwm_thrs(value)
 
       LOOP_XYZE(i) {
         if (int32_t value = parser.longval(axis_codes[i])) {
           switch (i) {
             case X_AXIS:
               #if AXIS_HAS_STEALTHCHOP(X)
-                TMC_SET_PWMTHRS(X,X);
+                TMC_SET_PWMTHRS(X);
               #endif
               #if AXIS_HAS_STEALTHCHOP(X2)
-                TMC_SET_PWMTHRS(X,X2);
+                TMC_SET_PWMTHRS(X2);
               #endif
               break;
             case Y_AXIS:
               #if AXIS_HAS_STEALTHCHOP(Y)
-                TMC_SET_PWMTHRS(Y,Y);
+                TMC_SET_PWMTHRS(Y);
               #endif
               #if AXIS_HAS_STEALTHCHOP(Y2)
-                TMC_SET_PWMTHRS(Y,Y2);
+                TMC_SET_PWMTHRS(Y2);
               #endif
               break;
             case Z_AXIS:
               #if AXIS_HAS_STEALTHCHOP(Z)
-                TMC_SET_PWMTHRS(Z,Z);
+                TMC_SET_PWMTHRS(Z);
               #endif
               #if AXIS_HAS_STEALTHCHOP(Z2)
-                TMC_SET_PWMTHRS(Z,Z2);
+                TMC_SET_PWMTHRS(Z2);
               #endif
               #if AXIS_HAS_STEALTHCHOP(Z3)
-                TMC_SET_PWMTHRS(Z,Z3);
+                TMC_SET_PWMTHRS(Z3);
               #endif
               break;
             case E_AXIS: {
-              switch (TARGET_EXTRUDER) {
-                #if AXIS_HAS_STEALTHCHOP(E0)
-                  case 0: TMC_SET_PWMTHRS_E(0); break;
-                #endif
-                #if AXIS_HAS_STEALTHCHOP(E1)
-                  case 1: TMC_SET_PWMTHRS_E(1); break;
-                #endif
-                #if AXIS_HAS_STEALTHCHOP(E2)
-                  case 2: TMC_SET_PWMTHRS_E(2); break;
-                #endif
-                #if AXIS_HAS_STEALTHCHOP(E3)
-                  case 3: TMC_SET_PWMTHRS_E(3); break;
-                #endif
-                #if AXIS_HAS_STEALTHCHOP(E4)
-                  case 4: TMC_SET_PWMTHRS_E(4); break;
-                #endif
-                #if AXIS_HAS_STEALTHCHOP(E5)
-                  case 5: TMC_SET_PWMTHRS_E(5); break;
-                #endif
-              }
+              #if AXIS_HAS_STEALTHCHOP(E0)
+                Driver* drv = driver.e[extruders[toolManager.extruder.target]->get_driver()];
+                if (drv && drv->tmc) drv->tmc->set_pwm_thrs(value);
+              #endif
             } break;
           }
         }
@@ -245,7 +194,7 @@
 
     #define CODE_M914
 
-    inline void gcode_M914(void) {
+    inline void gcode_M914() {
 
       #if DISABLED(DISABLE_M503)
         // No arguments? Show M914 report.
@@ -255,7 +204,7 @@
         }
       #endif
 
-      #define TMC_SET_SGT(ST) tmc.set_sgt(stepper##ST, value)
+      #define TMC_SET_SGT(ST) driver[ST##_DRV]->tmc->homing_threshold(value)
 
       LOOP_XYZ(i) {
         if (parser.seen(axis_codes[i])) {
@@ -308,50 +257,65 @@
 
     #define CODE_M915
 
-    inline void gcode_M915(void) {
+    inline void gcode_M915() {
 
       const uint16_t  _rms  = parser.seenval('S') ? parser.value_int() : CALIBRATION_CURRENT,
                       _z    = parser.seenval('Z') ? parser.value_linear_units() : CALIBRATION_EXTRA_HEIGHT;
 
-      if (!mechanics.home_flag.ZHomed) {
-        SERIAL_EM("\nPlease home Z axis first");
-        return;
+      if (mechanics.axis_unhomed_error(HOME_Z)) {
+        #if MECH(DELTA)
+          mechanics.home();
+        #else
+          mechanics.home(HOME_Z);
+        #endif
       }
 
       #if AXIS_HAS_TMC(Z)
-        const uint16_t Z_current_1 = stepperZ->rms_current();
-        stepperZ->rms_current(_rms);
+        const uint16_t Z_current_1 = driver.z->tmc->rms_current();
+        #if MECH(DELTA)
+          driver.x->tmc->rms_current(_rms);
+          driver.y->tmc->rms_current(_rms);
+        #endif
+        driver.z->tmc->rms_current(_rms);
       #endif
       #if AXIS_HAS_TMC(Z2)
-        const uint16_t Z2_current_1 = stepperZ2->rms_current();
-        stepperZ2->rms_current(_rms);
+        const uint16_t Z2_current_1 = driver.z2->tmc->rms_current();
+        driver.z2->tmc->rms_current(_rms);
       #endif
       #if AXIS_HAS_TMC(Z3)
-        const uint16_t Z3_current_1 = stepperZ3->rms_current();
-        stepperZ3->rms_current(_rms);
+        const uint16_t Z3_current_1 = driver.z3->tmc->rms_current();
+        driver.z3->tmc->rms_current(_rms);
       #endif
 
-      SERIAL_MV("\nCalibration current: Z", _rms);
+      SERIAL_EMV("Calibration current: ", _rms);
 
       endstops.setSoftEndstop(false);
 
       mechanics.do_blocking_move_to_z(Z_MAX_BED + _z);
 
       #if AXIS_HAS_TMC(Z)
-        stepperZ->rms_current(Z_current_1);
+        #if MECH(DELTA)
+          driver.x->tmc->rms_current(Z_current_1);
+          driver.y->tmc->rms_current(Z_current_1);
+        #endif
+        driver.z->tmc->rms_current(Z_current_1);
       #endif
       #if AXIS_HAS_TMC(Z2)
-        stepperZ->rms_current(Z2_current_1);
+        driver.z->tmc->rms_current(Z2_current_1);
       #endif
       #if AXIS_HAS_TMC(Z3)
-        stepperZ->rms_current(Z3_current_1);
+        driver.z->tmc->rms_current(Z3_current_1);
       #endif
 
       mechanics.do_blocking_move_to_z(Z_MAX_BED);
       endstops.setSoftEndstop(true);
 
-      SERIAL_EM("\nHoming Z because we lost steps");
-      commands.enqueue_and_echo_P(PSTR("G28 Z"));
+      SERIAL_EM("Homing Z because we lost steps");
+      #if MECH(DELTA)
+        mechanics.home();
+      #else
+        mechanics.home(HOME_Z);
+      #endif
     }
 
   #endif

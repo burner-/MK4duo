@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,18 +23,18 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if ENABLED(ABORT_ON_ENDSTOP_HIT)
+#if ENABLED(SD_ABORT_ON_ENDSTOP_HIT)
 
-  #define CODE_M540
+#define CODE_M540
 
-  /**
-   * M540: Set whether SD card print should abort on endstop hit (M540 S<0|1>)
-   */
-  inline void gcode_M540(void) {
-    if (parser.seen('S')) planner.abort_on_endstop_hit = parser.value_bool();
-  }
+/**
+ * M540: Set whether SD card print should abort on endstop hit (M540 S<0|1>)
+ */
+inline void gcode_M540() {
+  if (parser.seen('S')) planner.abort_on_endstop_hit = parser.value_bool();
+}
 
-#endif // ENABLED(ABORT_ON_ENDSTOP_HIT)
+#endif // ENABLED(SD_ABORT_ON_ENDSTOP_HIT)

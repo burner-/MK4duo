@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -78,15 +78,16 @@
  *
  * "M" Codes
  *
- * M0   - Unconditional stop - Wait for user to press a button on the LCD (Only if ULTRA_LCD is enabled)
+ * M0   - Unconditional stop - Wait for user to press a button on the LCD.
  * M1   -> M0
  * M3   - S[value] L[duration] P[ppm] D[diagnostic] B[set mode] in laser beam control. (Requires LASER)
  *        S[value] CNC clockwise speed. (Requires CNCROUTERS)
  * M4   - S[value] CNC counter clockwise speed. (Requires CNCROUTERS)
  * M5   - Turn laser/spindle off. (Requires LASER or Requires CNCROUTERS)
  * M6   - Tool change CNC. (Requires CNCROUTERS)
- * M17  - Enable/Power all stepper motors
- * M18  - Disable all stepper motors; same as M84
+ * M16  - Expected printer check
+ * M17  - Enable stepper motors
+ * M18  - Disable stepper motors; same as M84
  * M20  - List SD card. (Requires SDSUPPORT)
  * M21  - Init SD card. (Requires SDSUPPORT)
  * M22  - Release SD card. (Requires SDSUPPORT)
@@ -151,7 +152,7 @@
  * M92  - Set axis_steps_per_unit - same syntax as G92
  * M99  - Set Hysteresis parameter X[in mm] Y[in mm] Z[in mm] E[in mm] F[float] Enable/disable/fade-out hysteresis correction (0.0 to 1.0)
  * M100 - Watch Free Memory (For Debugging Only)
- * M104 - S[C°] Set hotend target temperature
+ * M104 - S[C°] Set hotend target temperature, R[C°] Set hotend idle temperature
  *          T[int] 0-5 For Select Hotends (default 0)
  * M105 - Read current temp
  * M106 - P[fan] S[speed] F[frequency] U[pin] L[min speed] X[max speed] I[inverted logic] H[int] Set Auto mode - H=7 for controller - H-1 for disabled T[trig temperaure]
@@ -162,7 +163,7 @@
  *        IF AUTOTEMP is enabled, S[mintemp] B[maxtemp] F[factor]. Exit autotemp by any M109 without F
  * M110 - Set the current line number
  * M111 - Set debug flags with S[mask].
- * M112 - Emergency stop
+ * M112 - Full Shutdown
  * M113 - Set Host Keepalive interval with parameter S[seconds]. To disable set zero
  * M114 - Output current position to serial port
  * M115 - Report capabilities. (Extended capabilities requires EXTENDED_CAPABILITIES_REPORT)
@@ -180,9 +181,9 @@
  * M127 - Solenoid Air Valve Closed (BariCUDA vent to atmospheric pressure by jmil)
  * M128 - EtoP Open (BariCUDA EtoP = electricity to air pressure transducer by jmil)
  * M129 - EtoP Closed (BariCUDA EtoP = electricity to air pressure transducer by jmil)
- * M140 - S[C°] Set hot bed target temperature
+ * M140 - S[C°] Set hot bed target temperature, R[C°] Set hot bed idle temperature
  *        T[int] 0-3 For Select Beds (default 0)
- * M141 - S[C°] Set hot chamber target temperature
+ * M141 - S[C°] Set hot chamber target temperature, R[C°] Set hot chamber idle temperature
  *        T[int] 0-3 For Select Chambers (default 0)
  * M142 - S[C°] Set cooler target temperature
  * M145 - Set the heatup state H[hotend] B[bed] C[chamber] F[fan speed] for S[material] (0=PLA, 1=ABS, 2=GUM)
@@ -202,20 +203,22 @@
  * M192 - Sxxx Wait for cooler current temp to reach target temp. Waits only when cooling
  * M200 - set filament diameter and set E axis units to cubic millimeters (use S0 to set back to millimeters).:D[millimeters]- 
  * M201 - Set max acceleration in units/s^2 for print moves (M201 X1000 Y1000)
- * M203 - Set maximum feedrate that your machine can sustain (M203 X200 Y200 Z300 E10000) in mm/sec
- * M204 - Set default acceleration: P for Printing moves, R for Retract only (no X, Y, Z) moves and V for Travel (non printing) moves (ex. M204 P800 T3000 R9000) in mm/sec^2
- * M205 - Set advanced settings:  minimum travel speed S=while printing T=travel only,  B=minimum segment time X= maximum xy jerk, Z=maximum Z jerk, E=maximum E jerk, J=Junction mm
+ * M203 - Set maximum feedrate that your machine can sustain (M203 X200 Y200 Z10 E50) in mm/sec
+ * M204 - Set default acceleration in mm/sec^2: P for Printing moves, R for Retract moves and V for Travel (non printing) moves (ex. M204 P800 V3000 T0 R9000)
+ * M205 - Set advanced settings:  minimum travel speed S=while printing T=travel only, B=minimum segment time X= maximum xy jerk, Z=maximum Z jerk, E=maximum E jerk, J=Junction mm
  * M206 - Set additional homing offset
  * M207 - Set retract length S[positive mm] F[feedrate mm/min] Z[additional zlift/hop], stays in mm regardless of M200 setting
  * M208 - Set recover=unretract length S[positive mm surplus to the M207 S*] F[feedrate mm/min]
  * M209 - S[1/0] enable automatic retract detect if the slicer did not support G10/11: every normal extrude-only move will be classified as retract depending on the direction.
- * M218 - Set hotend offset (in mm): T[tools] X[offset_on_X] Y[offset_on_Y] Z[offset_on_Z]
- * M220 - Set speed factor override percentage: S[factor in percent]
+ * M217 - Set Park position and tool change parameters. (Requires NOZZLE_PARK_FEATURE or TOOL_CHANGE_FIL_SWAP)
+ * M218 - Set hotend offset (in mm): T[tool] X[offset_on_X] Y[offset_on_Y] Z[offset_on_Z]
+ * M220 - Set speed factor override percentage: S[factor in percent], B to backup, R to restore currently set override
  * M221 - T[extruder] S[factor in percent] - set extrude factor override percentage
  * M222 - T[extruder] S[factor in percent] - set density extrude factor percentage for purge
  * M223 - T[extruder] S[bool] set Filrunout Logic. (Requires FILAMENT_RUNOUT_SENSOR)
  * M224 - T[extruder] S[bool] set Filrunout Pullup. (Requires FILAMENT_RUNOUT_SENSOR)
  * M226 - Wait until the specified pin reaches the state required: P[pin number] S[pin state]
+ * M228 - Set axis min/max travel. S[bool] 0 = set axis maximum (default), 1 = set axis minimum, Xnnn X axis limit, Ynnn Y axis limit, Znnn Z axis limit
  * M240 - Trigger a camera to take a photograph
  * M250 - Set LCD contrast C[contrast value] (value 0..63)
  * M280 - Set servo position absolute. P<index> S<angle or microseconds>. (Requires servos)
@@ -242,11 +245,13 @@
  * M306 - Set Heaters parameters.
  *          H[heaters] 0-5 Hotend, -1 BED, -2 CHAMBER, -3 COOLER
  *          T[int] 0-3 For Select Beds or Chambers (default 0)
- *          A[int] Pid Drive Min, B[int] Pid Drive Max, C[int] Pid Max, F[int] Frequency
+ *          A[int] Power Drive Min, B[int] Power Drive Max, C[int] Power Max, F[int] Frequency
  *          L[int] Min temperature, O[int] Max temperature, U[bool] Use Pid/bang bang,
  *          I[bool] Hardware Inverted, T[bool] Thermal Protection, P[int] Pin, Q[bool] PWM Hardware
  * M350 - Set microstepping mode. (Requires digital microstepping pins.)
  * M351 - Toggle MS1 MS2 pins directly. (Requires digital microstepping pins.)
+ * M352 - Set driver pins and logic. X X2 Y Y2 Z Z2 Z3 T0-5 E[Enable pin] D[Dir pin] S[Step pin] L[enable logic] M[step logic]
+ * M353 - Set number total Tools. D[int] Set number driver extruder, E[int] Set number extruder, H[int] Set number hotend, B[int] Set number bed, C[int] Set number chamber, F[int] Set number fan
  * M355 - Turn case lights on/off
  * M380 - Activate solenoid on active extruder
  * M381 - Disable all solenoids
@@ -260,13 +265,13 @@
  * M408 - Report JSON-style response
  * M410 - Quickstop. Abort all the planned moves
  * M412 - Filament Runout Sensor. (Requires FILAMENT_RUNOUT_SENSOR)
-            S[bool]   Enable / Disable Sensor control
-            H[bool]   Enable / Disable Host control
-            R[bool]   Reset control
-            D[float]  Distance mm
+ *          S[bool]   Enable / Disable Sensor control
+ *          H[bool]   Enable / Disable Host control
+ *          R[bool]   Reset control
+ *          D[float]  Distance mm
  * M413 - S[bool] Enable / Disable Restart Job. (Requires SD_RESTART_FILE)
  * M420 - Enable/Disable Leveling (with current values) S1=enable S0=disable (Requires MBL, UBL or ABL)
- *        Z[height] for leveling fade height (Requires ENABLE_LEVELING_FADE_HEIGHT)
+ *          Z[height] for leveling fade height (Requires ENABLE_LEVELING_FADE_HEIGHT)
  * M421 - Set a single Z coordinate in the Mesh Leveling grid. X[units] Y[units] Z[units] (Requires MESH_BED_LEVELING, AUTO_BED_LEVELING_BILINEAR, or AUTO_BED_LEVELING_UBL)
  * M428 - Set the home_offset logically based on the current_position
  * M450 - Report Printer Mode
@@ -276,18 +281,25 @@
  * M500 - Store parameters in EEPROM
  * M501 - Read parameters from EEPROM (if you need reset them after you changed them temporarily).
  * M502 - Revert to the default "factory settings". You still need to store them in EEPROM afterwards if you want to.
- * M503 - Print the current settings (from memory not from EEPROM). Use S0 to leave off headings.
+ * M503 - Print the current settings (from memory not from EEPROM)
+ * M504 - Validate EEPROM Contents
+ * M505 - Clear EEPROM and RESET Printer
  * M522 - Read or Write on card. M522 T[extruders] R[read] or W[write] L[list]
  * M524 - Abort the current SD print job (started with M24). (Requires SDSUPPORT)
  * M530 - Enables explicit printing mode (S1) or disables it (S0). L can set layer count
  * M531 - filename - Define filename being printed
  * M532 - X[percent] L[curLayer] - update current print state progress (X=0..100) and layer L
- * M540 - Use S[0|1] to enable or disable the stop print on endstop hit (requires ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
+ * M540 - Use S[0|1] to enable or disable the stop print on endstop hit (requires SD_ABORT_ON_ENDSTOP_HIT)
+ * M563 - Set Tools Driver Hotend assignment
+ *          T[tools]  - Set Tool
+ *          D[int]    - Set Driver for tool
+ *          H[bool]   - Set Hotend for tool
  * M569 - Stepper driver control X[bool] Y[bool] Z[bool] T[extruders] E[bool] set direction,
  *          D[long] set direction delay, P[int] set minimum pulse, R[long] set maximum rate, Q[bool] Enable/Disable double/quad stepping.
+ * M575 - Change serial baud rate P[Port index] B[Baudrate]
  * M595 - Set AD595 or AD8495 O[offset] and S[gain]
  * M600 - Pause for filament change T[toolhead] X[pos] Y[pos] Z[relative lift]
- *        E[initial retract] U[Retract distance] L[Extrude distance] S[new temp] B[Number of beep]
+ *          E[initial retract] U[Retract distance] L[Extrude distance] S[new temp] B[Number of beep]
  * M603 - Set filament change T[toolhead] U[Retract distance] L[Extrude distance]
  * M605 - Set dual x-carriage movement mode: S[mode] [ X[duplication x-offset] R[duplication temp offset] ]
  * M649 - Set laser options. S[intensity] L[duration] P[ppm] B[set mode] R[raster mm per pulse] F[feedrate]
@@ -297,7 +309,9 @@
  * M702 - Unload Filament T[toolhead] Z[distance] U[Retract distance]
  * M800 - S goto to lcd menu. With no parameters run restart commands.
  * M851 - Set X Y Z Probe Offset in current units, set speed [F]ast and [S]low, [R]epetititons. (Requires Probe)
- * M900 - Set Linear Advance K-factor. (Requires LIN_ADVANCE)
+ * M876 - Host dialog handling.
+ * M890 - Run User Gcode. S[int] Start User Gcode 1 - 5.
+ * M900 - T[tool] K[factor] Set Linear Advance K-factor. (Requires LIN_ADVANCE)
  * M906 - Set motor currents XYZ T0-4 E (Requires ALLIGATOR)
  *        Set or get motor current in milliamps using axis codes X, Y, Z, E. Report values if no axis codes given. (Requires TRINAMIC)
  * M907 - Set digital trimpot motor current using axis codes. (Requires a board with digital trimpots)

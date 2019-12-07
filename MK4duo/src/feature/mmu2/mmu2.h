@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ class MMU2 {
     static volatile int8_t finda;
     static volatile bool finda_runout_valid;
     static int16_t version, buildnr;
-    static millis_s last_request_ms, next_P0_request_ms;
+    static short_timer_t last_request_timer, next_P0_request_timer;
     static char rx_buffer[16], tx_buffer[16];
 
   public: /** Public Function */
@@ -72,7 +72,7 @@ class MMU2 {
 
     static void command(const uint8_t cmd);
     static bool get_response(void);
-    static void manage_response(bool move_axes, bool turn_off_nozzle);
+    static void manage_response(const bool move_axes, const bool turn_off_nozzle);
 
     static void filament_runout();
     static void set_runout_valid(const bool valid);

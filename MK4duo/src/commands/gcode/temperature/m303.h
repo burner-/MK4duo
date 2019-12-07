@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if HEATER_COUNT > 0
+#if HAS_HEATER
 
 #define CODE_M303
 
@@ -43,9 +43,9 @@
  *    U[bool]     with a non-zero value will apply the result to current settings
  *
  */
-inline void gcode_M303(void) {
+inline void gcode_M303() {
 
-  Heater *act = commands.get_target_heater();
+  Heater * const act = commands.get_target_heater();
 
   if (!act) return;
 
@@ -55,20 +55,20 @@ inline void gcode_M303(void) {
 
   const int16_t target = parser.celsiusval('S', act->type == IS_HOTEND ? 200 : 70);
 
-  if (target > act->data.maxtemp - 10) {
-    SERIAL_EM(MSG_PID_TEMP_TOO_HIGH);
+  if (target > act->data.temp.max - 10) {
+    SERIAL_EM(MSG_HOST_PID_TEMP_TOO_HIGH);
     return;
   }
 
-  SERIAL_EM(MSG_PID_AUTOTUNE_START);
+  SERIAL_EM(MSG_HOST_PID_AUTOTUNE_START);
   lcdui.reset_alert_level();
   LCD_MESSAGEPGM(MSG_PID_AUTOTUNE_START);
 
   switch (act->type) {
-    case IS_HOTEND:   SERIAL_MV("Hotend:", act->data.ID); break;
-    case IS_BED:      SERIAL_MV("BED:", act->data.ID);    break;
-    case IS_CHAMBER:  SERIAL_MV("CHAMBER:", act->data.ID); break;
-    case IS_COOLER:   SERIAL_MV("COOLER:", act->data.ID); break;
+    case IS_HOTEND:   SERIAL_MV("Hotend:",  act->data.ID);  break;
+    case IS_BED:      SERIAL_MV("BED:",     act->data.ID);  break;
+    case IS_CHAMBER:  SERIAL_MV("CHAMBER:", act->data.ID);  break;
+    case IS_COOLER:   SERIAL_MV("COOLER:",  act->data.ID);  break;
     default: break;
   }
 
@@ -87,4 +87,4 @@ inline void gcode_M303(void) {
 
 }
 
-#endif // HEATER_COUNT > 0
+#endif // HAS_HEATER

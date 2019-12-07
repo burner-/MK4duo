@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
 #define CODE_M569
@@ -41,62 +41,38 @@
  *  D[long]           - Set Direction delay
  *
  */
-inline void gcode_M569(void) {
+inline void gcode_M569() {
 
-  #if ENABLED(COLOR_MIXING_EXTRUDER)
-    if (commands.get_target_driver(569)) return;
-  #else
-    if (commands.get_target_tool(569)) return;
+  if (commands.get_target_driver(569)) return;
+
+  #if DISABLED(DISABLE_M503)
+    // No arguments? Show M569 report.
+    if (!parser.seen("XYZEDPRQ")) {
+      stepper.print_M569();
+      return;
+    }
   #endif
 
   LOOP_XYZE(i) {
     if (parser.seen(axis_codes[i])) {
-      const uint8_t a = i + (i == E_AXIS ? tools.target_extruder : 0);
-      stepper.setStepDir((AxisEnum)a, parser.value_bool());
+      const uint8_t a = i + (i == E_AXIS ? toolManager.extruder.target : 0);
+      if (driver[i]) driver[i]->setDir(parser.value_bool());
     }
   }
 
   // Set actually direction
-  reset_stepper_drivers();
+  stepper.reset_drivers();
 
-  if (parser.seen('D')) stepper.direction_delay = parser.value_ulong();
-  if (parser.seen('P')) stepper.minimum_pulse   = parser.value_byte();
-  if (parser.seen('R')) stepper.maximum_rate    = parser.value_ulong();
-  if (parser.seen('Q')) stepper.quad_stepping   = parser.value_bool();
+  if (parser.seen('D')) stepper.data.direction_delay  = parser.value_ulong();
+  if (parser.seen('P')) stepper.data.minimum_pulse    = parser.value_byte();
+  if (parser.seen('R')) stepper.data.maximum_rate     = parser.value_ulong();
+  if (parser.seen('Q')) stepper.data.quad_stepping    = parser.value_bool();
 
   // Recalculate pulse cycle
   HAL_calc_pulse_cycle();
 
-  SERIAL_EM("Reporting Stepper control");
-  SERIAL_LOGIC(" X dir", stepper.isStepDir(X_AXIS));
-  SERIAL_LOGIC(" Y dir", stepper.isStepDir(Y_AXIS));
-  SERIAL_LOGIC(" Z dir", stepper.isStepDir(Z_AXIS));
-
-  #if DRIVER_EXTRUDERS == 1
-    SERIAL_LOGIC(" E dir", stepper.isStepDir(E_AXIS));
-    SERIAL_EOL();
-  #else
-    SERIAL_EOL();
-    LOOP_DRV_EXTRUDER() {
-      #if HAS_MKMULTI_TOOLS
-        SERIAL_MV(" Driver Extruder", d);
-      #else
-        SERIAL_MV(" E", d);
-      #endif
-      SERIAL_LOGIC(" dir" , stepper.isStepDir((AxisEnum)(E_AXIS + d)));
-      SERIAL_EOL();
-    }
-  #endif
-
-  SERIAL_LOGIC(" Double/Quad Stepping", stepper.quad_stepping);
-  SERIAL_MV(" Direction delay(ns):",    stepper.direction_delay);
-  SERIAL_MV(" Minimum pulse(us):",      stepper.minimum_pulse);
-  SERIAL_MV(" Maximum rate(Hz):",       stepper.maximum_rate);
-  SERIAL_EOL();
-
+  /* // <- put a / for activate code
   DEBUG_EMV("HAL_min_pulse_cycle:",     HAL_min_pulse_cycle);
-  DEBUG_EMV("HAL_min_pulse_tick:",      HAL_min_pulse_tick);
-  DEBUG_EMV("HAL_add_pulse_ticks:",     HAL_add_pulse_ticks);
   DEBUG_EMV("HAL_frequency_limit[0]:",  HAL_frequency_limit[0]);
   DEBUG_EMV("HAL_frequency_limit[1]:",  HAL_frequency_limit[1]);
   DEBUG_EMV("HAL_frequency_limit[2]:",  HAL_frequency_limit[2]);
@@ -105,5 +81,6 @@ inline void gcode_M569(void) {
   DEBUG_EMV("HAL_frequency_limit[5]:",  HAL_frequency_limit[5]);
   DEBUG_EMV("HAL_frequency_limit[6]:",  HAL_frequency_limit[6]);
   DEBUG_EMV("HAL_frequency_limit[7]:",  HAL_frequency_limit[7]);
+  //*/
 
 }

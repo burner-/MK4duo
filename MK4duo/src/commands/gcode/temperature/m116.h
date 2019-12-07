@@ -2,8 +2,8 @@
  * MK4duo Firmware for 3D Printer, Laser and CNC
  *
  * Based on Marlin, Sprinter and grbl
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,26 +23,26 @@
 /**
  * mcode
  *
- * Copyright (C) 2019 Alberto Cotronei @MagoKimbra
+ * Copyright (c) 2019 Alberto Cotronei @MagoKimbra
  */
 
-#if HEATER_COUNT > 0
+#if HAS_HEATER
 
 #define CODE_M116
 
 /**
  * M116: Wait for all heaters to reach target temperature
  */
-inline void gcode_M116(void) {
-  #if HOTENDS > 0
-    LOOP_HOTEND() hotends[h].wait_for_target(true);
+inline void gcode_M116() {
+  #if HAS_HOTENDS
+    LOOP_HOTEND() hotends[h]->wait_for_target(true);
   #endif
-  #if BEDS > 0
-    LOOP_BED() beds[h].wait_for_target(true);
+  #if HAS_BEDS
+    LOOP_BED() beds[h]->wait_for_target(true);
   #endif
-  #if CHAMBERS > 0
-    LOOP_CHAMBER() chambers[h].wait_for_target(true);
+  #if HAS_CHAMBERS
+    LOOP_CHAMBER() chambers[h]->wait_for_target(true);
   #endif
 }
 
-#endif
+#endif // HAS_HEATER
