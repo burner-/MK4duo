@@ -663,12 +663,12 @@
 /**************************************************************************
  ****************************** R/C Servo *********************************
  **************************************************************************/
-//#define ENABLE_SERVOS
+#define ENABLE_SERVOS
 // Number of servos
 // If you select a configuration below, this will receive a default value and does not need to be set manually
 // set it manually if you have more servos than extruders and wish to manually control some
 // leaving it defining as 0 will disable the servo subsystem
-#define NUM_SERVOS 0
+#define NUM_SERVOS 1
 // Servo index starts with 0 for M280 command
 //
 // Servo deactivation
@@ -1042,7 +1042,7 @@
  **********************************************************************************/
 // Safety: The probe needs time to recognize the command.
 //         Minimum command delay (ms). Enable and increase if needed.
-//#define BLTOUCH_DELAY 500
+#define BLTOUCH_DELAY 500
 
 // Use "HIGH SPEED" mode for probing.
 // Danger: Disable if your probe sometimes fails. Only suitable for stable well-adjusted systems.

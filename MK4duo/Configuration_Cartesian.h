@@ -104,7 +104,7 @@
  *****************************************************************************************/
 #define X_MIN_ENDSTOP_LOGIC   true   // set to true to invert the logic of the endstop.
 #define Y_MIN_ENDSTOP_LOGIC   true   // set to true to invert the logic of the endstop.
-#define Z_MIN_ENDSTOP_LOGIC   true   // set to true to invert the logic of the endstop.
+#define Z_MIN_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
 #define X_MAX_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
 #define Y_MAX_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
 #define Z_MAX_ENDSTOP_LOGIC   false   // set to true to invert the logic of the endstop.
@@ -175,14 +175,6 @@
 // The BLTouch probe uses a Hall effect sensor and emulates a servo.
 // The default connector is SERVO 0.
 #define BLTOUCH
-// Minimum Command delay (ms). Enable and increase if needed
-#define BLTOUCH_DELAY 500
-// BLTouch high speed
-//#define BLTOUCH_HIGH_SPEED_MODE
-// BLTouch V3.0 and newer smart series
-// For genuine BLTouch 3.0 sensors. Clones may be confused by 3.0 command angles. YMMV.
-// If the pin trigger is not detected, first try swapping the black and white wires then toggle this.
-//#define BLTOUCH_FORCE_5V_MODE
 
 // If you have TMC2130 or TMC5130 you can use StallGuard2 to probe the bed with the nozzle.
 //
@@ -245,8 +237,8 @@
 // potential EM interference by quieting/silencing the source of the 'noise' (the change
 // in current flowing through the wires). This is likely most useful to users of the
 // BLTouch probe, but may also help those with inductive or other probe types.
-//#define PROBING_HEATERS_OFF       // Turn heaters off when probing
-//#define PROBING_FANS_OFF          // Turn fans off when probing
+#define PROBING_HEATERS_OFF       // Turn heaters off when probing
+#define PROBING_FANS_OFF          // Turn fans off when probing
 
 // Add a bed leveling sub-menu for ABL or MBL.
 // Include a guided procedure if manual probing is enabled.

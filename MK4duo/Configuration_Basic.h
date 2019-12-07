@@ -48,8 +48,7 @@
  *
  * Valid values are -1 to 3 for Serial, Serial1, Serial2, Serial3 and -1 for SerialUSB
  */
-#define SERIAL_PORT -1
-#define SERIAL_PORT_1 0
+#define SERIAL_PORT_1 -1
 
 /**
  * This setting determines the communication speed of the printer on primary port.
