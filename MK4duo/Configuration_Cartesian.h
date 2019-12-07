@@ -159,7 +159,7 @@
 // Z Servo Endstop
 // Remember active servos in Configuration_Feature.h
 // Define nr servo for endstop -1 not define. Servo index start 0
-#define Z_PROBE_SERVO_NR -1
+#define Z_PROBE_SERVO_NR 0
 #define Z_SERVO_ANGLES {90,0} // Z Servo Deploy and Stow angles
 
 // The "Manual Probe" provides a means to do "Auto" Bed Leveling without a probe.
@@ -170,13 +170,13 @@
 // For example an inductive probe, or a setup that uses the nozzle to probe.
 // An inductive probe must be deactivated to go below
 // its trigger-point if hardware endstops are active.
-#define Z_PROBE_FIX_MOUNTED
+//#define Z_PROBE_FIX_MOUNTED
 
 // The BLTouch probe uses a Hall effect sensor and emulates a servo.
 // The default connector is SERVO 0.
-//#define BLTOUCH
+#define BLTOUCH
 // Minimum Command delay (ms). Enable and increase if needed
-//#define BLTOUCH_DELAY 500
+#define BLTOUCH_DELAY 500
 // BLTouch high speed
 //#define BLTOUCH_HIGH_SPEED_MODE
 // BLTouch V3.0 and newer smart series

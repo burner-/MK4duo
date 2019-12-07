@@ -133,7 +133,8 @@
 #define X_MIN_PIN           ORIG_X_MIN_PIN
 #define X_MAX_PIN           ORIG_X_MAX_PIN
 #define Y_MIN_PIN           ORIG_Y_MIN_PIN
-#define Y_MAX_PIN           ORIG_Y_MAX_PIN
+//#define Y_MAX_PIN           ORIG_Y_MAX_PIN
+#define Y_MAX_PIN           NoPin
 #define Z_MIN_PIN           ORIG_Z_MIN_PIN
 #define Z_MAX_PIN           ORIG_Z_MAX_PIN
 #define X2_MIN_PIN          NoPin
