@@ -166,11 +166,13 @@
 #elif TEMP_SENSOR_HE0 == -4
   #define TEMP_HE0_PIN        MAX31855_SS0_PIN
 #endif
+
 #if TEMP_SENSOR_HE1   >= -2
   #define TEMP_HE1_PIN        ORIG_TEMP_HE1_PIN
 #elif TEMP_SENSOR_HE1 == -4
   #define TEMP_HE1_PIN        MAX31855_SS1_PIN
 #endif
+
 #if TEMP_SENSOR_HE2   >= -2
   #define TEMP_HE2_PIN        ORIG_TEMP_HE2_PIN
 #elif TEMP_SENSOR_HE2 == -4
@@ -181,6 +183,8 @@
 #elif TEMP_SENSOR_HE3 == -4
   #define TEMP_HE3_PIN        MAX31855_SS3_PIN
 #endif
+
+
 #define TEMP_HE4_PIN          ORIG_TEMP_HE3_PIN
 #define TEMP_HE5_PIN          ORIG_TEMP_HE3_PIN
 

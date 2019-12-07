@@ -82,13 +82,13 @@
  * 999 : Dummy Table that ALWAYS reads 100 degC or the temperature defined below.                    *
  *                                                                                                   *
  *****************************************************************************************************/
-#define TEMP_SENSOR_0 1
-#define TEMP_SENSOR_1 1
-#define TEMP_SENSOR_2 1
-#define TEMP_SENSOR_3 1
-#define TEMP_SENSOR_BED 1
-#define TEMP_SENSOR_CHAMBER 0
-#define TEMP_SENSOR_COOLER 0
+#define TEMP_SENSOR_HE0       1
+#define TEMP_SENSOR_HE1       1
+#define TEMP_SENSOR_HE2       1
+#define TEMP_SENSOR_HE3       1
+#define TEMP_SENSOR_HE4       1
+#define TEMP_SENSOR_HE5       1
+#define TEMP_SENSOR_BED0      1
 #define TEMP_SENSOR_BED1      0
 #define TEMP_SENSOR_BED2      0
 #define TEMP_SENSOR_BED3      0
@@ -255,11 +255,12 @@
 //#define PID_ADD_EXTRUSION_RATE
 #define LPQ_MAX_LEN 50
 
-//           HotEnd{HE0,HE1,HE2,HE3}
-#define DEFAULT_Kp {14, 14, 14, 17}     // Kp for H0, H1, H2, H3
-#define DEFAULT_Ki {01, 01, 01, 02}     // Ki for H0, H1, H2, H3
-#define DEFAULT_Kd {35, 35, 35, 45}     // Kd for H0, H1, H2, H3
-#define DEFAULT_Kc {100, 100, 100, 100} // heating power = Kc * (e_speed)
+
+//      HotEnd    {HE0,HE1,HE2,HE3,HE4,HE5}
+#define HOTEND_Kp {14, 14, 14, 14, 14, 14}
+#define HOTEND_Ki {13, 13, 13, 13, 13, 13}
+#define HOTEND_Kd {35, 35, 35, 35, 35, 35}
+#define HOTEND_Kc {100, 100, 100, 100, 100, 100} // Heating power = Kc * (e_speed)
 /***********************************************************************/
 
 
@@ -273,16 +274,18 @@
 // Put to false following line to disable PID and enable bang-bang.
 #define PIDTEMPBED false
 
-#define BED_HYSTERESIS        1 // Only disable heating if T>target+BED_HYSTERESIS and enable heating if T<target-BED_HYSTERESIS
-#define BED_CHECK_INTERVAL 5000 // ms between checks in bang-bang control
+#define BED_POWER_MAX       255 // Limits current to bed;                                   255 = full current
+#define BED_POWER_DRIVE_MIN  40 // Limits min current to bed while PID/BANG_BANG is active;   0 = no current
+#define BED_POWER_DRIVE_MAX 230 // Limits max current to bed while PID/BANG_BANG is active; 255 = full current
 
-#define BED_HYSTERESIS        2 // Only disable heating if T>target+BED HYSTERESIS and enable heating if T<target-BED HYSTERESIS
+#define BED_HYSTERESIS        1 // Only disable heating if T>target+BED HYSTERESIS and enable heating if T<target-BED HYSTERESIS
 #define BED_CHECK_INTERVAL  500 // ms between checks in bang-bang control
 
 //      BED     {BED0,BED1,BED2,BED3}
 #define BED_Kp  {10,10,10,10}
 #define BED_Ki  {1,1,1,1}
 #define BED_Kd  {300,300,300,300}
+
 
 // FIND YOUR OWN: "M303 H-1 C8 S90" to run autotune on the bed at 90 degreesC for 8 cycles.
 /***********************************************************************/
@@ -418,7 +421,7 @@
  *                                                                     *
  ***********************************************************************/
 #define PREVENT_COLD_EXTRUSION
-#define EXTRUDE_MINTEMP 190                 // Degree Celsius
+#define EXTRUDE_MINTEMP 170                 // Degree Celsius
 
 // Prevent a single extrusion longer than EXTRUDE MAXLENGTH.
 // Note: For Bowden Extruders make this large enough to allow load/unload.
